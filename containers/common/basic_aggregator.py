@@ -2,13 +2,13 @@ import abc
 import logging
 import os
 from abc import ABC
-from typing import Dict, List
+from typing import Dict, List, Union
 
 from common.packets.aggregator_packets import ChunkOrStop, StopPacket
 from common.packets.eof import Eof
 from common.packets.generic_packet import GenericPacket
 from common.rabbit_middleware import Rabbit
-from common.utils import build_prefixed_queue_name, build_eof_out_queue_name
+from common.utils import build_prefixed_queue_name, build_eof_out_queue_name, build_queue_name
 
 RABBIT_HOST = os.environ.get("RABBIT_HOST", "rabbitmq")
 CHUNK_SIZE = 256
@@ -16,16 +16,19 @@ SEND_DELAY_SEC = 0.1
 
 
 class BasicAggregator(ABC):
-    def __init__(self, city_name: str, input_queue_suffix: str, replica_id: int, side_table_queue: str):
-        self._input_queue = build_prefixed_queue_name(city_name, input_queue_suffix, replica_id)
+    def __init__(self, city_name: Union[str, None], input_queue_suffix: str, replica_id: int, side_table_queue: str):
+        if city_name is None:
+            self._input_queue = build_queue_name(input_queue_suffix, replica_id)
+            control_queue = input_queue_suffix
+        else:
+            self._input_queue = build_prefixed_queue_name(city_name, input_queue_suffix, replica_id)
+            control_queue = build_eof_out_queue_name(city_name, input_queue_suffix)
+
         self._rabbit = Rabbit(RABBIT_HOST)
         self._rabbit.declare_queue(self._input_queue)
-        logging.info(
-            f"Routing control packets to {build_eof_out_queue_name(city_name, input_queue_suffix)}")
         self._rabbit.route(self._input_queue, "control",
-                           build_eof_out_queue_name(city_name, input_queue_suffix))
+                           control_queue)
         self._rabbit.subscribe(side_table_queue, self.__on_side_table_message_callback)
-
 
     def __on_side_table_message_callback(self, msg: bytes) -> bool:
         decoded = ChunkOrStop.decode(msg)
@@ -39,7 +42,6 @@ class BasicAggregator(ABC):
             raise ValueError(f"Unexpected message type: {type(decoded.data)}")
 
         return True
-
 
     def __handle_chunk(self, chunk: List[bytes]) -> Dict[str, List[bytes]]:
         outgoing_messages = {}
@@ -62,8 +64,13 @@ class BasicAggregator(ABC):
             raise Exception(f"Unknown message type: {type(decoded.data)}")
 
         for (queue, messages) in outgoing_messages.items():
-            encoded = GenericPacket(messages).encode()
-            self._rabbit.produce(queue, encoded)
+            if queue.endswith("_eof_in"):
+                for message in messages:
+                    self._rabbit.produce(queue, message)
+            else:
+                if len(messages) > 1:
+                    encoded = GenericPacket(messages).encode()
+                    self._rabbit.produce(queue, encoded)
 
         return True
 
