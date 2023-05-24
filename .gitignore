@@ -128,7 +128,8 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# Datasets
-.data/
+# Data
+*.zip
+.data*
 
 .idea/

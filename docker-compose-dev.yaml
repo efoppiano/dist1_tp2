@@ -55,7 +55,7 @@ services:
       - CITIES_WITH_GEODATA=montreal
       - CITIES_WITHOUT_GEODATA=washington,toronto
     volumes:
-      - ./.data_3/:/opt/app/.data/
+      - ./.data_4/:/opt/app/.data/
 
   synchronizer:
     build:

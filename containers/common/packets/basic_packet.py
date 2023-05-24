@@ -160,7 +160,7 @@ class BasicPacket(ABC):
                 raise Exception(f"Erorr while deserializing element {element} of type {field_type}: {e}")
 
     @classmethod
-    def __deserialize(cls, data: bytes) -> ["BasicPacket", int]:
+    def __deserialize(cls, data: bytes) -> typing.Tuple["BasicPacket", int]:
         class_fields = cls.__dict__["__dataclass_fields__"]
         elements = []
         bytes_read = 0

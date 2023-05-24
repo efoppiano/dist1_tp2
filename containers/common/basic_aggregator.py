@@ -26,9 +26,6 @@ class BasicAggregator(ABC):
                            build_eof_out_queue_name(city_name, input_queue_suffix))
         self._rabbit.subscribe(side_table_queue, self.__on_side_table_message_callback)
 
-        self.__eof_messages_buffer = {}
-        self.__basic_agg_buffer = {}
-        self._call_later_set = False
 
     def __on_side_table_message_callback(self, msg: bytes) -> bool:
         decoded = ChunkOrStop.decode(msg)
@@ -43,23 +40,6 @@ class BasicAggregator(ABC):
 
         return True
 
-    def __send_messages(self, queue: str, messages: List[bytes]):
-        chunks = [messages[i:i + CHUNK_SIZE] for i in range(0, len(messages), CHUNK_SIZE)]
-        for chunk in chunks:
-            message = GenericPacket(chunk)
-            self._rabbit.produce(queue, message.encode())
-
-    def __send_chunks(self):
-        for (queue, messages) in self.__basic_agg_buffer.items():
-            self.__send_messages(queue, messages)
-
-        for (queue, messages) in self.__eof_messages_buffer.items():
-            for message in messages:
-                self._rabbit.produce(queue, message)
-
-        self.__eof_messages_buffer = {}
-        self.__basic_agg_buffer = {}
-        self._call_later_set = False
 
     def __handle_chunk(self, chunk: List[bytes]) -> Dict[str, List[bytes]]:
         outgoing_messages = {}
@@ -82,16 +62,8 @@ class BasicAggregator(ABC):
             raise Exception(f"Unknown message type: {type(decoded.data)}")
 
         for (queue, messages) in outgoing_messages.items():
-            if queue.endswith("_eof_in"):
-                self.__eof_messages_buffer.setdefault(queue, [])
-                self.__eof_messages_buffer[queue] += messages
-            else:
-                self.__basic_agg_buffer.setdefault(queue, [])
-                self.__basic_agg_buffer[queue] += messages
-
-        if not self._call_later_set and outgoing_messages != {}:
-            self._call_later_set = True
-            self._rabbit.call_later(SEND_DELAY_SEC, self.__send_chunks)
+            encoded = GenericPacket(messages).encode()
+            self._rabbit.produce(queue, encoded)
 
         return True
 
