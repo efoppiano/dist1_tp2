@@ -1,12 +1,11 @@
 SHELL := /bin/bash
-PWD := $(shell pwd)
 
 default: build
 
 all:
 
 docker-compose-up: docker-compose-down
-	docker compose --env-file .env -f docker-compose-dev.yaml up -d --build
+	docker compose -f docker-compose-dev.yaml up -d --build
 .PHONY: docker-compose-up
 
 docker-compose-stop:
