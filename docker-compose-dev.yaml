@@ -66,7 +66,7 @@ services:
       rabbitmq:
         condition: service_healthy
 
-  wa_weather_aggregator_0:
+  weather_aggregator_0:
     build:
       context: ./containers
       dockerfile: weather_aggregator/Dockerfile
@@ -77,13 +77,13 @@ services:
     environment:
       - PYTHONHASHSEED=0
       - CITY_NAME=washington
-      - INPUT_QUEUE_SUFFIX=gateway_in
-      - OUTPUT_QUEUE_SUFFIX=gateway_out
+      - INPUT_QUEUE_NAME=gateway_in
+      - OUTPUT_QUEUE_NAME=gateway_out
       - OUTPUT_AMOUNT=2
       - REPLICA_ID=0
-      - SIDE_TABLE_QUEUE_SUFFIX=weather
+      - SIDE_TABLE_QUEUE_NAME=weather
 
-  wa_weather_aggregator_1:
+  weather_aggregator_1:
     build:
       context: ./containers
       dockerfile: weather_aggregator/Dockerfile
@@ -94,157 +94,13 @@ services:
     environment:
       - PYTHONHASHSEED=0
       - CITY_NAME=washington
-      - INPUT_QUEUE_SUFFIX=gateway_in
-      - OUTPUT_QUEUE_SUFFIX=gateway_out
+      - INPUT_QUEUE_NAME=gateway_in
+      - OUTPUT_QUEUE_NAME=gateway_out
       - OUTPUT_AMOUNT=2
       - REPLICA_ID=1
-      - SIDE_TABLE_QUEUE_SUFFIX=weather
+      - SIDE_TABLE_QUEUE_NAME=weather
 
-  tor_weather_aggregator_0:
-    build:
-      context: ./containers
-      dockerfile: weather_aggregator/Dockerfile
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    entrypoint: python3 /opt/app/weather_aggregator.py
-    environment:
-      - PYTHONHASHSEED=0
-      - CITY_NAME=toronto
-      - INPUT_QUEUE_SUFFIX=gateway_in
-      - OUTPUT_QUEUE_SUFFIX=gateway_out
-      - OUTPUT_AMOUNT=2
-      - REPLICA_ID=0
-      - SIDE_TABLE_QUEUE_SUFFIX=weather
-
-  tor_weather_aggregator_1:
-    build:
-      context: ./containers
-      dockerfile: weather_aggregator/Dockerfile
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    entrypoint: python3 /opt/app/weather_aggregator.py
-    environment:
-      - PYTHONHASHSEED=0
-      - CITY_NAME=toronto
-      - INPUT_QUEUE_SUFFIX=gateway_in
-      - OUTPUT_QUEUE_SUFFIX=gateway_out
-      - OUTPUT_AMOUNT=2
-      - REPLICA_ID=1
-      - SIDE_TABLE_QUEUE_SUFFIX=weather
-
-  mon_weather_aggregator_0:
-    build:
-      context: ./containers
-      dockerfile: weather_aggregator/Dockerfile
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    entrypoint: python3 /opt/app/weather_aggregator.py
-    environment:
-      - PYTHONHASHSEED=0
-      - CITY_NAME=montreal
-      - INPUT_QUEUE_SUFFIX=gateway_in
-      - OUTPUT_QUEUE_SUFFIX=gateway_out
-      - OUTPUT_AMOUNT=2
-      - REPLICA_ID=0
-      - SIDE_TABLE_QUEUE_SUFFIX=weather
-
-  mon_weather_aggregator_1:
-    build:
-      context: ./containers
-      dockerfile: weather_aggregator/Dockerfile
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    entrypoint: python3 /opt/app/weather_aggregator.py
-    environment:
-      - PYTHONHASHSEED=0
-      - CITY_NAME=montreal
-      - INPUT_QUEUE_SUFFIX=gateway_in
-      - OUTPUT_QUEUE_SUFFIX=gateway_out
-      - OUTPUT_AMOUNT=2
-      - REPLICA_ID=1
-      - SIDE_TABLE_QUEUE_SUFFIX=weather
-
-  wa_station_aggregator_0:
-    build:
-      context: ./containers
-      dockerfile: simple_station_aggregator/Dockerfile
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    entrypoint: python3 /opt/app/simple_station_aggregator.py
-    environment:
-      - PYTHONHASHSEED=0
-      - CITY_NAME=washington
-      - INPUT_QUEUE_SUFFIX=gateway_out
-      - PREC_FILTER_IN_QUEUE_NAME=prec_filter_in
-      - PREC_FILTER_AMOUNT=2
-      - YEAR_FILTER_IN_QUEUE_NAME=year_filter_in
-      - YEAR_FILTER_AMOUNT=2
-      - REPLICA_ID=0
-      - SIDE_TABLE_QUEUE_SUFFIX=station
-
-  wa_station_aggregator_1:
-    build:
-      context: ./containers
-      dockerfile: simple_station_aggregator/Dockerfile
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    entrypoint: python3 /opt/app/simple_station_aggregator.py
-    environment:
-      - PYTHONHASHSEED=0
-      - CITY_NAME=washington
-      - INPUT_QUEUE_SUFFIX=gateway_out
-      - PREC_FILTER_IN_QUEUE_NAME=prec_filter_in
-      - PREC_FILTER_AMOUNT=2
-      - YEAR_FILTER_IN_QUEUE_NAME=year_filter_in
-      - YEAR_FILTER_AMOUNT=2
-      - REPLICA_ID=1
-      - SIDE_TABLE_QUEUE_SUFFIX=station
-
-  tor_station_aggregator_0:
-    build:
-      context: ./containers
-      dockerfile: simple_station_aggregator/Dockerfile
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    entrypoint: python3 /opt/app/simple_station_aggregator.py
-    environment:
-      - PYTHONHASHSEED=0
-      - CITY_NAME=toronto
-      - INPUT_QUEUE_SUFFIX=gateway_out
-      - PREC_FILTER_IN_QUEUE_NAME=prec_filter_in
-      - PREC_FILTER_AMOUNT=2
-      - YEAR_FILTER_IN_QUEUE_NAME=year_filter_in
-      - YEAR_FILTER_AMOUNT=2
-      - REPLICA_ID=0
-      - SIDE_TABLE_QUEUE_SUFFIX=station
-
-  tor_station_aggregator_1:
-    build:
-      context: ./containers
-      dockerfile: simple_station_aggregator/Dockerfile
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    entrypoint: python3 /opt/app/simple_station_aggregator.py
-    environment:
-      - PYTHONHASHSEED=0
-      - CITY_NAME=toronto
-      - INPUT_QUEUE_SUFFIX=gateway_out
-      - PREC_FILTER_IN_QUEUE_NAME=prec_filter_in
-      - PREC_FILTER_AMOUNT=2
-      - YEAR_FILTER_IN_QUEUE_NAME=year_filter_in
-      - YEAR_FILTER_AMOUNT=2
-      - REPLICA_ID=1
-      - SIDE_TABLE_QUEUE_SUFFIX=station
-
-  mon_station_aggregator_0:
+  station_aggregator_0:
     build:
       context: ./containers
       dockerfile: full_station_aggregator/Dockerfile
@@ -255,7 +111,7 @@ services:
     environment:
       - PYTHONHASHSEED=0
       - CITY_NAME=montreal
-      - INPUT_QUEUE_SUFFIX=gateway_out
+      - INPUT_QUEUE_NAME=gateway_out
       - PREC_FILTER_IN_QUEUE_NAME=prec_filter_in
       - PREC_FILTER_AMOUNT=2
       - YEAR_FILTER_IN_QUEUE_NAME=year_filter_in
@@ -263,9 +119,9 @@ services:
       - DISTANCE_CALC_IN_QUEUE_NAME=distance_calc_in
       - DISTANCE_CALC_AMOUNT=2
       - REPLICA_ID=0
-      - SIDE_TABLE_QUEUE_SUFFIX=station
+      - SIDE_TABLE_QUEUE_NAME=station
 
-  mon_station_aggregator_1:
+  station_aggregator_1:
     build:
       context: ./containers
       dockerfile: full_station_aggregator/Dockerfile
@@ -276,7 +132,7 @@ services:
     environment:
       - PYTHONHASHSEED=0
       - CITY_NAME=montreal
-      - INPUT_QUEUE_SUFFIX=gateway_out
+      - INPUT_QUEUE_NAME=gateway_out
       - PREC_FILTER_IN_QUEUE_NAME=prec_filter_in
       - PREC_FILTER_AMOUNT=2
       - YEAR_FILTER_IN_QUEUE_NAME=year_filter_in
@@ -284,7 +140,7 @@ services:
       - DISTANCE_CALC_IN_QUEUE_NAME=distance_calc_in
       - DISTANCE_CALC_AMOUNT=2
       - REPLICA_ID=1
-      - SIDE_TABLE_QUEUE_SUFFIX=station
+      - SIDE_TABLE_QUEUE_NAME=station
 
   prec_filter_0:
     build:

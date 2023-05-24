@@ -16,13 +16,10 @@ SEND_DELAY_SEC = 0.1
 
 
 class BasicAggregator(ABC):
-    def __init__(self, city_name: Union[str, None], input_queue_suffix: str, replica_id: int, side_table_queue: str):
-        if city_name is None:
-            self._input_queue = build_queue_name(input_queue_suffix, replica_id)
-            control_queue = input_queue_suffix
-        else:
-            self._input_queue = build_prefixed_queue_name(city_name, input_queue_suffix, replica_id)
-            control_queue = build_eof_out_queue_name(city_name, input_queue_suffix)
+    def __init__(self, input_queue_suffix: str, replica_id: int, side_table_queue: str):
+        
+        self._input_queue = build_queue_name(input_queue_suffix, replica_id)
+        control_queue = input_queue_suffix
 
         self._rabbit = Rabbit(RABBIT_HOST)
         self._rabbit.declare_queue(self._input_queue)
