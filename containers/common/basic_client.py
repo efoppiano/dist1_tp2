@@ -75,7 +75,6 @@ class BasicClient(ABC):
     def __send_trips_data(self, socket: ST, city: str):
         for trip_info_list in self.get_trips(city):
             socket.send(PacketFactory.build_trip_packet(trip_info_list), copy=False)
-        logging.info(f"action: client_send_trips_data | result: finished | city: {city}")
         socket.send(PacketFactory.build_trip_eof(city))
 
     def __send_data_from_city(self, city: str):

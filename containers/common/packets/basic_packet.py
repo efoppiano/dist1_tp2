@@ -1,9 +1,8 @@
 import struct
 from abc import ABC
 from dataclasses import dataclass
-from typing import List, Union
-
 import typing
+from typing import List, Union, Generic, Type, Tuple, Any
 
 T = typing.TypeVar("T")
 S = typing.TypeVar("S")
@@ -18,8 +17,10 @@ pack_bool = struct.Struct("?").pack
 pack_int = struct.Struct("i").pack
 pack_float = struct.Struct("d").pack
 
+Element = Union[int, float, str, bool, bytes, List[T], "BasicPacket", "Array[T, S]", None]
 
-class Array(List[T], typing.Generic[T, S]):
+
+class Array(List[T], Generic[T, S]):
     size: S
 
     def __init__(self, *args, **kwargs):
@@ -42,66 +43,155 @@ class BasicPacket(ABC):
 
         return result_bytes
 
-    def __search_union_index(self, element, union_types) -> int:
-        element_is_list = isinstance(element, list)
+    @staticmethod
+    def __get_type_str(element: Element) -> str:
+        if isinstance(element, int):
+            return "int"
+        elif isinstance(element, float):
+            return "float"
+        elif isinstance(element, str):
+            return "str"
+        elif isinstance(element, bool):
+            return "bool"
+        elif isinstance(element, bytes):
+            return "bytes"
+        elif isinstance(element, Array):
+            inner_type = BasicPacket.__get_type_str(element[0])
+            array_size = len(element)
+            return f"Array[{inner_type}, {array_size}]"
+        elif isinstance(element, list):
+            inner_type = BasicPacket.__get_type_str(element[0])
+            return f"List[{inner_type}]"
+        elif isinstance(element, BasicPacket):
+            return element.__class__.__name__
+        elif element is None:
+            return "NoneType"
+        else:
+            raise ValueError(f"Element {element} has no type")
 
-        for i, union_type in enumerate(union_types):
-            if element_is_list:
-                if typing.get_origin(union_type) is list:
-                    element_inner_type = type(element[0])
-                    union_inner_type = typing.get_args(union_type)[0]
-                    if element_inner_type == union_inner_type:
-                        return i
-            elif typing.get_origin(union_type) == type(element) or union_type == type(element):
-                return i
+    @staticmethod
+    def __get_type_str_from_typing(element_type: Type) -> str:
+        if element_type == int:
+            return "int"
+        elif element_type == float:
+            return "float"
+        elif element_type == str:
+            return "str"
+        elif element_type == bool:
+            return "bool"
+        elif element_type == bytes:
+            return "bytes"
+        elif typing.get_origin(element_type) == list:
+            inner_type = BasicPacket.__get_type_str_from_typing(typing.get_args(element_type)[0])
+            return f"List[{inner_type}]"
+        elif typing.get_origin(element_type) == Array:
+            inner_type = BasicPacket.__get_type_str_from_typing(typing.get_args(element_type)[0])
+            array_size = typing.get_args(element_type)[1]
+            return f"Array[{inner_type}, {array_size}]"
+        elif issubclass(element_type, BasicPacket):
+            return element_type.__name__
+        elif element_type is type(None):
+            return "NoneType"
+        else:
+            raise ValueError(f"Element type {element_type} has no type")
+
+    def __search_union_index(self, element: Element, union_types: Tuple[Any]) -> int:
+        if len(union_types) > 256:
+            raise ValueError(f"Union type {union_types} has more than 256 types")
+        element_type_str = self.__get_type_str(element)
+        for idx, union_type in enumerate(union_types):
+            if self.__get_type_str_from_typing(union_type) == element_type_str:
+                return idx
 
         raise ValueError(f"Element {element} is not of any type in {union_types}")
 
-    def __serialize_element(self, element, element_type) -> bytes:
-        result_bytes = b""
+    def __serialize_element(self, element: Element, element_type: Type) -> bytes:
         if element_type == bool:
-            result_bytes += pack_bool(element)
+            return pack_bool(element)
         elif element_type == int:
-            result_bytes += pack_int(element)
+            return pack_int(element)
         elif element_type == float:
-            result_bytes += pack_float(element)
+            return pack_float(element)
         elif element_type == str:
             encoded_string = element.encode()
             encoded_string_length = pack_int(len(encoded_string))
-            result_bytes += encoded_string_length + encoded_string
+            return encoded_string_length + encoded_string
         elif element_type == bytes:
             encoded_bytes_length = pack_int(len(element))
-            result_bytes += encoded_bytes_length + element
-        elif typing.get_origin(element_type) is typing.Union:
+            return encoded_bytes_length + element
+        elif typing.get_origin(element_type) is Union:
             union_types = typing.get_args(element_type)
             idx = self.__search_union_index(element, union_types)
-            result_bytes += pack_byte(idx)
-            result_bytes += self.__serialize_element(element, union_types[idx])
-
+            return pack_byte(idx) + self.__serialize_element(element, union_types[idx])
         elif typing.get_origin(element_type) == Array:
-            element_of_array_type = typing.get_args(element_type)[0]
-            for e in element:
-                result_bytes += self.__serialize_element(e, element_of_array_type)
+            if type(element) != Array:
+                raise TypeError(f"Element {element} is not of type Array")
 
+            element_of_array_type = typing.get_args(element_type)[0]
+            return b"".join([self.__serialize_element(e, element_of_array_type) for e in element])
         elif typing.get_origin(element_type) == list:
             list_length = len(element)
             encoded_list_length = pack_int(list_length)
             element_of_list_type = typing.get_args(element_type)[0]
-            result_bytes += encoded_list_length
-            for e in element:
-                result_bytes += self.__serialize_element(e, element_of_list_type)
+            return encoded_list_length + b"".join([self.__serialize_element(e, element_of_list_type) for e in element])
         elif element_type is type(None):
-            pass
+            return b""
         else:
             try:
-                result_bytes += element.encode()
+                return element.encode()
             except Exception as e:
-                raise Exception(f"Erorr while serializing element {element} of type {element_type}: {e}")
-
-        return result_bytes
+                raise ValueError(f"Element {element} has no known type")
 
     @classmethod
-    def __deserialize_element(cls, data, field_type):
+    def __deserialize_array(cls, data: bytes, field_type: Type) -> Tuple[List[Element], int]:
+        array_length = typing.get_args(field_type)[1]
+        element_type = typing.get_args(field_type)[0]
+        elements = []
+        bytes_read = 0
+        for _ in range(array_length):
+            element, new_bytes_read = cls.__deserialize_element(data, element_type)
+            data = data[new_bytes_read:]
+            bytes_read += new_bytes_read
+            elements.append(element)
+
+        return elements, bytes_read
+
+    @classmethod
+    def __deserialize_bytes(cls, data: bytes) -> Tuple[bytes, int]:
+        bytes_length, data = unpack_int(data[:4])[0], data[4:]
+        element = data[:bytes_length]
+        return element, 4 + bytes_length
+
+    @classmethod
+    def __deserialize_string(cls, data: bytes) -> Tuple[str, int]:
+        string_length, data = unpack_int(data[:4])[0], data[4:]
+        element = data[:string_length].decode()
+        return element, 4 + string_length
+
+    @classmethod
+    def __deserialize_list(cls, data: bytes, inner_field_type: Type) -> Tuple[List[Element], int]:
+        list_length = unpack_int(data[:4])[0]
+        data = data[4:]
+        elements = []
+        bytes_read = 4
+        for _ in range(list_length):
+            list_element, new_bytes_read = cls.__deserialize_element(data, inner_field_type)
+            data = data[new_bytes_read:]
+            bytes_read += new_bytes_read
+            elements.append(list_element)
+
+        return elements, bytes_read
+
+    @classmethod
+    def __deserialize_union(cls, data: bytes, union_types: Tuple[Any]) -> Tuple[Element, int]:
+        union_type_pos = unpack_byte(data[:1])[0]
+        data = data[1:]
+        union_type = union_types[union_type_pos]
+        element, new_bytes_read = cls.__deserialize_element(data, union_type)
+        return element, new_bytes_read + 1
+
+    @classmethod
+    def __deserialize_element(cls, data: bytes, field_type: Type) -> Tuple[Element, int]:
         if field_type == bool:
             return unpack_bool(data[:1])[0], 1
         elif field_type == int:
@@ -109,58 +199,27 @@ class BasicPacket(ABC):
         elif field_type == float:
             return unpack_float(data[:8])[0], 8
         elif field_type == bytes:
-            bytes_length, data = unpack_int(data[:4])[0], data[4:]
-            element = data[:bytes_length]
-            return element, 4 + bytes_length
+            return cls.__deserialize_bytes(data)
         elif field_type == str:
-            string_length, data = unpack_int(data[:4])[0], data[4:]
-            element = data[:string_length].decode()
-            return element, 4 + string_length
+            return cls.__deserialize_string(data)
         elif field_type is type(None):
             return None, 0
         elif typing.get_origin(field_type) is Array:
-            array_length = typing.get_args(field_type)[1]
-            element_type = typing.get_args(field_type)[0]
-            elements = []
-            bytes_read = 0
-            for _ in range(array_length):
-                element, new_bytes_read = cls.__deserialize_element(data, element_type)
-                data = data[new_bytes_read:]
-                bytes_read += new_bytes_read
-                elements.append(element)
-
-            return elements, bytes_read
+            return cls.__deserialize_array(data, field_type)
         elif typing.get_origin(field_type) is list:
-            list_length = unpack_int(data[:4])[0]
-            data = data[4:]
-            element_type = typing.get_args(field_type)[0]
-            elements = []
-            bytes_read = 4
-            for _ in range(list_length):
-                list_element, new_bytes_read = cls.__deserialize_element(data, element_type)
-                data = data[new_bytes_read:]
-                bytes_read += new_bytes_read
-                elements.append(list_element)
-
-            return elements, bytes_read
-        elif typing.get_origin(field_type) is typing.Union:
-            union_types = typing.get_args(field_type)
-            union_type_pos = unpack_byte(data[:1])[0]
-            data = data[1:]
-            union_type = union_types[union_type_pos]
-            element, new_bytes_read = cls.__deserialize_element(data, union_type)
-            return element, new_bytes_read + 1
-
+            return cls.__deserialize_list(data, typing.get_args(field_type)[0])
+        elif typing.get_origin(field_type) is Union:
+            return cls.__deserialize_union(data, typing.get_args(field_type))
         else:
             try:
                 element, new_bytes_read = field_type.__deserialize(data)
                 return element, new_bytes_read
 
             except Exception as e:
-                raise Exception(f"Erorr while deserializing element {element} of type {field_type}: {e}")
+                raise ValueError(f"Element {data} has no known type") from e
 
     @classmethod
-    def __deserialize(cls, data: bytes) -> typing.Tuple["BasicPacket", int]:
+    def __deserialize(cls, data: bytes) -> ["BasicPacket", int]:
         class_fields = cls.__dict__["__dataclass_fields__"]
         elements = []
         bytes_read = 0

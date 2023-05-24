@@ -42,8 +42,13 @@ class BasicFilter(ABC):
             raise ValueError(f"Unknown packet type: {type(decoded.data)}")
 
         for (queue, messages) in outgoing_messages.items():
-            encoded = GenericPacket(messages).encode()
-            self._rabbit.produce(queue, encoded)
+            if queue.endswith("_eof_in"):
+                for message in messages:
+                    self._rabbit.produce(queue, message)
+            else:
+                if len(messages) > 1:
+                    encoded = GenericPacket(messages).encode()
+                    self._rabbit.produce(queue, encoded)
 
         return True
 

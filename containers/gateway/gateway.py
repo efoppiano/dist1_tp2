@@ -37,7 +37,6 @@ class Gateway:
         self.__set_up_signal_handler()
 
     def __listen_queue_and_send_to_rabbit(self, rabbit):
-
         while True:
             message = self._mpmc_queue.get()
             if message["type"] == "produce":
@@ -64,19 +63,16 @@ class Gateway:
     def __build_weather_side_table_info_chunk(self, weather_info_list: List[WeatherInfo]) -> List[bytes]:
         chunk = []
         for weather_info in weather_info_list:
-            data_packet = WeatherSideTableInfo(weather_info.date, weather_info.prectot).encode()
+            data_packet = WeatherSideTableInfo(weather_info.city_name, weather_info.date, weather_info.prectot).encode()
             chunk.append(data_packet)
         return chunk
 
     def __handle_weather_packet(self, weather_info_list_or_city_eof: Union[List[WeatherInfo], str]):
         if isinstance(weather_info_list_or_city_eof, str):
-            city_name = weather_info_list_or_city_eof
-            self.__schedule_message_to_publish(f"{city_name}_weather", ChunkOrStop(StopPacket()).encode())
+            self.__schedule_message_to_publish(f"weather", ChunkOrStop(StopPacket()).encode())
         else:
-            weather_info_list = weather_info_list_or_city_eof
-            first_weather_info = weather_info_list[0]
             chunk = self.__build_weather_side_table_info_chunk(weather_info_list_or_city_eof)
-            self.__schedule_message_to_publish(f"{first_weather_info.city_name}_weather", ChunkOrStop(chunk).encode())
+            self.__schedule_message_to_publish(f"weather", ChunkOrStop(chunk).encode())
 
     def __build_basic_station_side_table_info_chunk(self, station_info_list: List[StationInfo]) -> List[bytes]:
         chunk = []
