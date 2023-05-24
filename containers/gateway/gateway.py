@@ -69,7 +69,8 @@ class Gateway:
 
     def __handle_weather_packet(self, weather_info_list_or_city_eof: Union[List[WeatherInfo], str]):
         if isinstance(weather_info_list_or_city_eof, str):
-            self.__schedule_message_to_publish(f"weather", ChunkOrStop(StopPacket()).encode())
+            city_name = weather_info_list_or_city_eof
+            self.__schedule_message_to_publish(f"weather", ChunkOrStop(StopPacket(city_name)).encode())
         else:
             chunk = self.__build_weather_side_table_info_chunk(weather_info_list_or_city_eof)
             self.__schedule_message_to_publish(f"weather", ChunkOrStop(chunk).encode())
@@ -94,7 +95,7 @@ class Gateway:
     def __handle_station_packet(self, station_info_list_or_city_eof: Union[List[StationInfo], str]):
         if isinstance(station_info_list_or_city_eof, str):
             city_name = station_info_list_or_city_eof
-            self.__schedule_message_to_publish(f"{city_name}_station", ChunkOrStop(StopPacket()).encode())
+            self.__schedule_message_to_publish(f"station", ChunkOrStop(StopPacket(city_name)).encode())
         else:
             station_info_list = station_info_list_or_city_eof
             first_station_info = station_info_list[0]
@@ -105,12 +106,12 @@ class Gateway:
 
             data_packet = ChunkOrStop(chunk).encode()
 
-            self.__schedule_message_to_publish(f"{first_station_info.city_name}_station", data_packet)
+            self.__schedule_message_to_publish(f"station", data_packet)
 
     def __handle_trip_packet(self, trip_info_list_or_city_eof: Union[List[TripInfo], str]):
         if isinstance(trip_info_list_or_city_eof, str):
             city_name = trip_info_list_or_city_eof
-            self.__schedule_message_to_produce(f"{city_name}_gateway_in_eof_in", Eof(None).encode())
+            self.__schedule_message_to_produce(f"gateway_in_eof_in", Eof(city_name).encode())
         else:
             trip_info_list = trip_info_list_or_city_eof
             first_trip_info = trip_info_list[0]

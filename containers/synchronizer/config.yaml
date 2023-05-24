@@ -1,22 +1,13 @@
-washington_gateway_in_eof_in:
-  eof_output: washington_gateway_in_eof_out
-  eofs_to_wait: 1
-montreal_gateway_in_eof_in:
-  eof_output: montreal_gateway_in_eof_out
-  eofs_to_wait: 1
-toronto_gateway_in_eof_in:
-  eof_output: toronto_gateway_in_eof_out
+gateway_in_eof_in:
+  eof_output: gateway_in_eof_out
   eofs_to_wait: 1
 
-washington_gateway_out_eof_in:
-  eof_output: washington_gateway_out_eof_out
-  eofs_to_wait: 2
-montreal_gateway_out_eof_in:
-  eof_output: montreal_gateway_out_eof_out
-  eofs_to_wait: 2
-toronto_gateway_out_eof_in:
-  eof_output: toronto_gateway_out_eof_out
-  eofs_to_wait: 2
+gateway_out_eof_in:
+  eof_output: gateway_out_eof_out
+  eofs_to_wait:
+    washington: 2
+    montreal: 2
+    toronto: 2
 
 prec_filter_in_eof_in:
   eof_output: prec_filter_in_eof_out

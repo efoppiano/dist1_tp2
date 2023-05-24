@@ -7,7 +7,7 @@ from common.packets.basic_packet import BasicPacket
 
 @dataclass
 class StopPacket(BasicPacket):
-    pass
+    client_id: str
 
 
 @dataclass
