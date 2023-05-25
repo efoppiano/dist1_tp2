@@ -5,26 +5,21 @@ from typing import Dict, List
 from haversine import haversine
 
 from common.basic_filter import BasicFilter
+from common.linker.linker import Linker
 from common.packets.dist_info import DistInfo
 from common.packets.distance_calc_in import DistanceCalcIn
 from common.packets.eof import Eof
-from common.utils import initialize_log, build_hashed_queue_name, build_eof_in_queue_name
+from common.utils import initialize_log
 
-INPUT_QUEUE = os.environ["INPUT_QUEUE"]
-OUTPUT_QUEUE = os.environ["OUTPUT_QUEUE"]
-OUTPUT_AMOUNT = os.environ["OUTPUT_AMOUNT"]
 REPLICA_ID = os.environ["REPLICA_ID"]
 
 
 class DistanceCalculator(BasicFilter):
-    def __init__(self, config: Dict[str, str]):
-        super().__init__(config["input_queue"], int(config["replica_id"]))
-
-        self._output_queue = config["output_queue"]
-        self._output_amount = int(config["output_amount"])
+    def __init__(self, replica_id: int):
+        super().__init__(replica_id)
 
     def handle_eof(self, message: Eof) -> Dict[str, List[bytes]]:
-        eof_output_queue = build_eof_in_queue_name(self._output_queue)
+        eof_output_queue = Linker().get_eof_in_queue(self)
         return {
             eof_output_queue: [message.encode()]
         }
@@ -32,9 +27,7 @@ class DistanceCalculator(BasicFilter):
     def handle_message(self, message: bytes) -> Dict[str, List[bytes]]:
         packet = DistanceCalcIn.decode(message)
 
-        output_queue = build_hashed_queue_name(self._output_queue,
-                                               packet.end_station_name,
-                                               self._output_amount)
+        output_queue = Linker().get_output_queue(self, hashing_key=packet.end_station_name)
         distance = self.__calculate_distance(packet.start_station_latitude,
                                              packet.start_station_longitude,
                                              packet.end_station_latitude,
@@ -54,12 +47,7 @@ class DistanceCalculator(BasicFilter):
 
 def main():
     initialize_log(logging.INFO)
-    filter = DistanceCalculator({
-        "input_queue": INPUT_QUEUE,
-        "output_queue": OUTPUT_QUEUE,
-        "output_amount": OUTPUT_AMOUNT,
-        "replica_id": REPLICA_ID
-    })
+    filter = DistanceCalculator(int(REPLICA_ID))
     filter.start()
 
 

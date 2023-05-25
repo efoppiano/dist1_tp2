@@ -3,6 +3,7 @@ import os
 from abc import ABC
 from typing import List, Dict
 
+from common.linker.linker import Linker
 from common.packets.eof import Eof
 from common.packets.generic_packet import GenericPacket
 from common.rabbit_middleware import Rabbit
@@ -14,12 +15,12 @@ SEND_DELAY_SEC = 0.1
 
 
 class BasicFilter(ABC):
-    def __init__(self, input_queue_name: str, replica_id: int):
-        self._input_queue = build_queue_name(input_queue_name, replica_id)
+    def __init__(self, replica_id: int):
+        self._input_queue = Linker().get_input_queue(self, replica_id)
         self._rabbit = Rabbit(RABBIT_HOST)
         self._rabbit.consume(self._input_queue, self.__on_message_callback)
-        self._rabbit.route(self._input_queue, "control", build_eof_out_queue_name(input_queue_name))
-
+        eof_routing_key = Linker().get_eof_out_routing_key(self)
+        self._rabbit.route(self._input_queue, "control", eof_routing_key)
 
     def __handle_chunk(self, chunk: List[bytes]) -> Dict[str, List[bytes]]:
         outgoing_messages = {}
@@ -45,10 +46,9 @@ class BasicFilter(ABC):
             if queue.endswith("_eof_in"):
                 for message in messages:
                     self._rabbit.produce(queue, message)
-            else:
-                if len(messages) > 1:
-                    encoded = GenericPacket(messages).encode()
-                    self._rabbit.produce(queue, encoded)
+            if len(messages) > 1:
+                encoded = GenericPacket(messages).encode()
+                self._rabbit.produce(queue, encoded)
 
         return True
 

@@ -25,9 +25,6 @@ services:
     entrypoint: python3 /opt/app/gateway.py
     environment:
       - PYTHONHASHSEED=0
-      - WASHINGTON_OUTPUT_AMOUNT=2
-      - TORONTO_OUTPUT_AMOUNT=2
-      - MONTREAL_OUTPUT_AMOUNT=2
 
 
   response_provider:
@@ -55,7 +52,7 @@ services:
       - CITIES_WITH_GEODATA=montreal
       - CITIES_WITHOUT_GEODATA=washington,toronto
     volumes:
-      - ./.data_4/:/opt/app/.data/
+      - ./.data_3/:/opt/app/.data/
 
   synchronizer:
     build:
@@ -76,10 +73,6 @@ services:
     entrypoint: python3 /opt/app/weather_aggregator.py
     environment:
       - PYTHONHASHSEED=0
-      - CITY_NAME=washington
-      - INPUT_QUEUE_NAME=gateway_in
-      - OUTPUT_QUEUE_NAME=gateway_out
-      - OUTPUT_AMOUNT=2
       - REPLICA_ID=0
       - SIDE_TABLE_QUEUE_NAME=weather
 
@@ -93,52 +86,32 @@ services:
     entrypoint: python3 /opt/app/weather_aggregator.py
     environment:
       - PYTHONHASHSEED=0
-      - CITY_NAME=washington
-      - INPUT_QUEUE_NAME=gateway_in
-      - OUTPUT_QUEUE_NAME=gateway_out
-      - OUTPUT_AMOUNT=2
       - REPLICA_ID=1
       - SIDE_TABLE_QUEUE_NAME=weather
 
   station_aggregator_0:
     build:
       context: ./containers
-      dockerfile: full_station_aggregator/Dockerfile
+      dockerfile: station_aggregator/Dockerfile
     depends_on:
       rabbitmq:
         condition: service_healthy
-    entrypoint: python3 /opt/app/full_station_aggregator.py
+    entrypoint: python3 /opt/app/station_aggregator.py
     environment:
       - PYTHONHASHSEED=0
-      - CITY_NAME=montreal
-      - INPUT_QUEUE_NAME=gateway_out
-      - PREC_FILTER_IN_QUEUE_NAME=prec_filter_in
-      - PREC_FILTER_AMOUNT=2
-      - YEAR_FILTER_IN_QUEUE_NAME=year_filter_in
-      - YEAR_FILTER_AMOUNT=2
-      - DISTANCE_CALC_IN_QUEUE_NAME=distance_calc_in
-      - DISTANCE_CALC_AMOUNT=2
       - REPLICA_ID=0
       - SIDE_TABLE_QUEUE_NAME=station
 
   station_aggregator_1:
     build:
       context: ./containers
-      dockerfile: full_station_aggregator/Dockerfile
+      dockerfile: station_aggregator/Dockerfile
     depends_on:
       rabbitmq:
         condition: service_healthy
-    entrypoint: python3 /opt/app/full_station_aggregator.py
+    entrypoint: python3 /opt/app/station_aggregator.py
     environment:
       - PYTHONHASHSEED=0
-      - CITY_NAME=montreal
-      - INPUT_QUEUE_NAME=gateway_out
-      - PREC_FILTER_IN_QUEUE_NAME=prec_filter_in
-      - PREC_FILTER_AMOUNT=2
-      - YEAR_FILTER_IN_QUEUE_NAME=year_filter_in
-      - YEAR_FILTER_AMOUNT=2
-      - DISTANCE_CALC_IN_QUEUE_NAME=distance_calc_in
-      - DISTANCE_CALC_AMOUNT=2
       - REPLICA_ID=1
       - SIDE_TABLE_QUEUE_NAME=station
 
@@ -152,9 +125,6 @@ services:
     entrypoint: python3 /opt/app/prec_filter.py
     environment:
       - PYTHONHASHSEED=0
-      - INPUT_QUEUE=prec_filter_in
-      - OUTPUT_QUEUE=prec_filtered
-      - OUTPUT_AMOUNT=2
       - PREC_LIMIT=30
       - REPLICA_ID=0
 
@@ -168,9 +138,6 @@ services:
     entrypoint: python3 /opt/app/prec_filter.py
     environment:
       - PYTHONHASHSEED=0
-      - INPUT_QUEUE=prec_filter_in
-      - OUTPUT_QUEUE=prec_filtered
-      - OUTPUT_AMOUNT=2
       - PREC_LIMIT=30
       - REPLICA_ID=1
 
@@ -184,23 +151,7 @@ services:
     entrypoint: python3 /opt/app/dur_avg_provider.py
     environment:
       - PYTHONHASHSEED=0
-      - INPUT_QUEUE=prec_filtered
-      - OUTPUT_QUEUE=avg_provider
       - REPLICA_ID=0
-
-  dur_avg_provider_1:
-    build:
-      context: ./containers
-      dockerfile: dur_avg_provider/Dockerfile
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    entrypoint: python3 /opt/app/dur_avg_provider.py
-    environment:
-      - PYTHONHASHSEED=0
-      - INPUT_QUEUE=prec_filtered
-      - OUTPUT_QUEUE=avg_provider
-      - REPLICA_ID=1
 
   distance_calculator_0:
     build:
@@ -212,9 +163,6 @@ services:
     entrypoint: python3 /opt/app/distance_calculator.py
     environment:
       - PYTHONHASHSEED=0
-      - INPUT_QUEUE=distance_calc_in
-      - OUTPUT_QUEUE=distance
-      - OUTPUT_AMOUNT=2
       - REPLICA_ID=0
 
   distance_calculator_1:
@@ -227,9 +175,6 @@ services:
     entrypoint: python3 /opt/app/distance_calculator.py
     environment:
       - PYTHONHASHSEED=0
-      - INPUT_QUEUE=distance_calc_in
-      - OUTPUT_QUEUE=distance
-      - OUTPUT_AMOUNT=2
       - REPLICA_ID=1
 
   dist_mean_calculator_0:
@@ -242,9 +187,6 @@ services:
     entrypoint: python3 /opt/app/dist_mean_calculator.py
     environment:
       - PYTHONHASHSEED=0
-      - INPUT_QUEUE=distance
-      - OUTPUT_QUEUE=distance_mean
-      - OUTPUT_AMOUNT=2
       - REPLICA_ID=0
 
   dist_mean_calculator_1:
@@ -257,9 +199,6 @@ services:
     entrypoint: python3 /opt/app/dist_mean_calculator.py
     environment:
       - PYTHONHASHSEED=0
-      - INPUT_QUEUE=distance
-      - OUTPUT_QUEUE=distance_mean
-      - OUTPUT_AMOUNT=1
       - REPLICA_ID=1
 
   dist_mean_provider_0:
@@ -272,8 +211,6 @@ services:
     entrypoint: python3 /opt/app/dist_mean_provider.py
     environment:
       - PYTHONHASHSEED=0
-      - INPUT_QUEUE=distance_mean
-      - OUTPUT_QUEUE=dist_mean_provider
       - REPLICA_ID=0
       - MEAN_THRESHOLD=6.0
 
@@ -287,9 +224,6 @@ services:
     entrypoint: python3 /opt/app/year_filter.py
     environment:
       - PYTHONHASHSEED=0
-      - INPUT_QUEUE=year_filter_in
-      - OUTPUT_QUEUE=year_filtered
-      - OUTPUT_AMOUNT=2
       - REPLICA_ID=0
 
   year_filter_1:
@@ -302,9 +236,6 @@ services:
     entrypoint: python3 /opt/app/year_filter.py
     environment:
       - PYTHONHASHSEED=0
-      - INPUT_QUEUE=year_filter_in
-      - OUTPUT_QUEUE=year_filtered
-      - OUTPUT_AMOUNT=2
       - REPLICA_ID=1
 
   trips_counter_0:
@@ -317,9 +248,6 @@ services:
     entrypoint: python3 /opt/app/trips_counter.py
     environment:
       - PYTHONHASHSEED=0
-      - INPUT_QUEUE=year_filtered
-      - OUTPUT_QUEUE=trips_counted
-      - OUTPUT_AMOUNT=2
       - REPLICA_ID=0
 
   trips_counter_1:
@@ -332,9 +260,6 @@ services:
     entrypoint: python3 /opt/app/trips_counter.py
     environment:
       - PYTHONHASHSEED=0
-      - INPUT_QUEUE=year_filtered
-      - OUTPUT_QUEUE=trips_counted
-      - OUTPUT_AMOUNT=1
       - REPLICA_ID=1
 
   trip_count_provider_0:
@@ -347,7 +272,5 @@ services:
     entrypoint: python3 /opt/app/trip_count_provider.py
     environment:
       - PYTHONHASHSEED=0
-      - INPUT_QUEUE=trips_counted
-      - OUTPUT_QUEUE=trip_count_provider
       - REPLICA_ID=0
       - MULT_THRESHOLD=2

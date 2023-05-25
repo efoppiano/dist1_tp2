@@ -2,13 +2,13 @@ import abc
 import logging
 import os
 from abc import ABC
-from typing import Dict, List, Union
+from typing import Dict, List
 
+from common.linker.linker import Linker
 from common.packets.aggregator_packets import ChunkOrStop, StopPacket
 from common.packets.eof import Eof
 from common.packets.generic_packet import GenericPacket
 from common.rabbit_middleware import Rabbit
-from common.utils import build_prefixed_queue_name, build_eof_out_queue_name, build_queue_name
 
 RABBIT_HOST = os.environ.get("RABBIT_HOST", "rabbitmq")
 CHUNK_SIZE = 256
@@ -16,11 +16,15 @@ SEND_DELAY_SEC = 0.1
 
 
 class BasicAggregator(ABC):
-    def __init__(self, input_queue_suffix: str, replica_id: int, side_table_queue: str):
-        
-        control_queue = input_queue_suffix
+    def __init__(self, replica_id: int, side_table_queue: str):
 
         self._rabbit = Rabbit(RABBIT_HOST)
+        input_queue = Linker().get_input_queue(self, replica_id)
+        self._rabbit.consume(input_queue, self.__on_stream_message_callback)
+        eof_routing_key = Linker().get_eof_out_routing_key(self)
+        logging.info(f"Routing packets to {input_queue} using routing key {eof_routing_key}")
+        self._rabbit.route(input_queue, "control", eof_routing_key)
+
         self._rabbit.subscribe(side_table_queue, self.__on_side_table_message_callback)
 
     def __on_side_table_message_callback(self, msg: bytes) -> bool:
@@ -29,12 +33,9 @@ class BasicAggregator(ABC):
             for message in decoded.data:
                 self.handle_side_table_message(message)
         elif isinstance(decoded.data, StopPacket):
-            logging.info("action: side_table_receive_message | result: stop")
-            input_queue = build_prefixed_queue_name( decoded.data.client_id, self._input_queue)
-
-            self._rabbit.consume(input_queue, self.__on_stream_message_callback)
-            self._rabbit.route(input_queue, "control",
-                            control_queue)
+            logging.info(f"action: side_table_receive_message | result: stop | city_name: {decoded.data.city_name}")
+            outgoing_messages = self.handle_stop(decoded.data.city_name)
+            self.__send_messages(outgoing_messages)
         else:
             raise ValueError(f"Unexpected message type: {type(decoded.data)}")
 
@@ -49,6 +50,15 @@ class BasicAggregator(ABC):
                 outgoing_messages[queue] += messages
         return outgoing_messages
 
+    def __send_messages(self, outgoing_messages: Dict[str, List[bytes]]):
+        for (queue, messages) in outgoing_messages.items():
+            if queue.endswith("_eof_in"):
+                for message in messages:
+                    self._rabbit.produce(queue, message)
+            if len(messages) > 1:
+                encoded = GenericPacket(messages).encode()
+                self._rabbit.produce(queue, encoded)
+
     def __on_stream_message_callback(self, msg: bytes) -> bool:
         decoded = GenericPacket.decode(msg)
         if isinstance(decoded.data, Eof):
@@ -60,14 +70,7 @@ class BasicAggregator(ABC):
         else:
             raise Exception(f"Unknown message type: {type(decoded.data)}")
 
-        for (queue, messages) in outgoing_messages.items():
-            if queue.endswith("_eof_in"):
-                for message in messages:
-                    self._rabbit.produce(queue, message)
-            else:
-                if len(messages) > 1:
-                    encoded = GenericPacket(messages).encode()
-                    self._rabbit.produce(queue, encoded)
+        self.__send_messages(outgoing_messages)
 
         return True
 
@@ -81,6 +84,10 @@ class BasicAggregator(ABC):
 
     @abc.abstractmethod
     def handle_side_table_message(self, message: bytes):
+        pass
+
+    @abc.abstractmethod
+    def handle_stop(self, city_name: str) -> Dict[str, List[bytes]]:
         pass
 
     def start(self):

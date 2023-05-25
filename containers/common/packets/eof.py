@@ -6,4 +6,4 @@ from common.packets.basic_packet import BasicPacket
 
 @dataclass
 class Eof(BasicPacket):
-    city_name: Union[str, None]
+    city_name: str

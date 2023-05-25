@@ -4,23 +4,18 @@ import os
 from typing import Dict, List
 
 from common.basic_filter import BasicFilter
+from common.linker.linker import Linker
 from common.packets.eof import Eof
 from common.packets.trips_count_by_year_joined import TripsCountByYearJoined
 from common.packets.year_filter_in import YearFilterIn
-from common.utils import initialize_log, build_hashed_queue_name, build_eof_in_queue_name
+from common.utils import initialize_log
 
-INPUT_QUEUE = os.environ["INPUT_QUEUE"]
-OUTPUT_QUEUE = os.environ["OUTPUT_QUEUE"]
-OUTPUT_AMOUNT = os.environ["OUTPUT_AMOUNT"]
 REPLICA_ID = os.environ["REPLICA_ID"]
 
 
 class TripsCounter(BasicFilter):
-    def __init__(self, config: Dict[str, str]):
-        super().__init__(config["input_queue"], int(config["replica_id"]))
-
-        self._output_queue = config["output_queue"]
-        self._output_amount = int(config["output_amount"])
+    def __init__(self, replica_id: int):
+        super().__init__(replica_id)
 
         self._buffer = {}
 
@@ -31,17 +26,15 @@ class TripsCounter(BasicFilter):
         for start_station_name, data in self._buffer[city_name].items():
             if data[2016] == 0:
                 continue
-            queue = build_hashed_queue_name(self._output_queue,
-                                            start_station_name,
-                                            self._output_amount)
-            output.setdefault(queue, [])
-            output[queue].append(TripsCountByYearJoined(city_name,
-                                                        start_station_name,
-                                                        data[2016],
-                                                        data[2017]).encode())
+            queue_name = Linker().get_output_queue(self, hashing_key=start_station_name)
+            output.setdefault(queue_name, [])
+            output[queue_name].append(TripsCountByYearJoined(city_name,
+                                                             start_station_name,
+                                                             data[2016],
+                                                             data[2017]).encode())
 
         self._buffer.pop(city_name)
-        eof_output_queue = build_eof_in_queue_name(self._output_queue)
+        eof_output_queue = Linker().get_eof_in_queue(self)
         output[eof_output_queue] = [message.encode()]
         return output
 
@@ -60,12 +53,7 @@ class TripsCounter(BasicFilter):
 
 def main():
     initialize_log(logging.INFO)
-    filter = TripsCounter({
-        "input_queue": INPUT_QUEUE,
-        "output_queue": OUTPUT_QUEUE,
-        "output_amount": OUTPUT_AMOUNT,
-        "replica_id": REPLICA_ID,
-    })
+    filter = TripsCounter(int(REPLICA_ID))
     filter.start()
 
 

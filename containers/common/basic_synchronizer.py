@@ -22,6 +22,7 @@ class BasicSynchronizer(ABC):
 
     def __on_message_callback(self, queue: str, msg: bytes) -> bool:
         decoded = Eof.decode(msg)
+
         outgoing_messages = self.handle_message(queue, decoded)
 
         for (routing_key, messages) in outgoing_messages.items():

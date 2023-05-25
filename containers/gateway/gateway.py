@@ -1,5 +1,4 @@
 import logging
-import os
 import queue
 import signal
 import threading
@@ -7,26 +6,21 @@ from typing import Union, List
 
 import zmq
 
+from common.linker.linker import Linker
 from common.packet_factory import PacketFactory
 from common.packets.aggregator_packets import ChunkOrStop, StopPacket
-from common.packets.basic_station_side_table_info import BasicStationSideTableInfo
 from common.packets.eof import Eof
-from common.packets.full_station_side_table_info import FullStationSideTableInfo
 from common.packets.generic_packet import GenericPacket
+from common.packets.station_side_table_info import StationSideTableInfo
 from common.packets.weather_side_table_info import WeatherSideTableInfo
 from common.rabbit_middleware import Rabbit
 from common.readers import WeatherInfo, StationInfo, TripInfo
-from common.utils import initialize_log, build_prefixed_hashed_queue_name, datetime_str_to_date_str
-
-MONTREAL_OUTPUT_AMOUNT = int(os.environ["MONTREAL_OUTPUT_AMOUNT"])
-TORONTO_OUTPUT_AMOUNT = int(os.environ["TORONTO_OUTPUT_AMOUNT"])
-WASHINGTON_OUTPUT_AMOUNT = int(os.environ["WASHINGTON_OUTPUT_AMOUNT"])
+from common.utils import initialize_log, datetime_str_to_date_str
 
 
 class Gateway:
-    def __init__(self, zmq_addr: str, output_amounts: dict):
+    def __init__(self, zmq_addr: str):
         self._zmq_addr = zmq_addr
-        self._output_amounts = output_amounts
         self._context = zmq.Context()
 
         self._mpmc_queue = queue.Queue()
@@ -60,7 +54,8 @@ class Gateway:
 
         self.sig_hand_prev = signal.signal(signal.SIGTERM, signal_handler)
 
-    def __build_weather_side_table_info_chunk(self, weather_info_list: List[WeatherInfo]) -> List[bytes]:
+    @staticmethod
+    def __build_weather_side_table_info_chunk(weather_info_list: List[WeatherInfo]) -> List[bytes]:
         chunk = []
         for weather_info in weather_info_list:
             data_packet = WeatherSideTableInfo(weather_info.city_name, weather_info.date, weather_info.prectot).encode()
@@ -75,20 +70,13 @@ class Gateway:
             chunk = self.__build_weather_side_table_info_chunk(weather_info_list_or_city_eof)
             self.__schedule_message_to_publish(f"weather", ChunkOrStop(chunk).encode())
 
-    def __build_basic_station_side_table_info_chunk(self, station_info_list: List[StationInfo]) -> List[bytes]:
+    @staticmethod
+    def __build_station_side_table_info_chunk(station_info_list: List[StationInfo]) -> List[bytes]:
         chunk = []
         for station_info in station_info_list:
-            data_packet = BasicStationSideTableInfo(station_info.code, station_info.yearid,
-                                                    station_info.name).encode()
-            chunk.append(data_packet)
-        return chunk
-
-    def __build_full_station_side_table_info_chunk(self, station_info_list: List[StationInfo]) -> List[bytes]:
-        chunk = []
-        for station_info in station_info_list:
-            data_packet = FullStationSideTableInfo(station_info.code, station_info.yearid,
-                                                   station_info.name, station_info.latitude,
-                                                   station_info.longitude).encode()
+            data_packet = StationSideTableInfo(station_info.city_name, station_info.code, station_info.yearid,
+                                               station_info.name, station_info.latitude,
+                                               station_info.longitude).encode()
             chunk.append(data_packet)
         return chunk
 
@@ -98,11 +86,8 @@ class Gateway:
             self.__schedule_message_to_publish(f"station", ChunkOrStop(StopPacket(city_name)).encode())
         else:
             station_info_list = station_info_list_or_city_eof
-            first_station_info = station_info_list[0]
-            if first_station_info.latitude is None or first_station_info.longitude is None:
-                chunk = self.__build_basic_station_side_table_info_chunk(station_info_list)
-            else:
-                chunk = self.__build_full_station_side_table_info_chunk(station_info_list)
+
+            chunk = self.__build_station_side_table_info_chunk(station_info_list)
 
             data_packet = ChunkOrStop(chunk).encode()
 
@@ -111,16 +96,15 @@ class Gateway:
     def __handle_trip_packet(self, trip_info_list_or_city_eof: Union[List[TripInfo], str]):
         if isinstance(trip_info_list_or_city_eof, str):
             city_name = trip_info_list_or_city_eof
-            self.__schedule_message_to_produce(f"gateway_in_eof_in", Eof(city_name).encode())
+            queue_name = Linker().get_eof_in_queue(self)
+            self.__schedule_message_to_produce(queue_name, Eof(city_name).encode())
         else:
             trip_info_list = trip_info_list_or_city_eof
             first_trip_info = trip_info_list[0]
-            city_name = first_trip_info.city_name
             first_start_date = datetime_str_to_date_str(first_trip_info.start_datetime)
             message = GenericPacket([trip_info.encode() for trip_info in trip_info_list])
 
-            queue_name = build_prefixed_hashed_queue_name(city_name, "gateway_in", first_start_date,
-                                                          self._output_amounts[city_name])
+            queue_name = Linker().get_output_queue(self, hashing_key=first_start_date)
             self.__schedule_message_to_produce(queue_name, message.encode())
 
     def __start(self):
@@ -148,11 +132,7 @@ class Gateway:
 
 def main():
     initialize_log(logging.INFO)
-    gateway = Gateway("tcp://0.0.0.0:5555", {
-        "montreal": MONTREAL_OUTPUT_AMOUNT,
-        "toronto": TORONTO_OUTPUT_AMOUNT,
-        "washington": WASHINGTON_OUTPUT_AMOUNT
-    })
+    gateway = Gateway("tcp://0.0.0.0:5555")
     gateway.start()
 
 

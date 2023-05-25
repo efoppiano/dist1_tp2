@@ -6,12 +6,6 @@ from typing import List
 import zmq
 
 from common.packet_factory import DIST_MEAN_REQUEST, TRIP_COUNT_REQUEST, DUR_AVG_REQUEST
-from common.packets.client_response_packets import StationDistMeanOrEof, TripsCountByYearJoinedOrEof, DurAvgOutOrEof
-from common.packets.dur_avg_out import DurAvgOut
-from common.packets.eof import Eof
-from common.packets.generic_packet import GenericPacket
-from common.packets.station_dist_mean import StationDistMean
-from common.packets.trips_count_by_year_joined import TripsCountByYearJoined
 from common.rabbit_middleware import Rabbit
 from common.utils import initialize_log, build_eof_out_queue_name
 
@@ -39,59 +33,18 @@ class ResponseProvider:
     @staticmethod
     def __send_dist_mean_response(socket: zmq.Socket, response: bytes) -> bool:
         socket.send(response)
-        """
-        decoded = GenericPacket.decode(response)
-        if isinstance(decoded.data, Eof):
-            socket.send(StationDistMeanOrEof(Eof(decoded.data.city_name)).encode())
-        elif isinstance(decoded.data, bytes):
-            station_dist_mean = StationDistMean.decode(decoded.data)
-            socket.send(StationDistMeanOrEof(station_dist_mean).encode())
-        elif isinstance(decoded.data, list):
-            station_dist_mean_list = [StationDistMean.decode(station) for station in decoded.data]
-            socket.send(StationDistMeanOrEof(station_dist_mean_list).encode())
-        else:
-            raise ValueError("Unexpected data type")
-        """
 
         return True
 
     @staticmethod
     def __send_trip_count_response(socket: zmq.Socket, response: bytes) -> bool:
         socket.send(response)
-        """
-        decoded = GenericPacket.decode(response)
-        if isinstance(decoded.data, Eof):
-            socket.send(TripsCountByYearJoinedOrEof(Eof(decoded.data.city_name)).encode())
-        elif isinstance(decoded.data, bytes):
-            trips_count_by_year_joined = TripsCountByYearJoined.decode(decoded.data)
-            socket.send(TripsCountByYearJoinedOrEof(trips_count_by_year_joined).encode())
-        elif isinstance(decoded.data, list):
-            trips_count_by_year_joined_list = [TripsCountByYearJoined.decode(trip_count) for trip_count in
-                                               decoded.data]
-            socket.send(TripsCountByYearJoinedOrEof(trips_count_by_year_joined_list).encode())
-        else:
-            raise Exception("Invalid data type")
-        """
 
         return True
 
     @staticmethod
     def __send_avg_response(socket: zmq.Socket, response: bytes) -> bool:
         socket.send(response)
-        """
-        decoded = GenericPacket.decode(response)
-        if isinstance(decoded.data, Eof):
-            socket.send(GenericPacket(Eof(decoded.data.city_name)).encode())
-        elif isinstance(decoded.data, bytes):
-            dur_avg_out = DurAvgOut.decode(decoded.data)
-            socket.send(DurAvgOutOrEof(dur_avg_out).encode())
-        elif isinstance(decoded.data, list):
-            dur_avg_out_list = [DurAvgOut.decode(data) for data in decoded.data]
-            socket.send(DurAvgOutOrEof(dur_avg_out_list).encode())
-        else:
-            raise Exception("Invalid data type")
-        """
-
         return True
 
     def __start(self):

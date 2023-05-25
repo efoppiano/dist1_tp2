@@ -4,27 +4,26 @@ import os
 from typing import Dict, List
 
 from common.basic_filter import BasicFilter
-from common.packets.client_response_packets import DurAvgOutOrEof
+from common.linker.linker import Linker
 from common.packets.dur_avg_out import DurAvgOut
 from common.packets.eof import Eof
 from common.packets.prec_filter_in import PrecFilterIn
-from common.utils import initialize_log, build_eof_in_queue_name
+from common.utils import initialize_log
 
-INPUT_QUEUE = os.environ["INPUT_QUEUE"]
-OUTPUT_QUEUE = os.environ["OUTPUT_QUEUE"]
 REPLICA_ID = os.environ["REPLICA_ID"]
 
 
-class AvgProvider(BasicFilter):
-    def __init__(self, config: Dict[str, str]):
-        super().__init__(config["input_queue"], int(config["replica_id"]))
+class DurAvgProvider(BasicFilter):
+    def __init__(self, replica_id: int):
+        super().__init__(replica_id)
 
-        self._output_queue = config["output_queue"]
+        self._output_queue = Linker().get_output_queue(self)
         self._buffer = {}
 
     def handle_eof(self, message: Eof) -> Dict[str, List[bytes]]:
+        logging.info(f"Received EOF for city {message.city_name}")
         city_name = message.city_name
-        eof_output_queue = build_eof_in_queue_name(self._output_queue)
+        eof_output_queue = Linker().get_eof_in_queue(self)
         self._buffer.setdefault(city_name, {})
         city_output = []
         for start_date in self._buffer[city_name]:
@@ -53,11 +52,7 @@ class AvgProvider(BasicFilter):
 
 def main():
     initialize_log(logging.INFO)
-    filter = AvgProvider({
-        "input_queue": INPUT_QUEUE,
-        "output_queue": OUTPUT_QUEUE,
-        "replica_id": REPLICA_ID,
-    })
+    filter = DurAvgProvider(int(REPLICA_ID))
     filter.start()
 
 

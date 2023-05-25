@@ -1,0 +1,67 @@
+{
+  "gateway_in": {
+    "left": "Gateway",
+    "right": "WeatherAggregator",
+    "out_amount": 2
+  },
+  "gateway_out": {
+    "left": "WeatherAggregator",
+    "right": "StationAggregator",
+    "out_amount": 2
+  },
+  "prec_filter_in": {
+    "left": "StationAggregator",
+    "right": "PrecFilter",
+    "out_amount": 2
+  },
+  "year_filter_in": {
+    "left": "StationAggregator",
+    "right": "YearFilter",
+    "out_amount": 2
+  },
+  "prec_filtered": {
+    "left": "PrecFilter",
+    "right": "DurAvgProvider",
+    "out_amount": 1
+  },
+  "year_filtered": {
+    "left": "YearFilter",
+    "right": "TripsCounter",
+    "out_amount": 2
+  },
+  "distance_calc_in": {
+    "left": "StationAggregator",
+    "right": "DistanceCalculator",
+    "out_amount": 2
+  },
+  "trips_counted": {
+    "left": "TripsCounter",
+    "right": "TripCountProvider",
+    "out_amount": 1
+  },
+  "distance": {
+    "left": "DistanceCalculator",
+    "right": "DistMeanCalculator",
+    "out_amount": 2
+  },
+  "distance_mean": {
+    "left": "DistMeanCalculator",
+    "right": "DistMeanProvider",
+    "out_amount": 1
+  },
+  "avg_provider": {
+    "left": "DurAvgProvider",
+    "right": "ResultProvider",
+    "out_amount": 1
+  },
+  "dist_mean_provider": {
+    "left": "DistMeanProvider",
+    "right": "ResultProvider",
+    "out_amount": 1
+  },
+  "trip_count_provider": {
+    "left": "TripCountProvider",
+    "right": "ResultProvider",
+    "out_amount": 1
+  }
+}
