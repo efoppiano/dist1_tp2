@@ -24,6 +24,10 @@ docker-compose-ps:
 	docker compose -f docker-compose-dev.yaml ps
 .PHONY: docker-compose-ps
 
+write-compose:
+	python3 scripts/build_compose.py
+.PHONY: write-compose
+
 client-logs:
 	docker compose -f docker-compose-dev.yaml logs client
 .PHONY: client-logs

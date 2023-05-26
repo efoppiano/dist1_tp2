@@ -6,13 +6,14 @@ services:
       context: ./containers/rabbitmq
       dockerfile: Dockerfile
     ports:
-      - 15672:15672
+      - "15672:15672"
     healthcheck:
       test: rabbitmq-diagnostics check_port_connectivity
       interval: 5s
       timeout: 3s
       retries: 10
       start_period: 50s
+
   gateway:
     container_name: gateway
     build:
@@ -24,6 +25,8 @@ services:
     entrypoint: python3 /opt/app/gateway.py
     environment:
       - PYTHONHASHSEED=0
+
+
   response_provider:
     container_name: response_provider
     build:
@@ -33,6 +36,7 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
+
   client:
     build:
       context: ./containers
@@ -48,7 +52,8 @@ services:
       - CITIES_WITH_GEODATA=montreal
       - CITIES_WITHOUT_GEODATA=washington,toronto
     volumes:
-      - ./.data_4/:/opt/app/.data/
+      - ./.data_3/:/opt/app/.data/
+
   synchronizer:
     build:
       context: ./containers
@@ -57,7 +62,9 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
-  weather_aggregator_0:
+
+
+  weather_aggregator:
     build:
       context: ./containers
       dockerfile: weather_aggregator/Dockerfile
@@ -68,20 +75,8 @@ services:
     environment:
       - PYTHONHASHSEED=0
       - SIDE_TABLE_QUEUE_NAME=weather
-      - REPLICA_ID=0
-  weather_aggregator_1:
-    build:
-      context: ./containers
-      dockerfile: weather_aggregator/Dockerfile
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    entrypoint: python3 /opt/app/weather_aggregator.py
-    environment:
-      - PYTHONHASHSEED=0
-      - SIDE_TABLE_QUEUE_NAME=weather
-      - REPLICA_ID=1
-  station_aggregator_0:
+
+  station_aggregator:
     build:
       context: ./containers
       dockerfile: station_aggregator/Dockerfile
@@ -92,20 +87,8 @@ services:
     environment:
       - PYTHONHASHSEED=0
       - SIDE_TABLE_QUEUE_NAME=station
-      - REPLICA_ID=0
-  station_aggregator_1:
-    build:
-      context: ./containers
-      dockerfile: station_aggregator/Dockerfile
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    entrypoint: python3 /opt/app/station_aggregator.py
-    environment:
-      - PYTHONHASHSEED=0
-      - SIDE_TABLE_QUEUE_NAME=station
-      - REPLICA_ID=1
-  prec_filter_0:
+
+  prec_filter:
     build:
       context: ./containers
       dockerfile: prec_filter/Dockerfile
@@ -116,20 +99,8 @@ services:
     environment:
       - PYTHONHASHSEED=0
       - PREC_LIMIT=30
-      - REPLICA_ID=0
-  prec_filter_1:
-    build:
-      context: ./containers
-      dockerfile: prec_filter/Dockerfile
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    entrypoint: python3 /opt/app/prec_filter.py
-    environment:
-      - PYTHONHASHSEED=0
-      - PREC_LIMIT=30
-      - REPLICA_ID=1
-  dur_avg_provider_0:
+
+  dur_avg_provider:
     build:
       context: ./containers
       dockerfile: dur_avg_provider/Dockerfile
@@ -139,8 +110,8 @@ services:
     entrypoint: python3 /opt/app/dur_avg_provider.py
     environment:
       - PYTHONHASHSEED=0
-      - REPLICA_ID=0
-  distance_calculator_0:
+
+  distance_calculator:
     build:
       context: ./containers
       dockerfile: distance_calculator/Dockerfile
@@ -150,19 +121,8 @@ services:
     entrypoint: python3 /opt/app/distance_calculator.py
     environment:
       - PYTHONHASHSEED=0
-      - REPLICA_ID=0
-  distance_calculator_1:
-    build:
-      context: ./containers
-      dockerfile: distance_calculator/Dockerfile
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    entrypoint: python3 /opt/app/distance_calculator.py
-    environment:
-      - PYTHONHASHSEED=0
-      - REPLICA_ID=1
-  dist_mean_calculator_0:
+
+  dist_mean_calculator:
     build:
       context: ./containers
       dockerfile: dist_mean_calculator/Dockerfile
@@ -172,19 +132,8 @@ services:
     entrypoint: python3 /opt/app/dist_mean_calculator.py
     environment:
       - PYTHONHASHSEED=0
-      - REPLICA_ID=0
-  dist_mean_calculator_1:
-    build:
-      context: ./containers
-      dockerfile: dist_mean_calculator/Dockerfile
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    entrypoint: python3 /opt/app/dist_mean_calculator.py
-    environment:
-      - PYTHONHASHSEED=0
-      - REPLICA_ID=1
-  dist_mean_provider_0:
+
+  dist_mean_provider:
     build:
       context: ./containers
       dockerfile: dist_mean_provider/Dockerfile
@@ -195,8 +144,8 @@ services:
     environment:
       - PYTHONHASHSEED=0
       - MEAN_THRESHOLD=6.0
-      - REPLICA_ID=0
-  year_filter_0:
+
+  year_filter:
     build:
       context: ./containers
       dockerfile: year_filter/Dockerfile
@@ -206,19 +155,8 @@ services:
     entrypoint: python3 /opt/app/year_filter.py
     environment:
       - PYTHONHASHSEED=0
-      - REPLICA_ID=0
-  year_filter_1:
-    build:
-      context: ./containers
-      dockerfile: year_filter/Dockerfile
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    entrypoint: python3 /opt/app/year_filter.py
-    environment:
-      - PYTHONHASHSEED=0
-      - REPLICA_ID=1
-  trips_counter_0:
+
+  trips_counter:
     build:
       context: ./containers
       dockerfile: trips_counter/Dockerfile
@@ -228,19 +166,8 @@ services:
     entrypoint: python3 /opt/app/trips_counter.py
     environment:
       - PYTHONHASHSEED=0
-      - REPLICA_ID=0
-  trips_counter_1:
-    build:
-      context: ./containers
-      dockerfile: trips_counter/Dockerfile
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    entrypoint: python3 /opt/app/trips_counter.py
-    environment:
-      - PYTHONHASHSEED=0
-      - REPLICA_ID=1
-  trip_count_provider_0:
+
+  trip_count_provider:
     build:
       context: ./containers
       dockerfile: trip_count_provider/Dockerfile
@@ -251,4 +178,3 @@ services:
     environment:
       - PYTHONHASHSEED=0
       - MULT_THRESHOLD=2
-      - REPLICA_ID=0
