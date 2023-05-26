@@ -5,6 +5,8 @@ from typing import Dict, List
 
 from common.basic_filter import BasicFilter
 from common.linker.linker import Linker
+from common.packets.eof import Eof
+from common.packets.eof_with_id import EofWithId
 from common.packets.trips_count_by_year_joined import TripsCountByYearJoined
 from common.utils import initialize_log
 
@@ -22,7 +24,7 @@ class TripCountProvider(BasicFilter):
         packet = TripsCountByYearJoined.decode(message)
 
         output = {}
-        if packet.trips_17 > self._mult_threshold * packet.trips_16:
+        if packet.trips_17 >= self._mult_threshold * packet.trips_16:
             output_queue = Linker().get_output_queue(self)
             output[output_queue] = [message]
 

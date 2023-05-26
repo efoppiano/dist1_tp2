@@ -21,8 +21,7 @@ class BasicClient(ABC):
     def __init__(self, config: dict):
         self._push_addr = config["push_addr"]
         self._req_addr = config["req_addr"]
-        self._cities_with_geodata = config["cities_with_geodata"]
-        self._all_cities = config["cities_with_geodata"] + config["cities_without_geodata"]
+        self._all_cities = config["cities"]
         self._context = zmq.Context()
 
         self.__set_up_signal_handler()
@@ -145,7 +144,7 @@ class BasicClient(ABC):
 
     def __get_dist_mean_response(self, socket):
         cities_ended = []
-        while len(cities_ended) < len(self._cities_with_geodata):
+        while len(cities_ended) < len(self._all_cities):
             socket.send(DIST_MEAN_REQUEST)
             data = socket.recv()
             message = GenericPacket.decode(data)

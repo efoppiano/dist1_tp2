@@ -12,8 +12,7 @@ from common.utils import initialize_log
 
 PUSH_ADDR = os.environ["PUSH_ADDR"]
 REQ_ADDR = os.environ["REQ_ADDR"]
-CITIES_WITH_GEODATA = os.environ["CITIES_WITH_GEODATA"].split(",")
-CITIES_WITHOUT_GEODATA = os.environ["CITIES_WITHOUT_GEODATA"].split(",")
+CITIES = os.environ["CITIES"].split(",")
 DATA_FOLDER_PATH = os.environ["DATA_FOLDER_PATH"]
 
 

@@ -31,7 +31,7 @@ class TripsCounter(BasicStatefulFilter):
                 continue
             queue_name = Linker().get_output_queue(self, hashing_key=start_station_name)
             output.setdefault(queue_name, [])
-            output[queue_name].append(TripsCountByYearJoined(data.id,
+            output[queue_name].append(TripsCountByYearJoined(data["id"],
                                                              city_name,
                                                              start_station_name,
                                                              data[2016],

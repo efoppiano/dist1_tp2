@@ -39,10 +39,10 @@ class WeatherAggregator(BasicAggregator):
     def __handle_eof_with_city_name(self, city_name: str) -> Dict[str, List[bytes]]:
         logging.info(f"action: handle_eof | result: in_progress | city_name: {city_name}")
         if city_name not in self._stopped_cities:
+            self._delayed_eofs.add(city_name)
             return {}
 
         output_queue = Linker().get_eof_in_queue(self)
-        logging.info(f"Sending EOF to {output_queue}")
         return {
             output_queue: [EofWithId(city_name, self._replica_id).encode()]
         }

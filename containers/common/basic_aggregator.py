@@ -62,7 +62,7 @@ class BasicAggregator(ABC):
             if queue.endswith("_eof_in"):
                 for message in messages:
                     self._rabbit.produce(queue, message)
-            if len(messages) > 1:
+            elif len(messages) > 0:
                 encoded = GenericPacket(self._basic_agg_replica_id, messages).encode()
                 self._rabbit.produce(queue, encoded)
 

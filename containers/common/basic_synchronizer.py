@@ -22,7 +22,11 @@ class BasicSynchronizer(ABC):
                                  lambda msg, input_queue=input_queue: self.__on_message_callback(input_queue, msg))
 
     def __on_message_callback(self, queue: str, msg: bytes) -> bool:
-        decoded = EofWithId.decode(msg)
+        try:
+            decoded = EofWithId.decode(msg)
+        except Exception:
+            decoded = Eof.decode(msg)
+            raise ValueError(f"Unknown packet: {decoded}")
 
         outgoing_messages = self.handle_message(queue, decoded)
 

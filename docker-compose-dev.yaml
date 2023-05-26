@@ -53,10 +53,9 @@ services:
       - DATA_FOLDER_PATH=/opt/app/.data
       - PUSH_ADDR=tcp://gateway:5555
       - REQ_ADDR=tcp://response_provider:5555
-      - CITIES_WITH_GEODATA=montreal
-      - CITIES_WITHOUT_GEODATA=washington,toronto
+      - CITIES=montreal,washington,toronto
     volumes:
-      - ./.data_5/:/opt/app/.data/
+      - ./.data_3/:/opt/app/.data/
   synchronizer:
     build:
       context: ./containers

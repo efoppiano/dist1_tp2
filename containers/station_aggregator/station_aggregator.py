@@ -94,7 +94,7 @@ class StationAggregator(BasicAggregator):
             packet.trip_id, packet.city_name, start_station_info["station_name"], packet.yearid
         )
 
-        if start_station_info["latitude"]:
+        if start_station_info["latitude"] is not None:
             distance_calc_in_packet = DistanceCalcIn(
                 packet.trip_id,
                 packet.city_name,
@@ -129,11 +129,12 @@ class StationAggregator(BasicAggregator):
 
         output_packets_lists = self.__build_packet_lists(packet, stations)
 
-        return {
+        output = {
             prec_filter_queue: output_packets_lists[0],
             year_filter_queue: output_packets_lists[1],
             distance_calc_queue: output_packets_lists[2],
         }
+        return output
 
     def handle_stop(self, city_name: str) -> Dict[str, List[bytes]]:
         self._stopped_cities.add(city_name)
