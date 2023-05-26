@@ -26,6 +26,7 @@ class WeatherAggregator(BasicAggregator):
         self._weather = {}
         self._unanswered_packets = {}
         self._stopped_cities = set()
+        self._delayed_eofs = set()
 
     def handle_side_table_message(self, message: bytes):
         packet = WeatherSideTableInfo.decode(message)
@@ -35,15 +36,20 @@ class WeatherAggregator(BasicAggregator):
         self._weather.setdefault(packet.city_name, {})
         self._weather[packet.city_name][yesterday] = packet.prectot
 
-    def handle_eof(self, message: Eof) -> Dict[str, List[bytes]]:
-        # TODO: Delay EOF if there are unanswered packets for this client
-        logging.info(f"action: handle_eof | result: in_progress | city_name: {message.city_name}")
+    def __handle_eof_with_city_name(self, city_name: str) -> Dict[str, List[bytes]]:
+        logging.info(f"action: handle_eof | result: in_progress | city_name: {city_name}")
+        if city_name not in self._stopped_cities:
+            return {}
 
         output_queue = Linker().get_eof_in_queue(self)
         logging.info(f"Sending EOF to {output_queue}")
         return {
-            output_queue: [EofWithId(message.city_name, self._replica_id).encode()]
+            output_queue: [EofWithId(city_name, self._replica_id).encode()]
         }
+
+    def handle_eof(self, message: Eof) -> Dict[str, List[bytes]]:
+        city_name = message.city_name
+        return self.__handle_eof_with_city_name(city_name)
 
     def __search_prec_for_date(self, city_name: str, date: str) -> Union[int, None]:
         if city_name not in self._weather:
@@ -65,7 +71,8 @@ class WeatherAggregator(BasicAggregator):
                 logging.warning(f"Could not find weather for city {packet.city_name} and date {start_date}.")
             return {}
 
-        output_packet = GatewayOut(packet.city_name, start_date, packet.start_station_code, packet.end_station_code,
+        output_packet = GatewayOut(packet.trip_id, packet.city_name, start_date, packet.start_station_code,
+                                   packet.end_station_code,
                                    packet.duration_sec, packet.yearid, prectot)
 
         output_queue = Linker().get_output_queue(self, hashing_key=start_date)
@@ -83,13 +90,21 @@ class WeatherAggregator(BasicAggregator):
                 output_messages[queue_name].extend(messages)
         if city_name in self._unanswered_packets:
             del self._unanswered_packets[city_name]
+
+        if city_name in self._delayed_eofs:
+            new_output_messages = self.__handle_eof_with_city_name(city_name)
+            for queue_name, messages in new_output_messages.items():
+                output_messages.setdefault(queue_name, [])
+                output_messages[queue_name].extend(messages)
+            self._delayed_eofs.remove(city_name)
         return output_messages
 
     def get_state(self) -> bytes:
         state = {
             "weather": self._weather,
             "unanswered_packets": self._unanswered_packets,
-            "stopped_cities": self._stopped_cities
+            "stopped_cities": self._stopped_cities,
+            "delayed_eofs": self._delayed_eofs,
         }
         return pickle.dumps(state)
 
@@ -98,6 +113,7 @@ class WeatherAggregator(BasicAggregator):
         self._weather = state["weather"]
         self._unanswered_packets = state["unanswered_packets"]
         self._stopped_cities = state["stopped_cities"]
+        self._delayed_eofs = state["delayed_eofs"]
 
 
 def main():

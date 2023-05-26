@@ -1,9 +1,10 @@
+import uuid
 from dataclasses import dataclass
 from typing import Iterator, Union, List
 
 from common.packets.basic_packet import BasicPacket
 
-CHUNK_SIZE = 256
+CHUNK_SIZE = 1024
 
 
 @dataclass
@@ -71,6 +72,7 @@ class StationInfo(BasicPacket):
 
 @dataclass
 class TripInfo(BasicPacket):
+    trip_id: int
     city_name: str
     start_datetime: str
     start_station_code: int
@@ -82,6 +84,7 @@ class TripInfo(BasicPacket):
 
     @staticmethod
     def from_csv(city_name: str, csv_line: str) -> "TripInfo":
+        trip_id = uuid.uuid4().int % 1000000000
         line_data = csv_line.strip().split(",")
         start_datetime = line_data[0]
         start_station_code = int(line_data[1])
@@ -91,6 +94,7 @@ class TripInfo(BasicPacket):
         is_member = bool(line_data[5])
         yearid = int(line_data[6])
         return TripInfo(
+            int(trip_id),
             city_name,
             start_datetime,
             start_station_code,

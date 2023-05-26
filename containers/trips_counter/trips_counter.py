@@ -4,7 +4,6 @@ import os
 import pickle
 from typing import Dict, List
 
-from common.basic_filter import BasicFilter
 from common.basic_stateful_filter import BasicStatefulFilter
 from common.linker.linker import Linker
 from common.packets.eof import Eof
@@ -32,7 +31,8 @@ class TripsCounter(BasicStatefulFilter):
                 continue
             queue_name = Linker().get_output_queue(self, hashing_key=start_station_name)
             output.setdefault(queue_name, [])
-            output[queue_name].append(TripsCountByYearJoined(city_name,
+            output[queue_name].append(TripsCountByYearJoined(data.id,
+                                                             city_name,
                                                              start_station_name,
                                                              data[2016],
                                                              data[2017]).encode())
@@ -49,7 +49,8 @@ class TripsCounter(BasicStatefulFilter):
         start_station_name = packet.start_station_name
         yearid = packet.yearid
         self._count_buffer.setdefault(city_name, {})
-        self._count_buffer[city_name].setdefault(start_station_name, {2016: 0, 2017: 0})
+        # TODO: check if the id could cause problems
+        self._count_buffer[city_name].setdefault(start_station_name, {2016: 0, 2017: 0, "id": packet.trip_id})
         self._count_buffer[city_name][start_station_name][yearid] += 1
 
         return {}

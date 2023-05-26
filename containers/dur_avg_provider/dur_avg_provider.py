@@ -4,7 +4,6 @@ import os
 import pickle
 from typing import Dict, List
 
-from common.basic_filter import BasicFilter
 from common.basic_stateful_filter import BasicStatefulFilter
 from common.linker.linker import Linker
 from common.packets.dur_avg_out import DurAvgOut
@@ -32,7 +31,8 @@ class DurAvgProvider(BasicStatefulFilter):
         city_output = []
         for start_date in self._avg_buffer[city_name]:
             avg = self._avg_buffer[city_name][start_date]["avg"]
-            city_output.append(DurAvgOut(city_name, start_date, avg).encode())
+            packet_id = self._avg_buffer[city_name][start_date]["id"]
+            city_output.append(DurAvgOut(packet_id, city_name, start_date, avg).encode())
         self._avg_buffer.pop(city_name)
         return {
             self._output_queue: city_output,
@@ -43,7 +43,8 @@ class DurAvgProvider(BasicStatefulFilter):
         packet = PrecFilterIn.decode(message)
 
         self._avg_buffer.setdefault(packet.city_name, {})
-        self._avg_buffer[packet.city_name].setdefault(packet.start_date, {"avg": 0, "count": 0})
+        # TODO: check if the id could cause problems
+        self._avg_buffer[packet.city_name].setdefault(packet.start_date, {"avg": 0, "count": 0, "id": packet.trip_id})
         old_avg = self._avg_buffer[packet.city_name][packet.start_date]["avg"]
         old_count = self._avg_buffer[packet.city_name][packet.start_date]["count"]
         new_count = old_count + 1

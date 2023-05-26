@@ -53,7 +53,7 @@ class Client(BasicClient):
 
 def main():
     initialize_log(logging.INFO)
-
+    time.sleep(5)
     start_time = time.time()
     client = Client({
         "data_folder_path": DATA_FOLDER_PATH,

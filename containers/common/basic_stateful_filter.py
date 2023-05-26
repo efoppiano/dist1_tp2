@@ -34,6 +34,7 @@ class BasicStatefulFilter(BasicFilter, ABC):
         replica_id = decoded.replica_id
         msg_hash = utils.hash_msg(msg)
         if msg_hash == self._last_hash_by_replica.get(replica_id):
+            logging.info(f"Received duplicate message from replica {replica_id} - ignoring")
             return True
         self._last_hash_by_replica[replica_id] = msg_hash
 

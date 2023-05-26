@@ -5,6 +5,7 @@ from typing import List, Dict, Union
 
 from common.linker.linker import Linker
 from common.packets.eof import Eof
+from common.packets.eof_with_id import EofWithId
 from common.packets.generic_packet import GenericPacket
 from common.rabbit_middleware import Rabbit
 
@@ -58,9 +59,11 @@ class BasicFilter(ABC):
     def handle_message(self, message: bytes) -> Dict[str, List[bytes]]:
         pass
 
-    @abc.abstractmethod
     def handle_eof(self, message: Eof) -> Dict[str, List[bytes]]:
-        pass
+        eof_output_queue = Linker().get_eof_in_queue(self)
+        return {
+            eof_output_queue: [EofWithId(message.city_name, self._basic_filter_replica_id).encode()]
+        }
 
     def start(self):
         self._rabbit.start()

@@ -5,10 +5,8 @@ from typing import Dict, List
 
 from common.basic_filter import BasicFilter
 from common.linker.linker import Linker
-from common.packets.eof import Eof
-from common.packets.eof_with_id import EofWithId
 from common.packets.station_dist_mean import StationDistMean
-from common.utils import initialize_log, build_eof_in_queue_name
+from common.utils import initialize_log
 
 REPLICA_ID = os.environ["REPLICA_ID"]
 MEAN_THRESHOLD = os.environ["MEAN_THRESHOLD"]
@@ -21,12 +19,6 @@ class DistMeanProvider(BasicFilter):
         self._replica_id = replica_id
         self._output_queue = Linker().get_output_queue(self)
         self._mean_threshold = mean_threshold
-
-    def handle_eof(self, message: Eof) -> Dict[str, List[bytes]]:
-        eof_output_queue = Linker().get_eof_in_queue(self)
-        return {
-            eof_output_queue: [EofWithId(message.city_name, self._replica_id).encode()]
-        }
 
     def handle_message(self, message: bytes) -> Dict[str, List[bytes]]:
         packet = StationDistMean.decode(message)

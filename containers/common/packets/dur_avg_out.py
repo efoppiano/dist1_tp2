@@ -5,6 +5,7 @@ from common.packets.basic_packet import BasicPacket
 
 @dataclass
 class DurAvgOut(BasicPacket):
+    id: int
     city_name: str
     start_date: str
     dur_avg_sec: float

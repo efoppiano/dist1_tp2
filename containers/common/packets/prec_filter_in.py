@@ -5,6 +5,7 @@ from common.packets.basic_packet import BasicPacket
 
 @dataclass
 class PrecFilterIn(BasicPacket):
+    trip_id: int
     city_name: str
     start_date: str
     duration_sec: float

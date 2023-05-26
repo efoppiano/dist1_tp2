@@ -9,7 +9,6 @@ import zmq
 from common.linker.linker import Linker
 from common.packet_factory import PacketFactory
 from common.packets.aggregator_packets import ChunkOrStop, StopPacket
-from common.packets.eof import Eof
 from common.packets.eof_with_id import EofWithId
 from common.packets.generic_packet import GenericPacket
 from common.packets.station_side_table_info import StationSideTableInfo

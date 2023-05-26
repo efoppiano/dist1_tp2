@@ -27,20 +27,28 @@ class StationAggregator(BasicAggregator):
         self._stations = {}
         self._unanswered_packets = {}
         self._stopped_cities = set()
+        # TODO: add to get_state and set_state
+        self._delayed_eofs = set()
 
-    def handle_eof(self, message: Eof) -> Dict[str, List[bytes]]:
-        # TODO: Delay EOF if there are unanswered packets for this client
-        logging.info(f"action: handle_eof | result: in_progress | city_name: {message.city_name}")
+    def __handle_eof_with_city_name(self, city_name: str) -> Dict[str, List[bytes]]:
+        logging.info(f"action: handle_eof | result: in_progress | city_name: {city_name}")
+        if city_name not in self._stopped_cities:
+            self._delayed_eofs.add(city_name)
+            return {}
 
         eof_year_filter_queue = Linker().get_eof_in_queue(self, "YearFilter")
         eof_prec_filter_queue = Linker().get_eof_in_queue(self, "PrecFilter")
         eof_distance_calc_queue = Linker().get_eof_in_queue(self, "DistanceCalculator")
 
         return {
-            eof_year_filter_queue: [EofWithId(message.city_name, self._replica_id).encode()],
-            eof_prec_filter_queue: [EofWithId(message.city_name, self._replica_id).encode()],
-            eof_distance_calc_queue: [EofWithId(message.city_name, self._replica_id).encode()],
+            eof_year_filter_queue: [EofWithId(city_name, self._replica_id).encode()],
+            eof_prec_filter_queue: [EofWithId(city_name, self._replica_id).encode()],
+            eof_distance_calc_queue: [EofWithId(city_name, self._replica_id).encode()],
         }
+
+    def handle_eof(self, message: Eof) -> Dict[str, List[bytes]]:
+        city_name = message.city_name
+        return self.__handle_eof_with_city_name(city_name)
 
     def handle_side_table_message(self, message: bytes):
         packet = StationSideTableInfo.decode(message)
@@ -79,15 +87,16 @@ class StationAggregator(BasicAggregator):
         end_station_info = stations[1]
 
         prec_filter_in_packet = PrecFilterIn(
-            packet.city_name, packet.start_date, packet.duration_sec, packet.prectot
+            packet.trip_id, packet.city_name, packet.start_date, packet.duration_sec, packet.prectot
         )
 
         year_filter_in_packet = YearFilterIn(
-            packet.city_name, start_station_info["station_name"], packet.yearid
+            packet.trip_id, packet.city_name, start_station_info["station_name"], packet.yearid
         )
 
         if start_station_info["latitude"]:
             distance_calc_in_packet = DistanceCalcIn(
+                packet.trip_id,
                 packet.city_name,
                 start_station_info["station_name"],
                 start_station_info["latitude"],
@@ -136,13 +145,21 @@ class StationAggregator(BasicAggregator):
                 output_messages[queue_name].extend(messages)
         if city_name in self._unanswered_packets:
             del self._unanswered_packets[city_name]
+
+        if city_name in self._delayed_eofs:
+            new_output_messages = self.__handle_eof_with_city_name(city_name)
+            for queue_name, messages in new_output_messages.items():
+                output_messages.setdefault(queue_name, [])
+                output_messages[queue_name].extend(messages)
+            self._delayed_eofs.remove(city_name)
         return output_messages
 
     def get_state(self) -> bytes:
         state = {
             "stations": self._stations,
             "unanswered_packets": self._unanswered_packets,
-            "stopped_cities": self._stopped_cities
+            "stopped_cities": self._stopped_cities,
+            "delayed_eofs": self._delayed_eofs,
         }
         return pickle.dumps(state)
 
@@ -151,6 +168,7 @@ class StationAggregator(BasicAggregator):
         self._stations = state["stations"]
         self._unanswered_packets = state["unanswered_packets"]
         self._stopped_cities = state["stopped_cities"]
+        self._delayed_eofs = state["delayed_eofs"]
 
 
 def main():

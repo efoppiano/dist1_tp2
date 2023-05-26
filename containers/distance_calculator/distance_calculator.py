@@ -8,8 +8,6 @@ from common.basic_filter import BasicFilter
 from common.linker.linker import Linker
 from common.packets.dist_info import DistInfo
 from common.packets.distance_calc_in import DistanceCalcIn
-from common.packets.eof import Eof
-from common.packets.eof_with_id import EofWithId
 from common.utils import initialize_log
 
 REPLICA_ID = os.environ["REPLICA_ID"]
@@ -21,12 +19,6 @@ class DistanceCalculator(BasicFilter):
 
         self._replica_id = replica_id
 
-    def handle_eof(self, message: Eof) -> Dict[str, List[bytes]]:
-        eof_output_queue = Linker().get_eof_in_queue(self)
-        return {
-            eof_output_queue: [EofWithId(message.city_name, self._replica_id).encode()]
-        }
-
     def handle_message(self, message: bytes) -> Dict[str, List[bytes]]:
         packet = DistanceCalcIn.decode(message)
 
@@ -36,7 +28,8 @@ class DistanceCalculator(BasicFilter):
                                              packet.end_station_latitude,
                                              packet.end_station_longitude)
         return {
-            output_queue: [DistInfo(packet.city_name,
+            output_queue: [DistInfo(packet.trip_id,
+                                    packet.city_name,
                                     packet.end_station_name,
                                     distance).encode()]
         }

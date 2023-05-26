@@ -13,6 +13,7 @@ docker-compose-stop:
 .PHONY: docker-compose-stop
 
 docker-compose-down: docker-compose-stop
+	sudo rm -rf .volumes
 	docker compose -f docker-compose-dev.yaml down --volumes --remove-orphans
 .PHONY: docker-compose-down
 
