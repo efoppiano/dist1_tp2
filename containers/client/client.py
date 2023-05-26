@@ -58,8 +58,7 @@ def main():
         "data_folder_path": DATA_FOLDER_PATH,
         "push_addr": PUSH_ADDR,
         "req_addr": REQ_ADDR,
-        "cities_with_geodata": CITIES_WITH_GEODATA,
-        "cities_without_geodata": CITIES_WITHOUT_GEODATA
+        "cities": CITIES,
     })
     client.run()
     end_time = time.time()
