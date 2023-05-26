@@ -1,4 +1,5 @@
 import logging
+import os
 from datetime import datetime, date
 from typing import Union
 
@@ -58,3 +59,23 @@ def parse_date(date_str: str) -> date:
 
 def datetime_str_to_date_str(datetime_str: str) -> str:
     return datetime_str.split(" ")[0]
+
+
+def save_state(state: bytes, path: str = "/volumes/state"):
+    # Write to temp file
+    with open("/volumes/temp_state", "wb") as f:
+        f.write(state)
+    # Atomically rename temp file to state file
+    os.rename("/volumes/temp_state", path)
+
+
+def load_state(path: str = "/volumes/state") -> Union[bytes, None]:
+    if os.path.exists(path):
+        with open(path, "rb") as f:
+            return f.read()
+    else:
+        return None
+
+
+def hash_msg(msg: bytes) -> int:
+    return hash(msg)

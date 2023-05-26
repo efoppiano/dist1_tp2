@@ -131,5 +131,6 @@ dmypy.json
 # Data
 *.zip
 .data*
+.volumes
 
 .idea/

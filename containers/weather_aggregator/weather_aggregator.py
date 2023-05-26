@@ -8,6 +8,7 @@ from typing import List, Dict, Union
 from common.basic_aggregator import BasicAggregator
 from common.linker.linker import Linker
 from common.packets.eof import Eof
+from common.packets.eof_with_id import EofWithId
 from common.packets.gateway_in import GatewayIn
 from common.packets.gateway_out import GatewayOut
 from common.packets.weather_side_table_info import WeatherSideTableInfo
@@ -20,6 +21,8 @@ REPLICA_ID = os.environ["REPLICA_ID"]
 class WeatherAggregator(BasicAggregator):
     def __init__(self, replica_id: int, side_table_queue_name: str):
         super().__init__(replica_id, side_table_queue_name)
+        self._replica_id = replica_id
+
         self._weather = {}
         self._unanswered_packets = {}
         self._stopped_cities = set()
@@ -39,7 +42,7 @@ class WeatherAggregator(BasicAggregator):
         output_queue = Linker().get_eof_in_queue(self)
         logging.info(f"Sending EOF to {output_queue}")
         return {
-            output_queue: [message.encode()]
+            output_queue: [EofWithId(message.city_name, self._replica_id).encode()]
         }
 
     def __search_prec_for_date(self, city_name: str, date: str) -> Union[int, None]:
@@ -89,7 +92,6 @@ class WeatherAggregator(BasicAggregator):
             "stopped_cities": self._stopped_cities
         }
         return pickle.dumps(state)
-
 
     def set_state(self, state: bytes):
         state = pickle.loads(state)

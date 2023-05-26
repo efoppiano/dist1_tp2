@@ -13,6 +13,7 @@ services:
       timeout: 3s
       retries: 10
       start_period: 50s
+    restart: on-failure
   gateway:
     container_name: gateway
     build:
@@ -24,6 +25,7 @@ services:
     entrypoint: python3 /opt/app/gateway.py
     environment:
       - PYTHONHASHSEED=0
+    restart: on-failure
   response_provider:
     container_name: response_provider
     build:
@@ -33,6 +35,7 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
+    restart: on-failure
   client:
     build:
       context: ./containers
@@ -48,7 +51,8 @@ services:
       - CITIES_WITH_GEODATA=montreal
       - CITIES_WITHOUT_GEODATA=washington,toronto
     volumes:
-      - ./.data_4/:/opt/app/.data/
+      - ./.data_3/:/opt/app/.data/
+    restart: on-failure
   synchronizer:
     build:
       context: ./containers
@@ -57,6 +61,7 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
+    restart: on-failure
   weather_aggregator_0:
     build:
       context: ./containers
@@ -69,6 +74,9 @@ services:
       - PYTHONHASHSEED=0
       - SIDE_TABLE_QUEUE_NAME=weather
       - REPLICA_ID=0
+    restart: on-failure
+    volumes:
+      - .volumes/weather_aggregator_0:/volumes
   weather_aggregator_1:
     build:
       context: ./containers
@@ -81,6 +89,9 @@ services:
       - PYTHONHASHSEED=0
       - SIDE_TABLE_QUEUE_NAME=weather
       - REPLICA_ID=1
+    restart: on-failure
+    volumes:
+      - .volumes/weather_aggregator_1:/volumes
   station_aggregator_0:
     build:
       context: ./containers
@@ -93,6 +104,9 @@ services:
       - PYTHONHASHSEED=0
       - SIDE_TABLE_QUEUE_NAME=station
       - REPLICA_ID=0
+    restart: on-failure
+    volumes:
+      - .volumes/station_aggregator_0:/volumes
   station_aggregator_1:
     build:
       context: ./containers
@@ -105,6 +119,9 @@ services:
       - PYTHONHASHSEED=0
       - SIDE_TABLE_QUEUE_NAME=station
       - REPLICA_ID=1
+    restart: on-failure
+    volumes:
+      - .volumes/station_aggregator_1:/volumes
   prec_filter_0:
     build:
       context: ./containers
@@ -117,6 +134,7 @@ services:
       - PYTHONHASHSEED=0
       - PREC_LIMIT=30
       - REPLICA_ID=0
+    restart: on-failure
   prec_filter_1:
     build:
       context: ./containers
@@ -129,6 +147,7 @@ services:
       - PYTHONHASHSEED=0
       - PREC_LIMIT=30
       - REPLICA_ID=1
+    restart: on-failure
   dur_avg_provider_0:
     build:
       context: ./containers
@@ -140,6 +159,9 @@ services:
     environment:
       - PYTHONHASHSEED=0
       - REPLICA_ID=0
+    restart: on-failure
+    volumes:
+      - .volumes/dur_avg_provider_0:/volumes
   distance_calculator_0:
     build:
       context: ./containers
@@ -151,6 +173,7 @@ services:
     environment:
       - PYTHONHASHSEED=0
       - REPLICA_ID=0
+    restart: on-failure
   distance_calculator_1:
     build:
       context: ./containers
@@ -162,6 +185,7 @@ services:
     environment:
       - PYTHONHASHSEED=0
       - REPLICA_ID=1
+    restart: on-failure
   dist_mean_calculator_0:
     build:
       context: ./containers
@@ -173,6 +197,9 @@ services:
     environment:
       - PYTHONHASHSEED=0
       - REPLICA_ID=0
+    restart: on-failure
+    volumes:
+      - .volumes/dist_mean_calculator_0:/volumes
   dist_mean_calculator_1:
     build:
       context: ./containers
@@ -184,6 +211,9 @@ services:
     environment:
       - PYTHONHASHSEED=0
       - REPLICA_ID=1
+    restart: on-failure
+    volumes:
+      - .volumes/dist_mean_calculator_1:/volumes
   dist_mean_provider_0:
     build:
       context: ./containers
@@ -196,6 +226,7 @@ services:
       - PYTHONHASHSEED=0
       - MEAN_THRESHOLD=6.0
       - REPLICA_ID=0
+    restart: on-failure
   year_filter_0:
     build:
       context: ./containers
@@ -207,6 +238,7 @@ services:
     environment:
       - PYTHONHASHSEED=0
       - REPLICA_ID=0
+    restart: on-failure
   year_filter_1:
     build:
       context: ./containers
@@ -218,6 +250,7 @@ services:
     environment:
       - PYTHONHASHSEED=0
       - REPLICA_ID=1
+    restart: on-failure
   trips_counter_0:
     build:
       context: ./containers
@@ -229,6 +262,9 @@ services:
     environment:
       - PYTHONHASHSEED=0
       - REPLICA_ID=0
+    restart: on-failure
+    volumes:
+      - .volumes/trips_counter_0:/volumes
   trips_counter_1:
     build:
       context: ./containers
@@ -240,6 +276,9 @@ services:
     environment:
       - PYTHONHASHSEED=0
       - REPLICA_ID=1
+    restart: on-failure
+    volumes:
+      - .volumes/trips_counter_1:/volumes
   trip_count_provider_0:
     build:
       context: ./containers
@@ -252,3 +291,4 @@ services:
       - PYTHONHASHSEED=0
       - MULT_THRESHOLD=2
       - REPLICA_ID=0
+    restart: on-failure

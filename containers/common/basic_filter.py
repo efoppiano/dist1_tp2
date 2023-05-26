@@ -1,26 +1,25 @@
 import abc
 import os
 from abc import ABC
-from typing import List, Dict
+from typing import List, Dict, Union
 
 from common.linker.linker import Linker
 from common.packets.eof import Eof
 from common.packets.generic_packet import GenericPacket
 from common.rabbit_middleware import Rabbit
-from common.utils import build_eof_out_queue_name, build_queue_name
 
 RABBIT_HOST = os.environ.get("RABBIT_HOST", "rabbitmq")
-CHUNK_SIZE = 256
-SEND_DELAY_SEC = 0.1
 
 
 class BasicFilter(ABC):
     def __init__(self, replica_id: int):
         self._input_queue = Linker().get_input_queue(self, replica_id)
         self._rabbit = Rabbit(RABBIT_HOST)
-        self._rabbit.consume(self._input_queue, self.__on_message_callback)
+        self._rabbit.consume(self._input_queue, self.on_message_callback)
         eof_routing_key = Linker().get_eof_out_routing_key(self)
         self._rabbit.route(self._input_queue, "control", eof_routing_key)
+
+        self._basic_filter_replica_id = replica_id
 
     def __handle_chunk(self, chunk: List[bytes]) -> Dict[str, List[bytes]]:
         outgoing_messages = {}
@@ -31,8 +30,11 @@ class BasicFilter(ABC):
                 outgoing_messages[queue] += messages
         return outgoing_messages
 
-    def __on_message_callback(self, msg: bytes) -> bool:
-        decoded = GenericPacket.decode(msg)
+    def on_message_callback(self, msg: Union[bytes, GenericPacket]) -> bool:
+        if isinstance(msg, bytes):
+            decoded = GenericPacket.decode(msg)
+        else:
+            decoded = msg
         if isinstance(decoded.data, Eof):
             outgoing_messages = self.handle_eof(decoded.data)
         elif isinstance(decoded.data, bytes):
@@ -47,7 +49,7 @@ class BasicFilter(ABC):
                 for message in messages:
                     self._rabbit.produce(queue, message)
             if len(messages) > 1:
-                encoded = GenericPacket(messages).encode()
+                encoded = GenericPacket(self._basic_filter_replica_id, messages).encode()
                 self._rabbit.produce(queue, encoded)
 
         return True

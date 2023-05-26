@@ -1,10 +1,10 @@
 import abc
 import logging
 import os
-import pickle
 from abc import ABC
-from typing import Dict, List, Optional
+from typing import Dict, List
 
+from common import utils
 from common.linker.linker import Linker
 from common.packets.aggregator_packets import ChunkOrStop, StopPacket
 from common.packets.eof import Eof
@@ -12,31 +12,11 @@ from common.packets.generic_packet import GenericPacket
 from common.rabbit_middleware import Rabbit
 
 RABBIT_HOST = os.environ.get("RABBIT_HOST", "rabbitmq")
-CHUNK_SIZE = 256
-SEND_DELAY_SEC = 0.1
-
-
-def save_state(state: bytes):
-    # write to temp file
-    with open("temp_state", "wb") as f:
-        f.write(state)
-    # rename temp file to state file
-    os.rename("temp_state", "state")
-
-
-def load_state() -> Optional[bytes]:
-    if os.path.exists("state"):
-        with open("state", "rb") as f:
-            return f.read()
-    else:
-        return None
 
 
 class BasicAggregator(ABC):
     def __init__(self, replica_id: int, side_table_queue: str):
-
-        self._last_stream_msg_hash = None
-        self._last_side_table_msg_hash = None
+        self._basic_agg_replica_id = replica_id
 
         self._rabbit = Rabbit(RABBIT_HOST)
         input_queue = Linker().get_input_queue(self, replica_id)
@@ -47,14 +27,11 @@ class BasicAggregator(ABC):
 
         self._rabbit.subscribe(side_table_queue, self.__on_side_table_message_callback)
 
-        state = load_state()
-        self.set_full_state(state)
+        state = utils.load_state()
+        if state is not None:
+            self.set_state(state)
 
     def __on_side_table_message_callback(self, msg: bytes) -> bool:
-        if hash(msg) == self._last_side_table_msg_hash:
-            return True
-        self._last_side_table_msg_hash = hash(msg)
-
         decoded = ChunkOrStop.decode(msg)
         if isinstance(decoded.data, list):
             for message in decoded.data:
@@ -66,8 +43,8 @@ class BasicAggregator(ABC):
         else:
             raise ValueError(f"Unexpected message type: {type(decoded.data)}")
 
-        state = self.get_full_state()
-        save_state(state)
+        state = self.get_state()
+        utils.save_state(state)
 
         return True
 
@@ -86,14 +63,10 @@ class BasicAggregator(ABC):
                 for message in messages:
                     self._rabbit.produce(queue, message)
             if len(messages) > 1:
-                encoded = GenericPacket(messages).encode()
+                encoded = GenericPacket(self._basic_agg_replica_id, messages).encode()
                 self._rabbit.produce(queue, encoded)
 
     def __on_stream_message_callback(self, msg: bytes) -> bool:
-        if hash(msg) == self._last_stream_msg_hash:
-            return True
-        self._last_stream_msg_hash = hash(msg)
-
         decoded = GenericPacket.decode(msg)
         if isinstance(decoded.data, Eof):
             outgoing_messages = self.handle_eof(decoded.data)
@@ -106,8 +79,8 @@ class BasicAggregator(ABC):
 
         self.__send_messages(outgoing_messages)
 
-        state = self.get_full_state()
-        save_state(state)
+        state = self.get_state()
+        utils.save_state(state)
 
         return True
 
@@ -137,19 +110,3 @@ class BasicAggregator(ABC):
     @abc.abstractmethod
     def set_state(self, state: bytes):
         pass
-
-    def get_full_state(self) -> bytes:
-        concrete_state = self.get_state()
-        return pickle.dumps({
-            "last_stream_msg_hash": self._last_stream_msg_hash,
-            "last_side_table_msg_hash": self._last_side_table_msg_hash,
-            "concrete_state": concrete_state
-        })
-
-    def set_full_state(self, state: Optional[bytes]):
-        if not state:
-            return
-        data = pickle.loads(state)
-        self._last_stream_msg_hash = data["last_msg_hash"]
-        self._last_side_table_msg_hash = data["last_side_table_msg_hash"]
-        self.set_state(data["concrete_state"])

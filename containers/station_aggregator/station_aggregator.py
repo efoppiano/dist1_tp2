@@ -8,6 +8,7 @@ from common.basic_aggregator import BasicAggregator
 from common.linker.linker import Linker
 from common.packets.distance_calc_in import DistanceCalcIn
 from common.packets.eof import Eof
+from common.packets.eof_with_id import EofWithId
 from common.packets.gateway_out import GatewayOut
 from common.packets.prec_filter_in import PrecFilterIn
 from common.packets.station_side_table_info import StationSideTableInfo
@@ -22,6 +23,7 @@ class StationAggregator(BasicAggregator):
     def __init__(self, replica_id: int, side_table_queue_name: str):
         super().__init__(replica_id, side_table_queue_name)
 
+        self._replica_id = replica_id
         self._stations = {}
         self._unanswered_packets = {}
         self._stopped_cities = set()
@@ -35,9 +37,9 @@ class StationAggregator(BasicAggregator):
         eof_distance_calc_queue = Linker().get_eof_in_queue(self, "DistanceCalculator")
 
         return {
-            eof_year_filter_queue: [Eof(message.city_name).encode()],
-            eof_prec_filter_queue: [Eof(message.city_name).encode()],
-            eof_distance_calc_queue: [Eof(message.city_name).encode()],
+            eof_year_filter_queue: [EofWithId(message.city_name, self._replica_id).encode()],
+            eof_prec_filter_queue: [EofWithId(message.city_name, self._replica_id).encode()],
+            eof_distance_calc_queue: [EofWithId(message.city_name, self._replica_id).encode()],
         }
 
     def handle_side_table_message(self, message: bytes):

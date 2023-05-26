@@ -10,6 +10,7 @@ from common.linker.linker import Linker
 from common.packet_factory import PacketFactory
 from common.packets.aggregator_packets import ChunkOrStop, StopPacket
 from common.packets.eof import Eof
+from common.packets.eof_with_id import EofWithId
 from common.packets.generic_packet import GenericPacket
 from common.packets.station_side_table_info import StationSideTableInfo
 from common.packets.weather_side_table_info import WeatherSideTableInfo
@@ -97,12 +98,12 @@ class Gateway:
         if isinstance(trip_info_list_or_city_eof, str):
             city_name = trip_info_list_or_city_eof
             queue_name = Linker().get_eof_in_queue(self)
-            self.__schedule_message_to_produce(queue_name, Eof(city_name).encode())
+            self.__schedule_message_to_produce(queue_name, EofWithId(city_name, 1).encode())
         else:
             trip_info_list = trip_info_list_or_city_eof
             first_trip_info = trip_info_list[0]
             first_start_date = datetime_str_to_date_str(first_trip_info.start_datetime)
-            message = GenericPacket([trip_info.encode() for trip_info in trip_info_list])
+            message = GenericPacket(1, [trip_info.encode() for trip_info in trip_info_list])
 
             queue_name = Linker().get_output_queue(self, hashing_key=first_start_date)
             self.__schedule_message_to_produce(queue_name, message.encode())

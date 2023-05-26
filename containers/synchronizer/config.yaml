@@ -1,80 +1,39 @@
 gateway_in_eof_in:
   eof_output: gateway_in_eof_out
-  eofs_to_wait:
-    washington: 1
-    montreal: 1
-    toronto: 1
-
+  eofs_to_wait: 1
 gateway_out_eof_in:
   eof_output: gateway_out_eof_out
-  eofs_to_wait:
-    washington: 2
-    montreal: 2
-    toronto: 2
-
+  eofs_to_wait: 2
 prec_filter_in_eof_in:
   eof_output: prec_filter_in_eof_out
-  eofs_to_wait:
-    washington: 2
-    montreal: 2
-    toronto: 2
+  eofs_to_wait: 2
 distance_calc_in_eof_in:
   eof_output: distance_calc_in_eof_out
-  eofs_to_wait:
-    montreal: 2
-    toronto: 2
-    washington: 2
+  eofs_to_wait: 2
 year_filter_in_eof_in:
   eof_output: year_filter_in_eof_out
-  eofs_to_wait:
-    washington: 2
-    montreal: 2
-    toronto: 2
+  eofs_to_wait: 2
 prec_filtered_eof_in:
   eof_output: prec_filtered_eof_out
-  eofs_to_wait:
-    washington: 2
-    montreal: 2
-    toronto: 2
+  eofs_to_wait: 2
 year_filtered_eof_in:
   eof_output: year_filtered_eof_out
-  eofs_to_wait:
-    washington: 2
-    montreal: 2
-    toronto: 2
+  eofs_to_wait: 2
 distance_eof_in:
   eof_output: distance_eof_out
-  eofs_to_wait:
-    washington: 2
-    montreal: 2
-    toronto: 2
+  eofs_to_wait: 2
 distance_mean_eof_in:
   eof_output: distance_mean_eof_out
-  eofs_to_wait:
-    washington: 2
-    montreal: 2
-    toronto: 2
+  eofs_to_wait: 2
 trips_counted_eof_in:
   eof_output: trips_counted_eof_out
-  eofs_to_wait:
-    washington: 2
-    montreal: 2
-    toronto: 2
+  eofs_to_wait: 2
 dist_mean_provider_eof_in:
   eof_output: dist_mean_provider_eof_out
-  eofs_to_wait:
-    washington: 1
-    montreal: 1
-    toronto: 1
+  eofs_to_wait: 1
 trip_count_provider_eof_in:
   eof_output: trip_count_provider_eof_out
-  eofs_to_wait:
-    washington: 1
-    montreal: 1
-    toronto: 1
+  eofs_to_wait: 1
 avg_provider_eof_in:
   eof_output: avg_provider_eof_out
-  eofs_to_wait:
-    washington: 1
-    montreal: 1
-    toronto: 1
+  eofs_to_wait: 1

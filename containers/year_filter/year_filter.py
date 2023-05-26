@@ -6,6 +6,7 @@ from typing import Dict, List
 from common.basic_filter import BasicFilter
 from common.linker.linker import Linker
 from common.packets.eof import Eof
+from common.packets.eof_with_id import EofWithId
 from common.packets.year_filter_in import YearFilterIn
 from common.utils import initialize_log
 
@@ -16,10 +17,12 @@ class YearFilter(BasicFilter):
     def __init__(self, replica_id: int):
         super().__init__(replica_id)
 
+        self._replica_id = replica_id
+
     def handle_eof(self, message: Eof) -> Dict[str, List[bytes]]:
         output_queue = Linker().get_eof_in_queue(self)
         return {
-            output_queue: [message.encode()]
+            output_queue: [EofWithId(message.city_name, self._replica_id).encode()]
         }
 
     def handle_message(self, message: bytes) -> Dict[str, List[bytes]]:

@@ -5,6 +5,7 @@ from abc import ABC
 from typing import List, Dict
 
 from common.packets.eof import Eof
+from common.packets.eof_with_id import EofWithId
 from common.packets.generic_packet import GenericPacket
 from common.rabbit_middleware import Rabbit
 
@@ -21,7 +22,7 @@ class BasicSynchronizer(ABC):
                                  lambda msg, input_queue=input_queue: self.__on_message_callback(input_queue, msg))
 
     def __on_message_callback(self, queue: str, msg: bytes) -> bool:
-        decoded = Eof.decode(msg)
+        decoded = EofWithId.decode(msg)
 
         outgoing_messages = self.handle_message(queue, decoded)
 
@@ -31,7 +32,7 @@ class BasicSynchronizer(ABC):
         return True
 
     @abc.abstractmethod
-    def handle_message(self, queue: str, message: Eof) -> Dict[str, List[bytes]]:
+    def handle_message(self, queue: str, message: EofWithId) -> Dict[str, List[bytes]]:
         pass
 
     def start(self):

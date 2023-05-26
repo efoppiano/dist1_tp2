@@ -1,10 +1,30 @@
-weather_aggregator: 2
-station_aggregator: 2
-prec_filter: 2
-year_filter: 2
-distance_calculator: 2
-dist_mean_calculator: 2
-trips_counter: 2
-dur_avg_provider: 1
-dist_mean_provider: 1
-trip_count_provider: 1
+weather_aggregator:
+  amount: 2
+  add_volume: true
+station_aggregator:
+  amount: 2
+  add_volume: true
+prec_filter:
+  amount: 2
+  add_volume: false
+year_filter:
+  amount: 2
+  add_volume: false
+distance_calculator:
+  amount: 2
+  add_volume: false
+dist_mean_calculator:
+  amount: 2
+  add_volume: true
+trips_counter:
+  amount: 2
+  add_volume: true
+dur_avg_provider:
+  amount: 1
+  add_volume: true
+dist_mean_provider:
+  amount: 1
+  add_volume: false
+trip_count_provider:
+  amount: 1
+  add_volume: false
