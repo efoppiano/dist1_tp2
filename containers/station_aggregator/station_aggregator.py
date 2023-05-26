@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import logging
 import os
+import pickle
 from typing import Dict, List, Union, Tuple
 
 from common.basic_aggregator import BasicAggregator
@@ -134,6 +135,20 @@ class StationAggregator(BasicAggregator):
         if city_name in self._unanswered_packets:
             del self._unanswered_packets[city_name]
         return output_messages
+
+    def get_state(self) -> bytes:
+        state = {
+            "stations": self._stations,
+            "unanswered_packets": self._unanswered_packets,
+            "stopped_cities": self._stopped_cities
+        }
+        return pickle.dumps(state)
+
+    def set_state(self, state: bytes):
+        state = pickle.loads(state)
+        self._stations = state["stations"]
+        self._unanswered_packets = state["unanswered_packets"]
+        self._stopped_cities = state["stopped_cities"]
 
 
 def main():

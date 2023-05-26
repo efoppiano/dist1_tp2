@@ -2,7 +2,7 @@ import abc
 import logging
 import os
 from abc import ABC
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from common.linker.linker import Linker
 from common.packets.aggregator_packets import ChunkOrStop, StopPacket
@@ -13,6 +13,22 @@ from common.rabbit_middleware import Rabbit
 RABBIT_HOST = os.environ.get("RABBIT_HOST", "rabbitmq")
 CHUNK_SIZE = 256
 SEND_DELAY_SEC = 0.1
+
+
+def save_state(state: bytes):
+    # write to temp file
+    with open("temp_state", "wb") as f:
+        f.write(state)
+    # rename temp file to state file
+    os.rename("temp_state", "state")
+
+
+def load_state() -> Optional[bytes]:
+    if os.path.exists("state"):
+        with open("state", "rb") as f:
+            return f.read()
+    else:
+        return None
 
 
 class BasicAggregator(ABC):
@@ -27,6 +43,10 @@ class BasicAggregator(ABC):
 
         self._rabbit.subscribe(side_table_queue, self.__on_side_table_message_callback)
 
+        state = load_state()
+        if state is not None:
+            self.set_state(state)
+
     def __on_side_table_message_callback(self, msg: bytes) -> bool:
         decoded = ChunkOrStop.decode(msg)
         if isinstance(decoded.data, list):
@@ -38,6 +58,9 @@ class BasicAggregator(ABC):
             self.__send_messages(outgoing_messages)
         else:
             raise ValueError(f"Unexpected message type: {type(decoded.data)}")
+
+        state = self.get_state()
+        save_state(state)
 
         return True
 
@@ -72,6 +95,9 @@ class BasicAggregator(ABC):
 
         self.__send_messages(outgoing_messages)
 
+        state = self.get_state()
+        save_state(state)
+
         return True
 
     @abc.abstractmethod
@@ -92,3 +118,12 @@ class BasicAggregator(ABC):
 
     def start(self):
         self._rabbit.start()
+
+    @abc.abstractmethod
+    def get_state(self) -> bytes:
+        pass
+
+    @abc.abstractmethod
+    def set_state(self, state: bytes):
+        pass
+

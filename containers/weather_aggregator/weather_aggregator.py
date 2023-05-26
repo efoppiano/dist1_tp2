@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import logging
 import os
+import pickle
 from datetime import timedelta
 from typing import List, Dict, Union
 
@@ -80,6 +81,21 @@ class WeatherAggregator(BasicAggregator):
         if city_name in self._unanswered_packets:
             del self._unanswered_packets[city_name]
         return output_messages
+
+    def get_state(self) -> bytes:
+        state = {
+            "weather": self._weather,
+            "unanswered_packets": self._unanswered_packets,
+            "stopped_cities": self._stopped_cities
+        }
+        return pickle.dumps(state)
+
+
+    def set_state(self, state: bytes):
+        state = pickle.loads(state)
+        self._weather = state["weather"]
+        self._unanswered_packets = state["unanswered_packets"]
+        self._stopped_cities = state["stopped_cities"]
 
 
 def main():
