@@ -32,21 +32,18 @@ class ResponseProvider:
 
     @staticmethod
     def __send_dist_mean_response(socket: zmq.Socket, response: bytes) -> bool:
-        logging.info("action: send_dist_mean_response | result: in_progress")
         socket.send(response)
 
         return True
 
     @staticmethod
     def __send_trip_count_response(socket: zmq.Socket, response: bytes) -> bool:
-        logging.info("action: send_trip_count_response | result: in_progress")
         socket.send(response)
 
         return True
 
     @staticmethod
     def __send_avg_response(socket: zmq.Socket, response: bytes) -> bool:
-        logging.info("action: send_avg_response | result: in_progress")
         socket.send(response)
         return True
 

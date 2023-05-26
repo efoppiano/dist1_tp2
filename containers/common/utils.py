@@ -12,11 +12,19 @@ def initialize_log(logging_level):
     compose logs the date when the log has arrived
     """
     logging.getLogger("pika").setLevel(logging.WARNING)
-    logging.basicConfig(
-        format='%(asctime)s %(levelname)-8s %(message)s',
-        level=logging_level,
-        datefmt='%Y-%m-%d %H:%M:%S',
-    )
+    logging.addLevelName(
+      logging.DEBUG, "\033[1;32m%s\033[1;0m" % logging.getLevelName(logging.DEBUG))
+    logging.addLevelName(
+        logging.INFO, "\033[1;34m%s\033[1;0m" % logging.getLevelName(logging.INFO))
+    logging.addLevelName(
+        logging.WARNING, "\033[1;33m%s\033[1;0m" % logging.getLevelName(logging.WARNING))
+    logging.addLevelName(
+        logging.ERROR, "\033[1;31m%s\033[1;0m" % logging.getLevelName(logging.ERROR))
+    logging.addLevelName(
+        logging.CRITICAL, "\033[1;41m%s\033[1;0m" % logging.getLevelName(logging.CRITICAL))
+
+    logging.basicConfig(level=logging_level, format='%(asctime)s - %(levelname)s - %(message)s',
+                        datefmt='%H:%M:%S')
 
 
 def build_queue_name(queue: str, id: Union[int, None] = None) -> str:
