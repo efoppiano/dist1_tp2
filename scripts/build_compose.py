@@ -35,6 +35,11 @@ def main():
             services_with_replicas["services"][service_name] = service_data.copy()
             services_with_replicas["services"][service_name]["restart"] = "on-failure"
 
+        if service_name == "synchronizer":
+            services_with_replicas["services"][service_name].setdefault("volumes", [])
+            services_with_replicas["services"][service_name]["volumes"].append(
+                f".volumes/{service_name}:/volumes")
+
     with open("docker-compose-dev.yaml", "w") as f:
         yaml.dump(services_with_replicas, f, sort_keys=False)
 

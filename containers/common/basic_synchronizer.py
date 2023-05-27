@@ -1,12 +1,10 @@
 import abc
-import logging
 import os
 from abc import ABC
 from typing import List, Dict
 
-from common.packets.eof import Eof
+from common import utils
 from common.packets.eof_with_id import EofWithId
-from common.packets.generic_packet import GenericPacket
 from common.rabbit_middleware import Rabbit
 
 RABBIT_HOST = os.environ.get("RABBIT_HOST", "rabbitmq")
@@ -21,18 +19,22 @@ class BasicSynchronizer(ABC):
             self._rabbit.consume(input_queue,
                                  lambda msg, input_queue=input_queue: self.__on_message_callback(input_queue, msg))
 
+        state = utils.load_state()
+        if state is not None:
+            self.set_state(state)
+
     def __on_message_callback(self, queue: str, msg: bytes) -> bool:
-        try:
-            decoded = EofWithId.decode(msg)
-        except Exception:
-            decoded = Eof.decode(msg)
-            raise ValueError(f"Unknown packet: {decoded}")
+        decoded = EofWithId.decode(msg)
 
         outgoing_messages = self.handle_message(queue, decoded)
 
         for (routing_key, messages) in outgoing_messages.items():
             for message in messages:
                 self._rabbit.send_to_route("control", routing_key, message)
+
+        state = self.get_state()
+        utils.save_state(state)
+
         return True
 
     @abc.abstractmethod
@@ -41,3 +43,11 @@ class BasicSynchronizer(ABC):
 
     def start(self):
         self._rabbit.start()
+
+    @abc.abstractmethod
+    def get_state(self) -> bytes:
+        pass
+
+    @abc.abstractmethod
+    def set_state(self, state: bytes):
+        pass

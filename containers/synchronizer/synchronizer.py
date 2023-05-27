@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import logging
+import pickle
 from dataclasses import dataclass
 from typing import Dict, List
 
@@ -35,6 +36,16 @@ class Synchronizer(BasicSynchronizer):
             output[eof_output_queue] = [GenericPacket(1, Eof(city_name)).encode()]
 
         return output
+
+    def get_state(self) -> bytes:
+        state = {
+            "eofs_received": self._eofs_received
+        }
+        return pickle.dumps(state)
+
+    def set_state(self, state: bytes):
+        state = pickle.loads(state)
+        self._eofs_received = state["eofs_received"]
 
 
 def main():
