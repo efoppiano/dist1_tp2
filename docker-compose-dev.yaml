@@ -26,6 +26,8 @@ services:
     environment:
       - PYTHONHASHSEED=0
       - REPLICA_ID=0
+      - WEATHER_SIDE_TABLE_QUEUE_NAME=publish_weather
+      - STATION_SIDE_TABLE_QUEUE_NAME=publish_station
     restart: on-failure
   gateway_1:
     container_name: gateway_1
@@ -39,32 +41,8 @@ services:
     environment:
       - PYTHONHASHSEED=0
       - REPLICA_ID=1
-    restart: on-failure
-  gateway_2:
-    container_name: gateway_2
-    build:
-      context: ./containers
-      dockerfile: gateway/Dockerfile
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    entrypoint: python3 /opt/app/gateway.py
-    environment:
-      - PYTHONHASHSEED=0
-      - REPLICA_ID=2
-    restart: on-failure
-  gateway_3:
-    container_name: gateway_3
-    build:
-      context: ./containers
-      dockerfile: gateway/Dockerfile
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    entrypoint: python3 /opt/app/gateway.py
-    environment:
-      - PYTHONHASHSEED=0
-      - REPLICA_ID=3
+      - WEATHER_SIDE_TABLE_QUEUE_NAME=publish_weather
+      - STATION_SIDE_TABLE_QUEUE_NAME=publish_station
     restart: on-failure
   response_provider:
     container_name: response_provider
@@ -84,17 +62,14 @@ services:
     depends_on:
       - gateway_0
       - gateway_1
-      - gateway_2
     environment:
       - PYTHONUNBUFFERED=1
       - PYTHONHASHSEED=1
       - DATA_FOLDER_PATH=/opt/app/.data
-      - GATEWAY_PREFIX=gateway
-      - GATEWAY_AMOUNT=4
       - REQ_ADDR=tcp://response_provider:5555
       - CITIES=montreal,washington,toronto
     volumes:
-      - ./.data_3/:/opt/app/.data/
+      - ./.data_5/:/opt/app/.data/
     restart: on-failure
   synchronizer:
     build:
@@ -117,7 +92,7 @@ services:
     entrypoint: python3 /opt/app/weather_aggregator.py
     environment:
       - PYTHONHASHSEED=0
-      - SIDE_TABLE_QUEUE_NAME=weather
+      - SIDE_TABLE_QUEUE_NAME=publish_weather
       - REPLICA_ID=0
     restart: on-failure
     volumes:
@@ -132,7 +107,7 @@ services:
     entrypoint: python3 /opt/app/weather_aggregator.py
     environment:
       - PYTHONHASHSEED=0
-      - SIDE_TABLE_QUEUE_NAME=weather
+      - SIDE_TABLE_QUEUE_NAME=publish_weather
       - REPLICA_ID=1
     restart: on-failure
     volumes:
@@ -147,7 +122,7 @@ services:
     entrypoint: python3 /opt/app/station_aggregator.py
     environment:
       - PYTHONHASHSEED=0
-      - SIDE_TABLE_QUEUE_NAME=station
+      - SIDE_TABLE_QUEUE_NAME=publish_station
       - REPLICA_ID=0
     restart: on-failure
     volumes:
@@ -162,7 +137,7 @@ services:
     entrypoint: python3 /opt/app/station_aggregator.py
     environment:
       - PYTHONHASHSEED=0
-      - SIDE_TABLE_QUEUE_NAME=station
+      - SIDE_TABLE_QUEUE_NAME=publish_station
       - REPLICA_ID=1
     restart: on-failure
     volumes:
@@ -177,7 +152,7 @@ services:
     entrypoint: python3 /opt/app/station_aggregator.py
     environment:
       - PYTHONHASHSEED=0
-      - SIDE_TABLE_QUEUE_NAME=station
+      - SIDE_TABLE_QUEUE_NAME=publish_station
       - REPLICA_ID=2
     restart: on-failure
     volumes:
@@ -192,7 +167,7 @@ services:
     entrypoint: python3 /opt/app/station_aggregator.py
     environment:
       - PYTHONHASHSEED=0
-      - SIDE_TABLE_QUEUE_NAME=station
+      - SIDE_TABLE_QUEUE_NAME=publish_station
       - REPLICA_ID=3
     restart: on-failure
     volumes:

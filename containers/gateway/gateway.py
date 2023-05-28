@@ -1,138 +1,105 @@
 import logging
-import queue
-import signal
-import threading
-from typing import Union, List
+import os
+from typing import Dict, List, Union
 
-import zmq
-
+from common.basic_filter import BasicFilter
 from common.linker.linker import Linker
-from common.packet_factory import PacketFactory
-from common.packets.aggregator_packets import ChunkOrStop, StopPacket
 from common.packets.eof_with_id import EofWithId
-from common.packets.generic_packet import GenericPacket
+from common.packets.gateway_in import GatewayIn
+from common.packets.gateway_in_or_weather import GatewayInOrWeather
+from common.packets.gateway_out_or_station import GatewayOutOrStation
 from common.packets.station_side_table_info import StationSideTableInfo
+from common.packets.stop_packet import StopPacket
 from common.packets.weather_side_table_info import WeatherSideTableInfo
-from common.rabbit_middleware import Rabbit
-from common.readers import WeatherInfo, StationInfo, TripInfo
-from common.utils import initialize_log, datetime_str_to_date_str
+from common.readers import ClientGatewayPacket, ClientEofPacket, StationInfo, WeatherInfo, TripInfo
+from common.utils import initialize_log
+
+REPLICA_ID = os.environ["REPLICA_ID"]
+WEATHER_SIDE_TABLE_QUEUE_NAME = os.environ["WEATHER_SIDE_TABLE_QUEUE_NAME"]
+STATION_SIDE_TABLE_QUEUE_NAME = os.environ["STATION_SIDE_TABLE_QUEUE_NAME"]
 
 
-class Gateway:
-    def __init__(self, zmq_addr: str):
-        self._zmq_addr = zmq_addr
-        self._context = zmq.Context()
+class Gateway(BasicFilter):
+    def __init__(self, replica_id: int, weather_side_table_queue_name: str, station_side_table_queue_name: str):
+        super().__init__(replica_id)
 
-        self._mpmc_queue = queue.Queue()
-        rabbit = Rabbit("rabbitmq")
-        self._listener_thread = threading.Thread(target=self.__listen_queue_and_send_to_rabbit, args=(rabbit,))
-        self._listener_thread.start()
+        self._replica_id = replica_id
+        self._weather_side_table_queue_name = weather_side_table_queue_name
+        self._station_side_table_queue_name = station_side_table_queue_name
 
-        self.__set_up_signal_handler()
-
-    def __listen_queue_and_send_to_rabbit(self, rabbit):
-        while True:
-            message = self._mpmc_queue.get()
-            if message["type"] == "produce":
-                rabbit.produce(message["queue"], message["message"])
-            else:
-                rabbit.publish(message["queue"], message["message"])
-
-    def __schedule_message_to_produce(self, queue: str, message: bytes):
-        self._mpmc_queue.put({"type": "produce", "queue": queue, "message": message})
-
-    def __schedule_message_to_publish(self, queue: str, message: bytes):
-        self._mpmc_queue.put({"type": "publish", "queue": queue, "message": message})
-
-    def __set_up_signal_handler(self):
-        def signal_handler(sig, frame):
-            logging.info("action: shutdown_gateway | result: in_progress")
-            self._context.term()
-            logging.info("action: shutdown_gateway | result: success")
-            if self.sig_hand_prev is not None:
-                self.sig_hand_prev(sig, frame)
-
-        self.sig_hand_prev = signal.signal(signal.SIGTERM, signal_handler)
-
-    @staticmethod
-    def __build_weather_side_table_info_chunk(weather_info_list: List[WeatherInfo]) -> List[bytes]:
-        chunk = []
-        for weather_info in weather_info_list:
-            data_packet = WeatherSideTableInfo(weather_info.city_name, weather_info.date, weather_info.prectot).encode()
-            chunk.append(data_packet)
-        return chunk
-
-    def __handle_weather_packet(self, weather_info_list_or_city_eof: Union[List[WeatherInfo], str]):
-        if isinstance(weather_info_list_or_city_eof, str):
-            city_name = weather_info_list_or_city_eof
-            self.__schedule_message_to_publish(f"weather", ChunkOrStop(StopPacket(city_name)).encode())
-        else:
-            chunk = self.__build_weather_side_table_info_chunk(weather_info_list_or_city_eof)
-            self.__schedule_message_to_publish(f"weather", ChunkOrStop(chunk).encode())
-
-    @staticmethod
-    def __build_station_side_table_info_chunk(station_info_list: List[StationInfo]) -> List[bytes]:
-        chunk = []
-        for station_info in station_info_list:
-            data_packet = StationSideTableInfo(station_info.city_name, station_info.code, station_info.yearid,
-                                               station_info.name, station_info.latitude,
-                                               station_info.longitude).encode()
-            chunk.append(data_packet)
-        return chunk
-
-    def __handle_station_packet(self, station_info_list_or_city_eof: Union[List[StationInfo], str]):
-        if isinstance(station_info_list_or_city_eof, str):
-            city_name = station_info_list_or_city_eof
-            self.__schedule_message_to_publish(f"station", ChunkOrStop(StopPacket(city_name)).encode())
-        else:
-            station_info_list = station_info_list_or_city_eof
-
-            chunk = self.__build_station_side_table_info_chunk(station_info_list)
-
-            data_packet = ChunkOrStop(chunk).encode()
-
-            self.__schedule_message_to_publish(f"station", data_packet)
-
-    def __handle_trip_packet(self, trip_info_list_or_city_eof: Union[List[TripInfo], str]):
-        if isinstance(trip_info_list_or_city_eof, str):
-            city_name = trip_info_list_or_city_eof
+    def __handle_client_eof(self, packet: ClientEofPacket) -> Dict[str, List[bytes]]:
+        if packet.file_type == "weather":
+            return {
+                self._weather_side_table_queue_name: [GatewayInOrWeather(StopPacket(packet.city_name)).encode()]
+            }
+        elif packet.file_type == "station":
+            return {
+                self._station_side_table_queue_name: [GatewayOutOrStation(StopPacket(packet.city_name)).encode()]
+            }
+        elif packet.file_type == "trip":
             queue_name = Linker().get_eof_in_queue(self)
-            self.__schedule_message_to_produce(queue_name, EofWithId(city_name, 1).encode())
+            return {
+                # The replica_id here is not relevant, because only one gateway can
+                # handle data of a city
+                queue_name: [EofWithId(packet.city_name, self._replica_id).encode()]
+            }
         else:
-            trip_info_list = trip_info_list_or_city_eof
-            first_trip_info = trip_info_list[0]
-            first_start_date = datetime_str_to_date_str(first_trip_info.start_datetime)
-            message = GenericPacket(1, [trip_info.encode() for trip_info in trip_info_list])
+            raise ValueError(f"Unknown file type: {packet.file_type}")
 
-            queue_name = Linker().get_output_queue(self, hashing_key=first_start_date)
-            self.__schedule_message_to_produce(queue_name, message.encode())
+    def __handle_list(self, packet: List[Union[WeatherInfo, StationInfo, TripInfo]]) -> Dict[str, List[bytes]]:
+        if len(packet) == 0:
+            return {}
+        element_type = type(packet[0])
+        if element_type == WeatherInfo:
+            packets_to_send = []
+            for weather_info in packet:
+                packets_to_send.append(
+                    GatewayInOrWeather(
+                        WeatherSideTableInfo(weather_info.city_name, weather_info.date, weather_info.prectot)).encode())
+            return {
+                self._weather_side_table_queue_name: packets_to_send
+            }
+        elif element_type == StationInfo:
+            packets_to_send = []
+            for station_info in packet:
+                packets_to_send.append(
+                    GatewayOutOrStation(
+                        StationSideTableInfo(station_info.city_name, station_info.code, station_info.yearid,
+                                             station_info.name, station_info.latitude,
+                                             station_info.longitude)).encode())
+            return {
+                self._station_side_table_queue_name: packets_to_send
+            }
+        elif element_type == TripInfo:
+            queue_name = Linker().get_output_queue(self, hashing_key=packet[0].start_datetime)
+            packets_to_send = []
+            for t in packet:
+                gateway_in = GatewayIn(t.trip_id, t.city_name, t.start_datetime,
+                                       t.start_station_code, t.end_datetime,
+                                       t.end_station_code, t.duration_sec, t.is_member,
+                                       t.yearid)
+                packets_to_send.append(GatewayInOrWeather(gateway_in).encode())
 
-    def __start(self):
-        socket = self._context.socket(zmq.PULL)
-        socket.setsockopt(zmq.LINGER, 0)
-        socket.bind(self._zmq_addr)
-        try:
-            while True:
-                message = bytes(socket.recv())
-                PacketFactory.handle_packet(message,
-                                            self.__handle_weather_packet,
-                                            self.__handle_station_packet,
-                                            self.__handle_trip_packet)
-        except Exception as e:
-            logging.info(f"action: gateway_start | status: interrupted | error: {e}")
-            raise e
-        finally:
-            socket.close()
+            return {
+                queue_name: packets_to_send
+            }
+        else:
+            raise ValueError(f"Unknown packet type: {element_type}")
 
-    def start(self):
-        thread = threading.Thread(target=self.__start)
-        thread.start()
-        thread.join()
+    def handle_message(self, message: bytes) -> Dict[str, List[bytes]]:
+        packet = ClientGatewayPacket.decode(message)
+
+        if isinstance(packet.data, ClientEofPacket):
+            return self.__handle_client_eof(packet.data)
+        elif isinstance(packet.data, list):
+            return self.__handle_list(packet.data)
+        else:
+            raise ValueError(f"Unknown packet type: {type(packet.data)}")
 
 
 def main():
     initialize_log(logging.INFO)
-    gateway = Gateway("tcp://0.0.0.0:5555")
+    gateway = Gateway(int(REPLICA_ID), WEATHER_SIDE_TABLE_QUEUE_NAME, STATION_SIDE_TABLE_QUEUE_NAME)
     gateway.start()
 
 

@@ -1,4 +1,9 @@
 {
+  "client_in": {
+    "left": "Client",
+    "right": "Gateway",
+    "out_amount": 2
+  },
   "gateway_in": {
     "left": "Gateway",
     "right": "WeatherAggregator",

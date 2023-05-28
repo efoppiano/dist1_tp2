@@ -10,7 +10,10 @@ from common.linker.linker import Linker
 from common.packets.eof import Eof
 from common.packets.eof_with_id import EofWithId
 from common.packets.gateway_in import GatewayIn
+from common.packets.gateway_in_or_weather import GatewayInOrWeather
 from common.packets.gateway_out import GatewayOut
+from common.packets.gateway_out_or_station import GatewayOutOrStation
+from common.packets.stop_packet import StopPacket
 from common.packets.weather_side_table_info import WeatherSideTableInfo
 from common.utils import initialize_log, parse_date, datetime_str_to_date_str
 
@@ -28,8 +31,7 @@ class WeatherAggregator(BasicAggregator):
         self._stopped_cities = set()
         self._delayed_eofs = set()
 
-    def handle_side_table_message(self, message: bytes):
-        packet = WeatherSideTableInfo.decode(message)
+    def __handle_side_table_message(self, packet: WeatherSideTableInfo):
         date = parse_date(packet.date)
         yesterday = (date - timedelta(days=1)).date()
         yesterday = yesterday.strftime("%Y-%m-%d")
@@ -58,8 +60,7 @@ class WeatherAggregator(BasicAggregator):
             return None
         return self._weather[city_name][date]
 
-    def handle_message(self, message: bytes) -> Dict[str, List[bytes]]:
-        packet = GatewayIn.decode(message)
+    def __handle_gateway_in(self, packet: GatewayIn) -> Dict[str, List[bytes]]:
         start_date = datetime_str_to_date_str(packet.start_datetime)
 
         prectot = self.__search_prec_for_date(packet.city_name, start_date)
@@ -71,16 +72,29 @@ class WeatherAggregator(BasicAggregator):
                 logging.warning(f"Could not find weather for city {packet.city_name} and date {start_date}.")
             return {}
 
-        output_packet = GatewayOut(packet.trip_id, packet.city_name, start_date, packet.start_station_code,
-                                   packet.end_station_code,
-                                   packet.duration_sec, packet.yearid, prectot)
+        output_packet = GatewayOutOrStation(
+            GatewayOut(packet.trip_id, packet.city_name, start_date, packet.start_station_code,
+                       packet.end_station_code,
+                       packet.duration_sec, packet.yearid, prectot))
 
         output_queue = Linker().get_output_queue(self, hashing_key=start_date)
         return {
             output_queue: [output_packet.encode()]
         }
 
-    def handle_stop(self, city_name: str) -> Dict[str, List[bytes]]:
+    def handle_message(self, message: bytes) -> Dict[str, List[bytes]]:
+        packet = GatewayInOrWeather.decode(message)
+        if isinstance(packet.data, GatewayIn):
+            return self.__handle_gateway_in(packet.data)
+        elif isinstance(packet.data, WeatherSideTableInfo):
+            self.__handle_side_table_message(packet.data)
+            return {}
+        elif isinstance(packet.data, StopPacket):
+            return self.__handle_stop(packet.data.city_name)
+        else:
+            raise ValueError(f"Unknown packet type: {packet}")
+
+    def __handle_stop(self, city_name: str) -> Dict[str, List[bytes]]:
         self._stopped_cities.add(city_name)
         output_messages = {}
         for packet in self._unanswered_packets.get(city_name, []):

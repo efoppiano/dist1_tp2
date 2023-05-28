@@ -2,7 +2,7 @@ import struct
 from abc import ABC
 from dataclasses import dataclass
 import typing
-from typing import List, Union, Generic, Type, Tuple, Any
+from typing import List, Union, Generic, Type, Any, Tuple
 
 T = typing.TypeVar("T")
 S = typing.TypeVar("S")

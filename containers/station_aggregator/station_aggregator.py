@@ -10,8 +10,10 @@ from common.packets.distance_calc_in import DistanceCalcIn
 from common.packets.eof import Eof
 from common.packets.eof_with_id import EofWithId
 from common.packets.gateway_out import GatewayOut
+from common.packets.gateway_out_or_station import GatewayOutOrStation
 from common.packets.prec_filter_in import PrecFilterIn
 from common.packets.station_side_table_info import StationSideTableInfo
+from common.packets.stop_packet import StopPacket
 from common.packets.year_filter_in import YearFilterIn
 from common.utils import initialize_log
 
@@ -49,8 +51,7 @@ class StationAggregator(BasicAggregator):
         city_name = message.city_name
         return self.__handle_eof_with_city_name(city_name)
 
-    def handle_side_table_message(self, message: bytes):
-        packet = StationSideTableInfo.decode(message)
+    def __handle_side_table_message(self, packet: StationSideTableInfo):
         city_name, station_code, yearid = packet.city_name, packet.station_code, packet.yearid
 
         self._stations.setdefault(city_name, {})
@@ -110,9 +111,7 @@ class StationAggregator(BasicAggregator):
 
         return [prec_filter_in_packet.encode()], [year_filter_in_packet.encode()], distance_calc_in_packets_list
 
-    def handle_message(self, message: bytes) -> Dict[str, List[bytes]]:
-        packet = GatewayOut.decode(message)
-
+    def __handle_gateway_out(self, packet: GatewayOut) -> Dict[str, List[bytes]]:
         stations = self.__search_stations(packet)
         if not stations:
             if packet.city_name not in self._stopped_cities:
@@ -135,7 +134,17 @@ class StationAggregator(BasicAggregator):
         }
         return output
 
-    def handle_stop(self, city_name: str) -> Dict[str, List[bytes]]:
+    def handle_message(self, message: bytes) -> Dict[str, List[bytes]]:
+        packet = GatewayOutOrStation.decode(message)
+        if isinstance(packet.data, GatewayOut):
+            return self.__handle_gateway_out(packet.data)
+        elif isinstance(packet.data, StationSideTableInfo):
+            self.__handle_side_table_message(packet.data)
+            return {}
+        elif isinstance(packet.data, StopPacket):
+            return self.__handle_stop(packet.data.city_name)
+
+    def __handle_stop(self, city_name: str) -> Dict[str, List[bytes]]:
         self._stopped_cities.add(city_name)
         output_messages = {}
         for packet in self._unanswered_packets.get(city_name, []):

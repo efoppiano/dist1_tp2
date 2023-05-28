@@ -1,5 +1,4 @@
 import abc
-import logging
 import os
 from abc import ABC
 from typing import List, Dict, Union
@@ -52,7 +51,10 @@ class BasicFilter(ABC):
                     self._rabbit.produce(queue, message)
             elif len(messages) > 0:
                 encoded = GenericPacket(self._basic_filter_replica_id, messages).encode()
-                self._rabbit.produce(queue, encoded)
+                if queue.startswith("publish_"):
+                    self._rabbit.publish(queue, encoded)
+                else:
+                    self._rabbit.produce(queue, encoded)
 
         return True
 

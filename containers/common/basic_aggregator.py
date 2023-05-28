@@ -6,7 +6,6 @@ from typing import Dict, List
 
 from common import utils
 from common.linker.linker import Linker
-from common.packets.aggregator_packets import ChunkOrStop, StopPacket
 from common.packets.eof import Eof
 from common.packets.generic_packet import GenericPacket
 from common.rabbit_middleware import Rabbit
@@ -32,16 +31,17 @@ class BasicAggregator(ABC):
             self.set_state(state)
 
     def __on_side_table_message_callback(self, msg: bytes) -> bool:
-        decoded = ChunkOrStop.decode(msg)
+        decoded = GenericPacket.decode(msg)
         if isinstance(decoded.data, list):
-            for message in decoded.data:
-                self.handle_side_table_message(message)
-        elif isinstance(decoded.data, StopPacket):
-            logging.info(f"action: side_table_receive_message | result: stop | city_name: {decoded.data.city_name}")
-            outgoing_messages = self.handle_stop(decoded.data.city_name)
-            self.__send_messages(outgoing_messages)
+            outgoing_messages = self.__handle_chunk(decoded.data)
+        elif isinstance(decoded.data, bytes):
+            outgoing_messages = self.handle_message(decoded.data)
+        elif isinstance(decoded.data, Eof):
+            raise ValueError("Unexpected EOF in side table queue")
         else:
             raise ValueError(f"Unexpected message type: {type(decoded.data)}")
+
+        self.__send_messages(outgoing_messages)
 
         state = self.get_state()
         utils.save_state(state)
@@ -90,14 +90,6 @@ class BasicAggregator(ABC):
 
     @abc.abstractmethod
     def handle_eof(self, message: Eof) -> Dict[str, List[bytes]]:
-        pass
-
-    @abc.abstractmethod
-    def handle_side_table_message(self, message: bytes):
-        pass
-
-    @abc.abstractmethod
-    def handle_stop(self, city_name: str) -> Dict[str, List[bytes]]:
         pass
 
     def start(self):

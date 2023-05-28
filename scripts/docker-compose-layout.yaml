@@ -25,6 +25,8 @@ services:
     entrypoint: python3 /opt/app/gateway.py
     environment:
       - PYTHONHASHSEED=0
+      - WEATHER_SIDE_TABLE_QUEUE_NAME=publish_weather
+      - STATION_SIDE_TABLE_QUEUE_NAME=publish_station
 
 
   response_provider:
@@ -47,7 +49,7 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - DATA_FOLDER_PATH=/opt/app/.data
-      - PUSH_ADDR=tcp://gateway:5555
+      - PUSH_QUEUE=client_in
       - REQ_ADDR=tcp://response_provider:5555
       - CITIES=montreal,washington,toronto
     volumes:
@@ -72,7 +74,7 @@ services:
     entrypoint: python3 /opt/app/weather_aggregator.py
     environment:
       - PYTHONHASHSEED=0
-      - SIDE_TABLE_QUEUE_NAME=weather
+      - SIDE_TABLE_QUEUE_NAME=publish_weather
 
   station_aggregator:
     build:
@@ -84,7 +86,7 @@ services:
     entrypoint: python3 /opt/app/station_aggregator.py
     environment:
       - PYTHONHASHSEED=0
-      - SIDE_TABLE_QUEUE_NAME=station
+      - SIDE_TABLE_QUEUE_NAME=publish_station
 
   prec_filter:
     build:
