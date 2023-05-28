@@ -1,4 +1,5 @@
 import abc
+import logging
 import os
 from abc import ABC
 from typing import List, Dict, Union
@@ -14,6 +15,8 @@ RABBIT_HOST = os.environ.get("RABBIT_HOST", "rabbitmq")
 
 class BasicFilter(ABC):
     def __init__(self, replica_id: int):
+        logging.info(
+            f"action: init | result: in_progress | filter: {self.__class__.__name__} | replica_id: {replica_id}")
         self._input_queue = Linker().get_input_queue(self, replica_id)
         self._rabbit = Rabbit(RABBIT_HOST)
         self._rabbit.consume(self._input_queue, self.on_message_callback)

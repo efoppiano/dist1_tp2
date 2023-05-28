@@ -13,7 +13,6 @@ services:
       timeout: 3s
       retries: 10
       start_period: 50s
-    restart: on-failure
   gateway_0:
     container_name: gateway_0
     build:
@@ -25,10 +24,10 @@ services:
     entrypoint: python3 /opt/app/gateway.py
     environment:
       - PYTHONHASHSEED=0
+      - PYTHONUNBUFFERED=1
       - REPLICA_ID=0
       - WEATHER_SIDE_TABLE_QUEUE_NAME=publish_weather
       - STATION_SIDE_TABLE_QUEUE_NAME=publish_station
-    restart: on-failure
   gateway_1:
     container_name: gateway_1
     build:
@@ -40,20 +39,22 @@ services:
     entrypoint: python3 /opt/app/gateway.py
     environment:
       - PYTHONHASHSEED=0
+      - PYTHONUNBUFFERED=1
       - REPLICA_ID=1
       - WEATHER_SIDE_TABLE_QUEUE_NAME=publish_weather
       - STATION_SIDE_TABLE_QUEUE_NAME=publish_station
-    restart: on-failure
   response_provider:
     container_name: response_provider
     build:
       context: ./containers
       dockerfile: response_provider/Dockerfile
     entrypoint: python3 /opt/app/response_provider.py
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONHASHSEED=1
     depends_on:
       rabbitmq:
         condition: service_healthy
-    restart: on-failure
   client:
     build:
       context: ./containers
@@ -69,8 +70,7 @@ services:
       - REQ_ADDR=tcp://response_provider:5555
       - CITIES=montreal,washington,toronto
     volumes:
-      - ./.data_5/:/opt/app/.data/
-    restart: on-failure
+      - ./.data_3/:/opt/app/.data/
   synchronizer:
     build:
       context: ./containers
@@ -79,7 +79,9 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
-    restart: on-failure
+    environment:
+      - PYTHONHASHSEED=0
+      - PYTHONUNBUFFERED=1
     volumes:
       - .volumes/synchronizer:/volumes
   weather_aggregator_0:
@@ -92,9 +94,9 @@ services:
     entrypoint: python3 /opt/app/weather_aggregator.py
     environment:
       - PYTHONHASHSEED=0
+      - PYTHONUNBUFFERED=1
       - SIDE_TABLE_QUEUE_NAME=publish_weather
       - REPLICA_ID=0
-    restart: on-failure
     volumes:
       - .volumes/weather_aggregator_0:/volumes
   weather_aggregator_1:
@@ -107,9 +109,9 @@ services:
     entrypoint: python3 /opt/app/weather_aggregator.py
     environment:
       - PYTHONHASHSEED=0
+      - PYTHONUNBUFFERED=1
       - SIDE_TABLE_QUEUE_NAME=publish_weather
       - REPLICA_ID=1
-    restart: on-failure
     volumes:
       - .volumes/weather_aggregator_1:/volumes
   station_aggregator_0:
@@ -122,9 +124,9 @@ services:
     entrypoint: python3 /opt/app/station_aggregator.py
     environment:
       - PYTHONHASHSEED=0
+      - PYTHONUNBUFFERED=1
       - SIDE_TABLE_QUEUE_NAME=publish_station
       - REPLICA_ID=0
-    restart: on-failure
     volumes:
       - .volumes/station_aggregator_0:/volumes
   station_aggregator_1:
@@ -137,9 +139,9 @@ services:
     entrypoint: python3 /opt/app/station_aggregator.py
     environment:
       - PYTHONHASHSEED=0
+      - PYTHONUNBUFFERED=1
       - SIDE_TABLE_QUEUE_NAME=publish_station
       - REPLICA_ID=1
-    restart: on-failure
     volumes:
       - .volumes/station_aggregator_1:/volumes
   station_aggregator_2:
@@ -152,9 +154,9 @@ services:
     entrypoint: python3 /opt/app/station_aggregator.py
     environment:
       - PYTHONHASHSEED=0
+      - PYTHONUNBUFFERED=1
       - SIDE_TABLE_QUEUE_NAME=publish_station
       - REPLICA_ID=2
-    restart: on-failure
     volumes:
       - .volumes/station_aggregator_2:/volumes
   station_aggregator_3:
@@ -167,9 +169,9 @@ services:
     entrypoint: python3 /opt/app/station_aggregator.py
     environment:
       - PYTHONHASHSEED=0
+      - PYTHONUNBUFFERED=1
       - SIDE_TABLE_QUEUE_NAME=publish_station
       - REPLICA_ID=3
-    restart: on-failure
     volumes:
       - .volumes/station_aggregator_3:/volumes
   prec_filter_0:
@@ -182,9 +184,9 @@ services:
     entrypoint: python3 /opt/app/prec_filter.py
     environment:
       - PYTHONHASHSEED=0
+      - PYTHONUNBUFFERED=1
       - PREC_LIMIT=30
       - REPLICA_ID=0
-    restart: on-failure
   prec_filter_1:
     build:
       context: ./containers
@@ -195,9 +197,9 @@ services:
     entrypoint: python3 /opt/app/prec_filter.py
     environment:
       - PYTHONHASHSEED=0
+      - PYTHONUNBUFFERED=1
       - PREC_LIMIT=30
       - REPLICA_ID=1
-    restart: on-failure
   dur_avg_provider_0:
     build:
       context: ./containers
@@ -208,8 +210,8 @@ services:
     entrypoint: python3 /opt/app/dur_avg_provider.py
     environment:
       - PYTHONHASHSEED=0
+      - PYTHONUNBUFFERED=1
       - REPLICA_ID=0
-    restart: on-failure
     volumes:
       - .volumes/dur_avg_provider_0:/volumes
   distance_calculator_0:
@@ -222,8 +224,8 @@ services:
     entrypoint: python3 /opt/app/distance_calculator.py
     environment:
       - PYTHONHASHSEED=0
+      - PYTHONUNBUFFERED=1
       - REPLICA_ID=0
-    restart: on-failure
   distance_calculator_1:
     build:
       context: ./containers
@@ -234,8 +236,8 @@ services:
     entrypoint: python3 /opt/app/distance_calculator.py
     environment:
       - PYTHONHASHSEED=0
+      - PYTHONUNBUFFERED=1
       - REPLICA_ID=1
-    restart: on-failure
   dist_mean_calculator_0:
     build:
       context: ./containers
@@ -246,8 +248,8 @@ services:
     entrypoint: python3 /opt/app/dist_mean_calculator.py
     environment:
       - PYTHONHASHSEED=0
+      - PYTHONUNBUFFERED=1
       - REPLICA_ID=0
-    restart: on-failure
     volumes:
       - .volumes/dist_mean_calculator_0:/volumes
   dist_mean_calculator_1:
@@ -260,8 +262,8 @@ services:
     entrypoint: python3 /opt/app/dist_mean_calculator.py
     environment:
       - PYTHONHASHSEED=0
+      - PYTHONUNBUFFERED=1
       - REPLICA_ID=1
-    restart: on-failure
     volumes:
       - .volumes/dist_mean_calculator_1:/volumes
   dist_mean_provider_0:
@@ -274,9 +276,9 @@ services:
     entrypoint: python3 /opt/app/dist_mean_provider.py
     environment:
       - PYTHONHASHSEED=0
+      - PYTHONUNBUFFERED=1
       - MEAN_THRESHOLD=6.0
       - REPLICA_ID=0
-    restart: on-failure
   year_filter_0:
     build:
       context: ./containers
@@ -287,8 +289,8 @@ services:
     entrypoint: python3 /opt/app/year_filter.py
     environment:
       - PYTHONHASHSEED=0
+      - PYTHONUNBUFFERED=1
       - REPLICA_ID=0
-    restart: on-failure
   year_filter_1:
     build:
       context: ./containers
@@ -299,8 +301,8 @@ services:
     entrypoint: python3 /opt/app/year_filter.py
     environment:
       - PYTHONHASHSEED=0
+      - PYTHONUNBUFFERED=1
       - REPLICA_ID=1
-    restart: on-failure
   trips_counter_0:
     build:
       context: ./containers
@@ -311,8 +313,8 @@ services:
     entrypoint: python3 /opt/app/trips_counter.py
     environment:
       - PYTHONHASHSEED=0
+      - PYTHONUNBUFFERED=1
       - REPLICA_ID=0
-    restart: on-failure
     volumes:
       - .volumes/trips_counter_0:/volumes
   trips_counter_1:
@@ -325,8 +327,8 @@ services:
     entrypoint: python3 /opt/app/trips_counter.py
     environment:
       - PYTHONHASHSEED=0
+      - PYTHONUNBUFFERED=1
       - REPLICA_ID=1
-    restart: on-failure
     volumes:
       - .volumes/trips_counter_1:/volumes
   trip_count_provider_0:
@@ -339,6 +341,6 @@ services:
     entrypoint: python3 /opt/app/trip_count_provider.py
     environment:
       - PYTHONHASHSEED=0
+      - PYTHONUNBUFFERED=1
       - MULT_THRESHOLD=2
       - REPLICA_ID=0
-    restart: on-failure

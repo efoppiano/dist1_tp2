@@ -27,7 +27,7 @@ class StationAggregator(BasicAggregator):
 
         self._replica_id = replica_id
         self._stations = {}
-        self._unanswered_packets = {}
+        self._unanswered_packets: Dict[str, List[GatewayOut]] = {}
         self._stopped_cities = set()
         self._delayed_eofs = set()
 
@@ -148,7 +148,7 @@ class StationAggregator(BasicAggregator):
         self._stopped_cities.add(city_name)
         output_messages = {}
         for packet in self._unanswered_packets.get(city_name, []):
-            new_output_messages = self.handle_message(packet.encode())
+            new_output_messages = self.__handle_gateway_out(packet)
             for queue_name, messages in new_output_messages.items():
                 output_messages.setdefault(queue_name, [])
                 output_messages[queue_name].extend(messages)

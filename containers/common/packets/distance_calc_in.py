@@ -5,7 +5,7 @@ from common.packets.basic_packet import BasicPacket
 
 @dataclass
 class DistanceCalcIn(BasicPacket):
-    trip_id: int
+    trip_id: str
     city_name: str
 
     start_station_name: str

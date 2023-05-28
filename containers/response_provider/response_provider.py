@@ -16,7 +16,7 @@ class ResponseProvider:
         self._cities = cities
         self._context = zmq.Context()
 
-        self._rabbit = Rabbit("rabbitmq")
+        self._rabbit = Rabbit("rabbitmq", use_heartbeat=False)
         self.__set_up_signal_handler()
 
     def __set_up_signal_handler(self):

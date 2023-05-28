@@ -5,7 +5,7 @@ from common.packets.basic_packet import BasicPacket
 
 @dataclass
 class TripsCountByYearJoined(BasicPacket):
-    id: int
+    packet_id: str
     city_name: str
     start_station_name: str
     trips_16: int

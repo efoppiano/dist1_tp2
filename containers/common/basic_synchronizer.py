@@ -8,7 +8,6 @@ from common.packets.eof_with_id import EofWithId
 from common.rabbit_middleware import Rabbit
 
 RABBIT_HOST = os.environ.get("RABBIT_HOST", "rabbitmq")
-CHUNK_SIZE = 512
 
 
 class BasicSynchronizer(ABC):

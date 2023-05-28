@@ -17,11 +17,10 @@ REPLICA_ID = os.environ["REPLICA_ID"]
 
 class DurAvgProvider(BasicStatefulFilter):
     def __init__(self, replica_id: int):
-        super().__init__(replica_id)
-
         self._replica_id = replica_id
         self._output_queue = Linker().get_output_queue(self)
         self._avg_buffer = {}
+        super().__init__(replica_id)
 
     def handle_eof(self, message: Eof) -> Dict[str, List[bytes]]:
         logging.info(f"Received EOF for city {message.city_name}")

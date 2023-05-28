@@ -1,6 +1,9 @@
 import logging
 import os
+import time
+from base64 import b64encode
 from datetime import datetime, date
+from time import sleep
 from typing import Union
 
 
@@ -13,7 +16,7 @@ def initialize_log(logging_level):
     """
     logging.getLogger("pika").setLevel(logging.WARNING)
     logging.addLevelName(
-      logging.DEBUG, "\033[1;32m%s\033[1;0m" % logging.getLevelName(logging.DEBUG))
+        logging.DEBUG, "\033[1;32m%s\033[1;0m" % logging.getLevelName(logging.DEBUG))
     logging.addLevelName(
         logging.INFO, "\033[1;34m%s\033[1;0m" % logging.getLevelName(logging.INFO))
     logging.addLevelName(
@@ -71,10 +74,14 @@ def datetime_str_to_date_str(datetime_str: str) -> str:
 
 def save_state(state: bytes, path: str = "/volumes/state"):
     # Write to temp file
-    with open("/volumes/temp_state", "wb") as f:
+    with open("/volumes/temp_state", "wb", buffering=0) as f:
         f.write(state)
+        f.flush()
+        os.fsync(f.fileno())
+
     # Atomically rename temp file to state file
     os.rename("/volumes/temp_state", path)
+    os.sync()
 
 
 def load_state(path: str = "/volumes/state") -> Union[bytes, None]:

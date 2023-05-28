@@ -10,9 +10,14 @@ from common.message_queue import MessageQueue
 
 class Rabbit(MessageQueue):
 
-    def __init__(self, host: str):
-        self.connection = pika.BlockingConnection(
-            pika.ConnectionParameters(host=host, heartbeat=0))
+    def __init__(self, host: str, use_heartbeat: bool = True):
+        if use_heartbeat:
+            self.connection = pika.BlockingConnection(
+                pika.ConnectionParameters(host=host))
+        else:
+            self.connection = pika.BlockingConnection(
+                pika.ConnectionParameters(host=host, heartbeat=0))
+
         self._channel = self.connection.channel()
         self._declared_exchanges = []
         self._declared_queues = []
@@ -106,10 +111,6 @@ class Rabbit(MessageQueue):
     def call_later(self, seconds: float, callback: Callable[[], None]):
         self.connection.call_later(seconds, callback)
 
-    def start(self):
-        self._pika_thread = threading.Thread(target=self._channel.start_consuming)
-        self._pika_thread.start()
-
     def declare_queue(self, queue: str):
         if queue not in self._declared_queues:
             self._channel.queue_declare(queue=queue, durable=True)
@@ -119,3 +120,7 @@ class Rabbit(MessageQueue):
         if exchange not in self._declared_exchanges:
             self._channel.exchange_declare(exchange=exchange, exchange_type=exchange_type)
             self._declared_exchanges.append(exchange)
+
+    def start(self):
+        self._pika_thread = threading.Thread(target=self._channel.start_consuming)
+        self._pika_thread.start()
