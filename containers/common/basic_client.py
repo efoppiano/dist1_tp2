@@ -1,6 +1,7 @@
 import logging
 import signal
 import threading
+import time
 from abc import ABC, abstractmethod
 from typing import List, Iterator
 
@@ -19,7 +20,8 @@ from common.readers import WeatherInfo, StationInfo, TripInfo
 
 class BasicClient(ABC):
     def __init__(self, config: dict):
-        self._push_addr = config["push_addr"]
+        self._gateway_prefix = config["gateway_prefix"]
+        self._gateway_amount = config["gateway_amount"]
         self._req_addr = config["req_addr"]
         self._all_cities = config["cities"]
         self._context = zmq.Context()
@@ -76,11 +78,19 @@ class BasicClient(ABC):
             socket.send(PacketFactory.build_trip_packet(trip_info_list), copy=False)
         socket.send(PacketFactory.build_trip_eof(city))
 
+    def __get_gateway_addr(self, city: str) -> str:
+        gateway_number = hash(city) % self._gateway_amount
+        logging.info(
+            f"action: client_send_data | result: gateway_selected | city: {city} | gateway_number: {gateway_number}")
+        # TODO: Set port as env variable
+        return f"tcp://{self._gateway_prefix}_{gateway_number}:5555"
+
     def __send_data_from_city(self, city: str):
         logging.info(f"action: client_send_data | result: in_progress | city: {city}")
         push_socket = self._context.socket(zmq.PUSH)
         # push_socket.setsockopt(zmq.LINGER, 0)
-        push_socket.connect(self._push_addr)
+        gateway_addr = self.__get_gateway_addr(city)
+        push_socket.connect(gateway_addr)
 
         try:
             self.__send_weather_data(push_socket, city)

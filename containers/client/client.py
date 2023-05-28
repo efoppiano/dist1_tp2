@@ -10,7 +10,8 @@ from common.packets.trips_count_by_year_joined import TripsCountByYearJoined
 from common.readers import TripInfo, StationInfo, WeatherInfo, WeatherReader, StationReader, TripReader
 from common.utils import initialize_log
 
-PUSH_ADDR = os.environ["PUSH_ADDR"]
+GATEWAY_PREFIX = os.environ["GATEWAY_PREFIX"]
+GATEWAY_AMOUNT = int(os.environ["GATEWAY_AMOUNT"])
 REQ_ADDR = os.environ["REQ_ADDR"]
 CITIES = os.environ["CITIES"].split(",")
 DATA_FOLDER_PATH = os.environ["DATA_FOLDER_PATH"]
@@ -56,7 +57,8 @@ def main():
     start_time = time.time()
     client = Client({
         "data_folder_path": DATA_FOLDER_PATH,
-        "push_addr": PUSH_ADDR,
+        "gateway_prefix": GATEWAY_PREFIX,
+        "gateway_amount": GATEWAY_AMOUNT,
         "req_addr": REQ_ADDR,
         "cities": CITIES,
     })

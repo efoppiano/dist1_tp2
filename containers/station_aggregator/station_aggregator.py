@@ -27,7 +27,6 @@ class StationAggregator(BasicAggregator):
         self._stations = {}
         self._unanswered_packets = {}
         self._stopped_cities = set()
-        # TODO: add to get_state and set_state
         self._delayed_eofs = set()
 
     def __handle_eof_with_city_name(self, city_name: str) -> Dict[str, List[bytes]]:
@@ -56,7 +55,7 @@ class StationAggregator(BasicAggregator):
 
         self._stations.setdefault(city_name, {})
 
-        self._stations[city_name][(station_code, yearid)] = {
+        self._stations[city_name][f"{station_code}-{yearid}"] = {
             "station_name": packet.station_name,
             "latitude": packet.latitude,
             "longitude": packet.longitude,
@@ -64,7 +63,7 @@ class StationAggregator(BasicAggregator):
 
     def __search_station(self, city_name: str, station_code: int, yearid: int) -> Union[dict, None]:
         try:
-            return self._stations[city_name][(station_code, yearid)]
+            return self._stations[city_name][f"{station_code}-{yearid}"]
         except KeyError:
             return None
 

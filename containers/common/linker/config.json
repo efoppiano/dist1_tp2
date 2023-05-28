@@ -7,7 +7,7 @@
   "gateway_out": {
     "left": "WeatherAggregator",
     "right": "StationAggregator",
-    "out_amount": 2
+    "out_amount": 4
   },
   "prec_filter_in": {
     "left": "StationAggregator",

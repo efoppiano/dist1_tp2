@@ -6,7 +6,7 @@ services:
       context: ./containers/rabbitmq
       dockerfile: Dockerfile
     ports:
-    - 15672:15672
+      - 15672:15672
     healthcheck:
       test: rabbitmq-diagnostics check_port_connectivity
       interval: 5s
@@ -14,8 +14,8 @@ services:
       retries: 10
       start_period: 50s
     restart: on-failure
-  gateway:
-    container_name: gateway
+  gateway_0:
+    container_name: gateway_0
     build:
       context: ./containers
       dockerfile: gateway/Dockerfile
@@ -24,7 +24,47 @@ services:
         condition: service_healthy
     entrypoint: python3 /opt/app/gateway.py
     environment:
-    - PYTHONHASHSEED=0
+      - PYTHONHASHSEED=0
+      - REPLICA_ID=0
+    restart: on-failure
+  gateway_1:
+    container_name: gateway_1
+    build:
+      context: ./containers
+      dockerfile: gateway/Dockerfile
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    entrypoint: python3 /opt/app/gateway.py
+    environment:
+      - PYTHONHASHSEED=0
+      - REPLICA_ID=1
+    restart: on-failure
+  gateway_2:
+    container_name: gateway_2
+    build:
+      context: ./containers
+      dockerfile: gateway/Dockerfile
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    entrypoint: python3 /opt/app/gateway.py
+    environment:
+      - PYTHONHASHSEED=0
+      - REPLICA_ID=2
+    restart: on-failure
+  gateway_3:
+    container_name: gateway_3
+    build:
+      context: ./containers
+      dockerfile: gateway/Dockerfile
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    entrypoint: python3 /opt/app/gateway.py
+    environment:
+      - PYTHONHASHSEED=0
+      - REPLICA_ID=3
     restart: on-failure
   response_provider:
     container_name: response_provider
@@ -42,15 +82,19 @@ services:
       dockerfile: client/Dockerfile
     entrypoint: python3 /opt/app/client.py
     depends_on:
-    - gateway
+      - gateway_0
+      - gateway_1
+      - gateway_2
     environment:
-    - PYTHONUNBUFFERED=1
-    - DATA_FOLDER_PATH=/opt/app/.data
-    - PUSH_ADDR=tcp://gateway:5555
-    - REQ_ADDR=tcp://response_provider:5555
-    - CITIES=montreal,washington,toronto
+      - PYTHONUNBUFFERED=1
+      - PYTHONHASHSEED=1
+      - DATA_FOLDER_PATH=/opt/app/.data
+      - GATEWAY_PREFIX=gateway
+      - GATEWAY_AMOUNT=4
+      - REQ_ADDR=tcp://response_provider:5555
+      - CITIES=montreal,washington,toronto
     volumes:
-    - ./.data_3/:/opt/app/.data/
+      - ./.data_3/:/opt/app/.data/
     restart: on-failure
   synchronizer:
     build:
@@ -62,7 +106,7 @@ services:
         condition: service_healthy
     restart: on-failure
     volumes:
-    - .volumes/synchronizer:/volumes
+      - .volumes/synchronizer:/volumes
   weather_aggregator_0:
     build:
       context: ./containers
@@ -72,12 +116,12 @@ services:
         condition: service_healthy
     entrypoint: python3 /opt/app/weather_aggregator.py
     environment:
-    - PYTHONHASHSEED=0
-    - SIDE_TABLE_QUEUE_NAME=weather
-    - REPLICA_ID=0
+      - PYTHONHASHSEED=0
+      - SIDE_TABLE_QUEUE_NAME=weather
+      - REPLICA_ID=0
     restart: on-failure
     volumes:
-    - .volumes/weather_aggregator_0:/volumes
+      - .volumes/weather_aggregator_0:/volumes
   weather_aggregator_1:
     build:
       context: ./containers
@@ -87,12 +131,12 @@ services:
         condition: service_healthy
     entrypoint: python3 /opt/app/weather_aggregator.py
     environment:
-    - PYTHONHASHSEED=0
-    - SIDE_TABLE_QUEUE_NAME=weather
-    - REPLICA_ID=1
+      - PYTHONHASHSEED=0
+      - SIDE_TABLE_QUEUE_NAME=weather
+      - REPLICA_ID=1
     restart: on-failure
     volumes:
-    - .volumes/weather_aggregator_1:/volumes
+      - .volumes/weather_aggregator_1:/volumes
   station_aggregator_0:
     build:
       context: ./containers
@@ -102,12 +146,12 @@ services:
         condition: service_healthy
     entrypoint: python3 /opt/app/station_aggregator.py
     environment:
-    - PYTHONHASHSEED=0
-    - SIDE_TABLE_QUEUE_NAME=station
-    - REPLICA_ID=0
+      - PYTHONHASHSEED=0
+      - SIDE_TABLE_QUEUE_NAME=station
+      - REPLICA_ID=0
     restart: on-failure
     volumes:
-    - .volumes/station_aggregator_0:/volumes
+      - .volumes/station_aggregator_0:/volumes
   station_aggregator_1:
     build:
       context: ./containers
@@ -117,12 +161,42 @@ services:
         condition: service_healthy
     entrypoint: python3 /opt/app/station_aggregator.py
     environment:
-    - PYTHONHASHSEED=0
-    - SIDE_TABLE_QUEUE_NAME=station
-    - REPLICA_ID=1
+      - PYTHONHASHSEED=0
+      - SIDE_TABLE_QUEUE_NAME=station
+      - REPLICA_ID=1
     restart: on-failure
     volumes:
-    - .volumes/station_aggregator_1:/volumes
+      - .volumes/station_aggregator_1:/volumes
+  station_aggregator_2:
+    build:
+      context: ./containers
+      dockerfile: station_aggregator/Dockerfile
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    entrypoint: python3 /opt/app/station_aggregator.py
+    environment:
+      - PYTHONHASHSEED=0
+      - SIDE_TABLE_QUEUE_NAME=station
+      - REPLICA_ID=2
+    restart: on-failure
+    volumes:
+      - .volumes/station_aggregator_2:/volumes
+  station_aggregator_3:
+    build:
+      context: ./containers
+      dockerfile: station_aggregator/Dockerfile
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    entrypoint: python3 /opt/app/station_aggregator.py
+    environment:
+      - PYTHONHASHSEED=0
+      - SIDE_TABLE_QUEUE_NAME=station
+      - REPLICA_ID=3
+    restart: on-failure
+    volumes:
+      - .volumes/station_aggregator_3:/volumes
   prec_filter_0:
     build:
       context: ./containers
@@ -132,9 +206,9 @@ services:
         condition: service_healthy
     entrypoint: python3 /opt/app/prec_filter.py
     environment:
-    - PYTHONHASHSEED=0
-    - PREC_LIMIT=30
-    - REPLICA_ID=0
+      - PYTHONHASHSEED=0
+      - PREC_LIMIT=30
+      - REPLICA_ID=0
     restart: on-failure
   prec_filter_1:
     build:
@@ -145,9 +219,9 @@ services:
         condition: service_healthy
     entrypoint: python3 /opt/app/prec_filter.py
     environment:
-    - PYTHONHASHSEED=0
-    - PREC_LIMIT=30
-    - REPLICA_ID=1
+      - PYTHONHASHSEED=0
+      - PREC_LIMIT=30
+      - REPLICA_ID=1
     restart: on-failure
   dur_avg_provider_0:
     build:
@@ -158,11 +232,11 @@ services:
         condition: service_healthy
     entrypoint: python3 /opt/app/dur_avg_provider.py
     environment:
-    - PYTHONHASHSEED=0
-    - REPLICA_ID=0
+      - PYTHONHASHSEED=0
+      - REPLICA_ID=0
     restart: on-failure
     volumes:
-    - .volumes/dur_avg_provider_0:/volumes
+      - .volumes/dur_avg_provider_0:/volumes
   distance_calculator_0:
     build:
       context: ./containers
@@ -172,8 +246,8 @@ services:
         condition: service_healthy
     entrypoint: python3 /opt/app/distance_calculator.py
     environment:
-    - PYTHONHASHSEED=0
-    - REPLICA_ID=0
+      - PYTHONHASHSEED=0
+      - REPLICA_ID=0
     restart: on-failure
   distance_calculator_1:
     build:
@@ -184,8 +258,8 @@ services:
         condition: service_healthy
     entrypoint: python3 /opt/app/distance_calculator.py
     environment:
-    - PYTHONHASHSEED=0
-    - REPLICA_ID=1
+      - PYTHONHASHSEED=0
+      - REPLICA_ID=1
     restart: on-failure
   dist_mean_calculator_0:
     build:
@@ -196,11 +270,11 @@ services:
         condition: service_healthy
     entrypoint: python3 /opt/app/dist_mean_calculator.py
     environment:
-    - PYTHONHASHSEED=0
-    - REPLICA_ID=0
+      - PYTHONHASHSEED=0
+      - REPLICA_ID=0
     restart: on-failure
     volumes:
-    - .volumes/dist_mean_calculator_0:/volumes
+      - .volumes/dist_mean_calculator_0:/volumes
   dist_mean_calculator_1:
     build:
       context: ./containers
@@ -210,11 +284,11 @@ services:
         condition: service_healthy
     entrypoint: python3 /opt/app/dist_mean_calculator.py
     environment:
-    - PYTHONHASHSEED=0
-    - REPLICA_ID=1
+      - PYTHONHASHSEED=0
+      - REPLICA_ID=1
     restart: on-failure
     volumes:
-    - .volumes/dist_mean_calculator_1:/volumes
+      - .volumes/dist_mean_calculator_1:/volumes
   dist_mean_provider_0:
     build:
       context: ./containers
@@ -224,9 +298,9 @@ services:
         condition: service_healthy
     entrypoint: python3 /opt/app/dist_mean_provider.py
     environment:
-    - PYTHONHASHSEED=0
-    - MEAN_THRESHOLD=6.0
-    - REPLICA_ID=0
+      - PYTHONHASHSEED=0
+      - MEAN_THRESHOLD=6.0
+      - REPLICA_ID=0
     restart: on-failure
   year_filter_0:
     build:
@@ -237,8 +311,8 @@ services:
         condition: service_healthy
     entrypoint: python3 /opt/app/year_filter.py
     environment:
-    - PYTHONHASHSEED=0
-    - REPLICA_ID=0
+      - PYTHONHASHSEED=0
+      - REPLICA_ID=0
     restart: on-failure
   year_filter_1:
     build:
@@ -249,8 +323,8 @@ services:
         condition: service_healthy
     entrypoint: python3 /opt/app/year_filter.py
     environment:
-    - PYTHONHASHSEED=0
-    - REPLICA_ID=1
+      - PYTHONHASHSEED=0
+      - REPLICA_ID=1
     restart: on-failure
   trips_counter_0:
     build:
@@ -261,11 +335,11 @@ services:
         condition: service_healthy
     entrypoint: python3 /opt/app/trips_counter.py
     environment:
-    - PYTHONHASHSEED=0
-    - REPLICA_ID=0
+      - PYTHONHASHSEED=0
+      - REPLICA_ID=0
     restart: on-failure
     volumes:
-    - .volumes/trips_counter_0:/volumes
+      - .volumes/trips_counter_0:/volumes
   trips_counter_1:
     build:
       context: ./containers
@@ -275,11 +349,11 @@ services:
         condition: service_healthy
     entrypoint: python3 /opt/app/trips_counter.py
     environment:
-    - PYTHONHASHSEED=0
-    - REPLICA_ID=1
+      - PYTHONHASHSEED=0
+      - REPLICA_ID=1
     restart: on-failure
     volumes:
-    - .volumes/trips_counter_1:/volumes
+      - .volumes/trips_counter_1:/volumes
   trip_count_provider_0:
     build:
       context: ./containers
@@ -289,7 +363,7 @@ services:
         condition: service_healthy
     entrypoint: python3 /opt/app/trip_count_provider.py
     environment:
-    - PYTHONHASHSEED=0
-    - MULT_THRESHOLD=2
-    - REPLICA_ID=0
+      - PYTHONHASHSEED=0
+      - MULT_THRESHOLD=2
+      - REPLICA_ID=0
     restart: on-failure
