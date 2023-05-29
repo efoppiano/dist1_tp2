@@ -35,7 +35,7 @@ class Client(BasicClient):
     def handle_dur_avg_out_packet(self, packet: DurAvgOut):
         logging.info(
             f"action: receive_dur_avg_packet | result: success | "
-            f"city: {packet.city_name} | start_date: {packet.start_date} |  dur_avg_sec: {packet.dur_avg_sec}")
+            f"city: {packet.city_name} | start_date: {packet.start_date} |  dur_avg_sec: {round(packet.dur_avg_sec, 2)}")
 
     def handle_trip_count_by_year_joined_packet(self, packet: TripsCountByYearJoined):
         logging.info(
@@ -46,7 +46,7 @@ class Client(BasicClient):
     def handle_station_dist_mean_packet(self, packet: StationDistMean):
         logging.info(
             f"action: receive_dist_mean_packet | result: success | city: {packet.city_name} |"
-            f" end_station_name: {packet.end_station_name} | dist_mean (km): {packet.dist_mean}")
+            f" end_station_name: {packet.end_station_name} | dist_mean (km): {round(packet.dist_mean, 2)}")
 
 
 def main():
