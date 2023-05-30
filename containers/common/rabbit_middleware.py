@@ -1,6 +1,7 @@
 import logging
 import signal
 import threading
+import time
 from typing import Callable, Union
 
 import pika
@@ -10,15 +11,11 @@ from common.message_queue import MessageQueue
 
 class Rabbit(MessageQueue):
 
-    def __init__(self, host: str, use_heartbeat: bool = True):
-        if use_heartbeat:
-            self.connection = pika.BlockingConnection(
-                pika.ConnectionParameters(host=host))
-        else:
-            self.connection = pika.BlockingConnection(
-                pika.ConnectionParameters(host=host, heartbeat=0))
-
+    def __init__(self, host: str):
+        self._connection_params = pika.ConnectionParameters(host=host, heartbeat=0)
+        self.connection = pika.BlockingConnection(self._connection_params)
         self._channel = self.connection.channel()
+        self._channel.basic_qos(prefetch_count=1)
         self._declared_exchanges = []
         self._declared_queues = []
         self._consume_one_last_queue = None
@@ -122,5 +119,4 @@ class Rabbit(MessageQueue):
             self._declared_exchanges.append(exchange)
 
     def start(self):
-        self._pika_thread = threading.Thread(target=self._channel.start_consuming)
-        self._pika_thread.start()
+        self._channel.start_consuming()
