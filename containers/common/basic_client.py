@@ -25,7 +25,7 @@ class BasicClient(ABC):
         self._all_cities = config["cities"]
 
         self._context = zmq.Context()
-        self._rabbit = Rabbit(RABBIT_HOST, False)
+        self._rabbit = Rabbit(RABBIT_HOST)
 
         self.__set_up_signal_handler()
 
