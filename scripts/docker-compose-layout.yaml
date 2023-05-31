@@ -74,7 +74,8 @@ services:
     entrypoint: python3 /opt/app/weather_aggregator.py
     environment:
       - PYTHONHASHSEED=0
-      - SIDE_TABLE_QUEUE_NAME=publish_weather
+      - SIDE_TABLE_QUEUE_PREFIX=weather
+      - SIDE_TABLE_ROUTING_KEY=publish_weather
 
   station_aggregator:
     build:
@@ -86,7 +87,8 @@ services:
     entrypoint: python3 /opt/app/station_aggregator.py
     environment:
       - PYTHONHASHSEED=0
-      - SIDE_TABLE_QUEUE_NAME=publish_station
+      - SIDE_TABLE_QUEUE_PREFIX=station
+      - SIDE_TABLE_ROUTING_KEY=publish_station
 
   prec_filter:
     build:

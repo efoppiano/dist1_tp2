@@ -95,7 +95,8 @@ services:
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
-      - SIDE_TABLE_QUEUE_NAME=publish_weather
+      - SIDE_TABLE_QUEUE_PREFIX=weather
+      - SIDE_TABLE_ROUTING_KEY=publish_weather
       - REPLICA_ID=0
     volumes:
       - .volumes/weather_aggregator_0:/volumes
@@ -110,7 +111,8 @@ services:
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
-      - SIDE_TABLE_QUEUE_NAME=publish_weather
+      - SIDE_TABLE_QUEUE_PREFIX=weather
+      - SIDE_TABLE_ROUTING_KEY=publish_weather
       - REPLICA_ID=1
     volumes:
       - .volumes/weather_aggregator_1:/volumes
@@ -125,7 +127,8 @@ services:
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
-      - SIDE_TABLE_QUEUE_NAME=publish_station
+      - SIDE_TABLE_QUEUE_PREFIX=station
+      - SIDE_TABLE_ROUTING_KEY=publish_station
       - REPLICA_ID=0
     volumes:
       - .volumes/station_aggregator_0:/volumes
@@ -140,7 +143,8 @@ services:
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
-      - SIDE_TABLE_QUEUE_NAME=publish_station
+      - SIDE_TABLE_QUEUE_PREFIX=station
+      - SIDE_TABLE_ROUTING_KEY=publish_station
       - REPLICA_ID=1
     volumes:
       - .volumes/station_aggregator_1:/volumes
@@ -155,7 +159,8 @@ services:
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
-      - SIDE_TABLE_QUEUE_NAME=publish_station
+      - SIDE_TABLE_QUEUE_PREFIX=station
+      - SIDE_TABLE_ROUTING_KEY=publish_station
       - REPLICA_ID=2
     volumes:
       - .volumes/station_aggregator_2:/volumes
@@ -170,7 +175,8 @@ services:
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
-      - SIDE_TABLE_QUEUE_NAME=publish_station
+      - SIDE_TABLE_QUEUE_PREFIX=station
+      - SIDE_TABLE_ROUTING_KEY=publish_station
       - REPLICA_ID=3
     volumes:
       - .volumes/station_aggregator_3:/volumes

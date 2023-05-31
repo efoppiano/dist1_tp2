@@ -32,8 +32,8 @@ class Killer:
             self.kill_container(container_to_kill, replica_to_kill)
             print(f"Killed {container_to_kill}_{replica_to_kill}")
 
-            if random.random() < 0.1:
-                time_to_sleep = random.random() * 10
+            if random.random() < 0.2:
+                time_to_sleep = random.random() * 20
                 print(f"Sleeping for {time_to_sleep} seconds")
                 sleep(time_to_sleep)
 

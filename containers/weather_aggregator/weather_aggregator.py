@@ -17,19 +17,17 @@ from common.packets.stop_packet import StopPacket
 from common.packets.weather_side_table_info import WeatherSideTableInfo
 from common.utils import initialize_log, parse_date, datetime_str_to_date_str
 
-SIDE_TABLE_QUEUE_NAME = os.environ["SIDE_TABLE_QUEUE_NAME"]
+SIDE_TABLE_QUEUE_PREFIX = os.environ["SIDE_TABLE_QUEUE_PREFIX"]
+SIDE_TABLE_ROUTING_KEY = os.environ["SIDE_TABLE_ROUTING_KEY"]
 REPLICA_ID = os.environ["REPLICA_ID"]
 
 
 class WeatherAggregator(BasicAggregator):
-    def __init__(self, replica_id: int, side_table_queue_name: str):
-        super().__init__(replica_id, side_table_queue_name)
+    def __init__(self, replica_id: int, side_table_queue_prefix: str, side_table_routing_key: str):
         self._replica_id = replica_id
 
         self._weather = {}
-        self._unanswered_packets: Dict[str, List[GatewayIn]] = {}
-        self._stopped_cities = set()
-        self._delayed_eofs = set()
+        super().__init__(replica_id, side_table_queue_prefix, side_table_routing_key)
 
     def __handle_side_table_message(self, packet: WeatherSideTableInfo):
         date = parse_date(packet.date)
@@ -38,20 +36,14 @@ class WeatherAggregator(BasicAggregator):
         self._weather.setdefault(packet.city_name, {})
         self._weather[packet.city_name][yesterday] = packet.prectot
 
-    def __handle_eof_with_city_name(self, city_name: str) -> Dict[str, List[bytes]]:
+    def handle_eof(self, message: Eof) -> Dict[str, List[bytes]]:
+        city_name = message.city_name
         logging.info(f"action: handle_eof | result: in_progress | city_name: {city_name}")
-        if city_name not in self._stopped_cities:
-            self._delayed_eofs.add(city_name)
-            return {}
 
         output_queue = Linker().get_eof_in_queue(self)
         return {
             output_queue: [EofWithId(city_name, self._replica_id).encode()]
         }
-
-    def handle_eof(self, message: Eof) -> Dict[str, List[bytes]]:
-        city_name = message.city_name
-        return self.__handle_eof_with_city_name(city_name)
 
     def __search_prec_for_date(self, city_name: str, date: str) -> Union[int, None]:
         if city_name not in self._weather:
@@ -65,11 +57,7 @@ class WeatherAggregator(BasicAggregator):
 
         prectot = self.__search_prec_for_date(packet.city_name, start_date)
         if prectot is None:
-            if packet.city_name not in self._stopped_cities:
-                self._unanswered_packets.setdefault(packet.city_name, [])
-                self._unanswered_packets[packet.city_name].append(packet)
-            else:
-                logging.warning(f"Could not find weather for city {packet.city_name} and date {start_date}.")
+            logging.warning(f"Could not find weather for city {packet.city_name} and date {start_date}.")
             return {}
 
         output_packet = GatewayOutOrStation(
@@ -94,45 +82,24 @@ class WeatherAggregator(BasicAggregator):
         else:
             raise ValueError(f"Unknown packet type: {packet}")
 
-    def __handle_stop(self, city_name: str) -> Dict[str, List[bytes]]:
-        self._stopped_cities.add(city_name)
-        output_messages = {}
-        for packet in self._unanswered_packets.get(city_name, []):
-            new_output_messages = self.__handle_gateway_in(packet)
-            for queue_name, messages in new_output_messages.items():
-                output_messages.setdefault(queue_name, [])
-                output_messages[queue_name].extend(messages)
-        if city_name in self._unanswered_packets:
-            del self._unanswered_packets[city_name]
-
-        if city_name in self._delayed_eofs:
-            new_output_messages = self.__handle_eof_with_city_name(city_name)
-            for queue_name, messages in new_output_messages.items():
-                output_messages.setdefault(queue_name, [])
-                output_messages[queue_name].extend(messages)
-            self._delayed_eofs.remove(city_name)
-        return output_messages
+    @staticmethod
+    def __handle_stop(_city_name: str) -> Dict[str, List[bytes]]:
+        return {}
 
     def get_state(self) -> bytes:
         state = {
             "weather": self._weather,
-            "unanswered_packets": self._unanswered_packets,
-            "stopped_cities": self._stopped_cities,
-            "delayed_eofs": self._delayed_eofs,
         }
         return pickle.dumps(state)
 
     def set_state(self, state: bytes):
         state = pickle.loads(state)
         self._weather = state["weather"]
-        self._unanswered_packets = state["unanswered_packets"]
-        self._stopped_cities = state["stopped_cities"]
-        self._delayed_eofs = state["delayed_eofs"]
 
 
 def main():
     initialize_log(logging.INFO)
-    aggregator = WeatherAggregator(int(REPLICA_ID), SIDE_TABLE_QUEUE_NAME)
+    aggregator = WeatherAggregator(int(REPLICA_ID), SIDE_TABLE_QUEUE_PREFIX, SIDE_TABLE_ROUTING_KEY)
     aggregator.start()
 
 

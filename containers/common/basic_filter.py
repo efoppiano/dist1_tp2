@@ -55,7 +55,7 @@ class BasicFilter(ABC):
             elif len(messages) > 0:
                 encoded = GenericPacket(self._basic_filter_replica_id, messages).encode()
                 if queue.startswith("publish_"):
-                    self._rabbit.publish(queue, encoded)
+                    self._rabbit.send_to_route("publish", queue, encoded)
                 else:
                     self._rabbit.produce(queue, encoded)
 

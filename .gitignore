@@ -134,3 +134,6 @@ dmypy.json
 .volumes
 
 .idea/
+
+# Logs
+logs/

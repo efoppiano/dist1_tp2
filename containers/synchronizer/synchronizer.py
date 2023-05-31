@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import logging
 import pickle
-from dataclasses import dataclass
 from typing import Dict, List
 
 import yaml

@@ -17,25 +17,20 @@ from common.packets.stop_packet import StopPacket
 from common.packets.year_filter_in import YearFilterIn
 from common.utils import initialize_log
 
-SIDE_TABLE_QUEUE_NAME = os.environ["SIDE_TABLE_QUEUE_NAME"]
+SIDE_TABLE_QUEUE_PREFIX = os.environ["SIDE_TABLE_QUEUE_PREFIX"]
+SIDE_TABLE_ROUTING_KEY = os.environ["SIDE_TABLE_ROUTING_KEY"]
 REPLICA_ID = os.environ["REPLICA_ID"]
 
 
 class StationAggregator(BasicAggregator):
-    def __init__(self, replica_id: int, side_table_queue_name: str):
-        super().__init__(replica_id, side_table_queue_name)
-
+    def __init__(self, replica_id: int, side_table_queue_prefix: str, side_table_routing_key: str):
         self._replica_id = replica_id
         self._stations = {}
-        self._unanswered_packets: Dict[str, List[GatewayOut]] = {}
-        self._stopped_cities = set()
-        self._delayed_eofs = set()
+        super().__init__(replica_id, side_table_queue_prefix, side_table_routing_key)
 
-    def __handle_eof_with_city_name(self, city_name: str) -> Dict[str, List[bytes]]:
+    def handle_eof(self, message: Eof) -> Dict[str, List[bytes]]:
+        city_name = message.city_name
         logging.info(f"action: handle_eof | result: in_progress | city_name: {city_name}")
-        if city_name not in self._stopped_cities:
-            self._delayed_eofs.add(city_name)
-            return {}
 
         eof_year_filter_queue = Linker().get_eof_in_queue(self, "YearFilter")
         eof_prec_filter_queue = Linker().get_eof_in_queue(self, "PrecFilter")
@@ -46,10 +41,6 @@ class StationAggregator(BasicAggregator):
             eof_prec_filter_queue: [EofWithId(city_name, self._replica_id).encode()],
             eof_distance_calc_queue: [EofWithId(city_name, self._replica_id).encode()],
         }
-
-    def handle_eof(self, message: Eof) -> Dict[str, List[bytes]]:
-        city_name = message.city_name
-        return self.__handle_eof_with_city_name(city_name)
 
     def __handle_side_table_message(self, packet: StationSideTableInfo):
         city_name, station_code, yearid = packet.city_name, packet.station_code, packet.yearid
@@ -114,11 +105,7 @@ class StationAggregator(BasicAggregator):
     def __handle_gateway_out(self, packet: GatewayOut) -> Dict[str, List[bytes]]:
         stations = self.__search_stations(packet)
         if not stations:
-            if packet.city_name not in self._stopped_cities:
-                self._unanswered_packets.setdefault(packet.city_name, [])
-                self._unanswered_packets[packet.city_name].append(packet)
-            else:
-                logging.warning(f"Could not find stations for packet: {packet}")
+            logging.warning(f"Could not find stations for packet: {packet}")
             return {}
 
         prec_filter_queue = Linker().get_output_queue(self, "PrecFilter", str(packet.start_station_code))
@@ -144,45 +131,24 @@ class StationAggregator(BasicAggregator):
         elif isinstance(packet.data, StopPacket):
             return self.__handle_stop(packet.data.city_name)
 
-    def __handle_stop(self, city_name: str) -> Dict[str, List[bytes]]:
-        self._stopped_cities.add(city_name)
-        output_messages = {}
-        for packet in self._unanswered_packets.get(city_name, []):
-            new_output_messages = self.__handle_gateway_out(packet)
-            for queue_name, messages in new_output_messages.items():
-                output_messages.setdefault(queue_name, [])
-                output_messages[queue_name].extend(messages)
-        if city_name in self._unanswered_packets:
-            del self._unanswered_packets[city_name]
-
-        if city_name in self._delayed_eofs:
-            new_output_messages = self.__handle_eof_with_city_name(city_name)
-            for queue_name, messages in new_output_messages.items():
-                output_messages.setdefault(queue_name, [])
-                output_messages[queue_name].extend(messages)
-            self._delayed_eofs.remove(city_name)
-        return output_messages
+    @staticmethod
+    def __handle_stop(_city_name: str) -> Dict[str, List[bytes]]:
+        return {}
 
     def get_state(self) -> bytes:
         state = {
             "stations": self._stations,
-            "unanswered_packets": self._unanswered_packets,
-            "stopped_cities": self._stopped_cities,
-            "delayed_eofs": self._delayed_eofs,
         }
         return pickle.dumps(state)
 
     def set_state(self, state: bytes):
         state = pickle.loads(state)
         self._stations = state["stations"]
-        self._unanswered_packets = state["unanswered_packets"]
-        self._stopped_cities = state["stopped_cities"]
-        self._delayed_eofs = state["delayed_eofs"]
 
 
 def main():
     initialize_log(logging.INFO)
-    aggregator = StationAggregator(int(REPLICA_ID), SIDE_TABLE_QUEUE_NAME)
+    aggregator = StationAggregator(int(REPLICA_ID), SIDE_TABLE_QUEUE_PREFIX, SIDE_TABLE_ROUTING_KEY)
     aggregator.start()
 
 
