@@ -1,0 +1,12 @@
+version: '3.9'
+name: tp2-tests
+services:
+  tests:
+    container_name: tests
+    build:
+      context: ./containers
+      dockerfile: _tests/Dockerfile
+    working_dir: /opt/app
+    entrypoint: "python3 -m unittest main.py"
+    environment:
+      - PYTHONHASHSEED=0

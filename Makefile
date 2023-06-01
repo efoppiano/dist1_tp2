@@ -36,3 +36,7 @@ client-logs:
 client-logs-live:
 	docker compose -f docker-compose-dev.yaml logs client -f
 .PHONY: client-logs-live
+
+tests:
+	docker compose -f docker-compose-tests.yaml up --build
+.PHONY: tests

@@ -3,7 +3,6 @@ import logging
 import os
 from typing import Dict, List
 
-from common.basic_filter import BasicFilter
 from common.basic_stateful_filter import BasicStatefulFilter
 from common.linker.linker import Linker
 from common.packets.year_filter_in import YearFilterIn
