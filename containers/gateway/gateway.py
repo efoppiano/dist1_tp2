@@ -55,7 +55,8 @@ class Gateway(BasicFilter):
             for weather_info in packet:
                 packets_to_send.append(
                     GatewayInOrWeather(
-                        WeatherSideTableInfo(weather_info.city_name, weather_info.date, weather_info.prectot)).encode())
+                        WeatherSideTableInfo(weather_info.packet_id, weather_info.city_name, weather_info.date,
+                                             weather_info.prectot)).encode())
             return {
                 self._weather_side_table_queue_name: packets_to_send
             }
@@ -64,7 +65,8 @@ class Gateway(BasicFilter):
             for station_info in packet:
                 packets_to_send.append(
                     GatewayOutOrStation(
-                        StationSideTableInfo(station_info.city_name, station_info.code, station_info.yearid,
+                        StationSideTableInfo(station_info.packet_id, station_info.city_name, station_info.code,
+                                             station_info.yearid,
                                              station_info.name, station_info.latitude,
                                              station_info.longitude)).encode())
             return {

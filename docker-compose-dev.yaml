@@ -193,6 +193,8 @@ services:
       - PYTHONUNBUFFERED=1
       - PREC_LIMIT=30
       - REPLICA_ID=0
+    volumes:
+      - .volumes/prec_filter_0:/volumes
   prec_filter_1:
     build:
       context: ./containers
@@ -206,6 +208,8 @@ services:
       - PYTHONUNBUFFERED=1
       - PREC_LIMIT=30
       - REPLICA_ID=1
+    volumes:
+      - .volumes/prec_filter_1:/volumes
   dur_avg_provider_0:
     build:
       context: ./containers
@@ -232,6 +236,8 @@ services:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
       - REPLICA_ID=0
+    volumes:
+      - .volumes/distance_calculator_0:/volumes
   distance_calculator_1:
     build:
       context: ./containers
@@ -244,6 +250,8 @@ services:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
       - REPLICA_ID=1
+    volumes:
+      - .volumes/distance_calculator_1:/volumes
   dist_mean_calculator_0:
     build:
       context: ./containers
@@ -285,6 +293,8 @@ services:
       - PYTHONUNBUFFERED=1
       - MEAN_THRESHOLD=6.0
       - REPLICA_ID=0
+    volumes:
+      - .volumes/dist_mean_provider_0:/volumes
   year_filter_0:
     build:
       context: ./containers
@@ -297,6 +307,8 @@ services:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
       - REPLICA_ID=0
+    volumes:
+      - .volumes/year_filter_0:/volumes
   year_filter_1:
     build:
       context: ./containers
@@ -309,6 +321,8 @@ services:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
       - REPLICA_ID=1
+    volumes:
+      - .volumes/year_filter_1:/volumes
   trips_counter_0:
     build:
       context: ./containers
@@ -350,3 +364,5 @@ services:
       - PYTHONUNBUFFERED=1
       - MULT_THRESHOLD=2
       - REPLICA_ID=0
+    volumes:
+      - .volumes/trip_count_provider_0:/volumes

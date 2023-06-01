@@ -5,6 +5,7 @@ from typing import Dict, List
 from haversine import haversine
 
 from common.basic_filter import BasicFilter
+from common.basic_stateful_filter import BasicStatefulFilter
 from common.linker.linker import Linker
 from common.packets.dist_info import DistInfo
 from common.packets.distance_calc_in import DistanceCalcIn
@@ -13,7 +14,7 @@ from common.utils import initialize_log
 REPLICA_ID = os.environ["REPLICA_ID"]
 
 
-class DistanceCalculator(BasicFilter):
+class DistanceCalculator(BasicStatefulFilter):
     def __init__(self, replica_id: int):
         super().__init__(replica_id)
 

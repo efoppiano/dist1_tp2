@@ -4,6 +4,7 @@ import os
 from typing import Dict, List
 
 from common.basic_filter import BasicFilter
+from common.basic_stateful_filter import BasicStatefulFilter
 from common.linker.linker import Linker
 from common.packets.station_dist_mean import StationDistMean
 from common.utils import initialize_log
@@ -12,7 +13,7 @@ REPLICA_ID = os.environ["REPLICA_ID"]
 MEAN_THRESHOLD = os.environ["MEAN_THRESHOLD"]
 
 
-class DistMeanProvider(BasicFilter):
+class DistMeanProvider(BasicStatefulFilter):
     def __init__(self, replica_id: int, mean_threshold: float):
         super().__init__(replica_id)
 

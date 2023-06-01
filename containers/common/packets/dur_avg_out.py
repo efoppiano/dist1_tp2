@@ -9,3 +9,4 @@ class DurAvgOut(BasicPacket):
     city_name: str
     start_date: str
     dur_avg_sec: float
+    dur_avg_amount: int

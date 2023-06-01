@@ -30,8 +30,9 @@ class DurAvgProvider(BasicStatefulFilter):
         city_output = []
         for start_date in self._avg_buffer[city_name]:
             avg = self._avg_buffer[city_name][start_date]["avg"]
+            amount = self._avg_buffer[city_name][start_date]["count"]
             packet_id = self._avg_buffer[city_name][start_date]["id"]
-            city_output.append(DurAvgOut(packet_id, city_name, start_date, avg).encode())
+            city_output.append(DurAvgOut(packet_id, city_name, start_date, avg, amount).encode())
         self._avg_buffer.pop(city_name)
         return {
             self._output_queue: city_output,

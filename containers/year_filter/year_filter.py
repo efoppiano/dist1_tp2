@@ -4,6 +4,7 @@ import os
 from typing import Dict, List
 
 from common.basic_filter import BasicFilter
+from common.basic_stateful_filter import BasicStatefulFilter
 from common.linker.linker import Linker
 from common.packets.year_filter_in import YearFilterIn
 from common.utils import initialize_log
@@ -11,7 +12,7 @@ from common.utils import initialize_log
 REPLICA_ID = os.environ["REPLICA_ID"]
 
 
-class YearFilter(BasicFilter):
+class YearFilter(BasicStatefulFilter):
     def __init__(self, replica_id: int):
         super().__init__(replica_id)
 

@@ -4,6 +4,7 @@ import os
 from typing import Dict, List
 
 from common.basic_filter import BasicFilter
+from common.basic_stateful_filter import BasicStatefulFilter
 from common.linker.linker import Linker
 from common.packets.eof import Eof
 from common.packets.eof_with_id import EofWithId
@@ -14,7 +15,7 @@ REPLICA_ID = os.environ["REPLICA_ID"]
 MULT_THRESHOLD = os.environ["MULT_THRESHOLD"]
 
 
-class TripCountProvider(BasicFilter):
+class TripCountProvider(BasicStatefulFilter):
     def __init__(self, replica_id: int, mult_threshold: float):
         super().__init__(replica_id)
         self._mult_threshold = mult_threshold

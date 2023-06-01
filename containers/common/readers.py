@@ -9,6 +9,7 @@ CHUNK_SIZE = 1024
 
 @dataclass
 class WeatherInfo(BasicPacket):
+    packet_id: str
     city_name: str
     date: str
     prectot: float
@@ -33,6 +34,7 @@ class WeatherInfo(BasicPacket):
 
     @staticmethod
     def from_csv(city_name: str, csv_line: str) -> "WeatherInfo":
+        packet_id = uuid.uuid4()
         line_data = csv_line.strip().split(",")
         date = line_data[0]
         if len(line_data) == 21:
@@ -40,11 +42,12 @@ class WeatherInfo(BasicPacket):
         else:
             line_data = [float(data) for data in line_data[1:]]
 
-        return WeatherInfo(city_name, date, *line_data)
+        return WeatherInfo(str(packet_id), city_name, date, *line_data)
 
 
 @dataclass
 class StationInfo(BasicPacket):
+    packet_id: str
     city_name: str
     code: int
     name: str
@@ -54,6 +57,7 @@ class StationInfo(BasicPacket):
 
     @staticmethod
     def from_csv(city_name: str, csv_line: str) -> "StationInfo":
+        packet_id = uuid.uuid4()
         line_data = csv_line.strip().split(",")
         code = int(line_data[0])
         name = line_data[1]
@@ -61,6 +65,7 @@ class StationInfo(BasicPacket):
         longitude = float(line_data[3]) if line_data[3] != "" else None
         yearid = int(line_data[4])
         return StationInfo(
+            str(packet_id),
             city_name,
             code,
             name,

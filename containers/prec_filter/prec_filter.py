@@ -4,6 +4,7 @@ import os
 from typing import Dict, List
 
 from common.basic_filter import BasicFilter
+from common.basic_stateful_filter import BasicStatefulFilter
 from common.linker.linker import Linker
 from common.packets.prec_filter_in import PrecFilterIn
 from common.utils import initialize_log
@@ -12,7 +13,7 @@ PREC_LIMIT = os.environ["PREC_LIMIT"]
 REPLICA_ID = os.environ["REPLICA_ID"]
 
 
-class PrecFilter(BasicFilter):
+class PrecFilter(BasicStatefulFilter):
     def __init__(self, replica_id: int, prec_limit: int):
         super().__init__(replica_id)
         self._prec_limit = prec_limit

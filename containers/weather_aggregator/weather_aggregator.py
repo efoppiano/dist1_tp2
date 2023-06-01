@@ -17,17 +17,16 @@ from common.packets.stop_packet import StopPacket
 from common.packets.weather_side_table_info import WeatherSideTableInfo
 from common.utils import initialize_log, parse_date, datetime_str_to_date_str
 
-SIDE_TABLE_QUEUE_PREFIX = os.environ["SIDE_TABLE_QUEUE_PREFIX"]
 SIDE_TABLE_ROUTING_KEY = os.environ["SIDE_TABLE_ROUTING_KEY"]
 REPLICA_ID = os.environ["REPLICA_ID"]
 
 
 class WeatherAggregator(BasicAggregator):
-    def __init__(self, replica_id: int, side_table_queue_prefix: str, side_table_routing_key: str):
+    def __init__(self, replica_id: int, side_table_routing_key: str):
         self._replica_id = replica_id
 
         self._weather = {}
-        super().__init__(replica_id, side_table_queue_prefix, side_table_routing_key)
+        super().__init__(replica_id, side_table_routing_key)
 
     def __handle_side_table_message(self, packet: WeatherSideTableInfo):
         date = parse_date(packet.date)
@@ -99,7 +98,7 @@ class WeatherAggregator(BasicAggregator):
 
 def main():
     initialize_log(logging.INFO)
-    aggregator = WeatherAggregator(int(REPLICA_ID), SIDE_TABLE_QUEUE_PREFIX, SIDE_TABLE_ROUTING_KEY)
+    aggregator = WeatherAggregator(int(REPLICA_ID), SIDE_TABLE_ROUTING_KEY)
     aggregator.start()
 
 

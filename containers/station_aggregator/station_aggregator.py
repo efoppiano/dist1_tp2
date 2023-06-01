@@ -17,16 +17,15 @@ from common.packets.stop_packet import StopPacket
 from common.packets.year_filter_in import YearFilterIn
 from common.utils import initialize_log
 
-SIDE_TABLE_QUEUE_PREFIX = os.environ["SIDE_TABLE_QUEUE_PREFIX"]
 SIDE_TABLE_ROUTING_KEY = os.environ["SIDE_TABLE_ROUTING_KEY"]
 REPLICA_ID = os.environ["REPLICA_ID"]
 
 
 class StationAggregator(BasicAggregator):
-    def __init__(self, replica_id: int, side_table_queue_prefix: str, side_table_routing_key: str):
+    def __init__(self, replica_id: int, side_table_routing_key: str):
         self._replica_id = replica_id
         self._stations = {}
-        super().__init__(replica_id, side_table_queue_prefix, side_table_routing_key)
+        super().__init__(replica_id, side_table_routing_key)
 
     def handle_eof(self, message: Eof) -> Dict[str, List[bytes]]:
         city_name = message.city_name
@@ -148,7 +147,7 @@ class StationAggregator(BasicAggregator):
 
 def main():
     initialize_log(logging.INFO)
-    aggregator = StationAggregator(int(REPLICA_ID), SIDE_TABLE_QUEUE_PREFIX, SIDE_TABLE_ROUTING_KEY)
+    aggregator = StationAggregator(int(REPLICA_ID), SIDE_TABLE_ROUTING_KEY)
     aggregator.start()
 
 
