@@ -1,10 +1,8 @@
 from dataclasses import dataclass
 
-from typing import Union, List
-
-from common.packets.basic_packet import BasicPacket
+from common.packets.plain_packet import PlainPacket
 
 
 @dataclass
-class StopPacket(BasicPacket):
+class StopPacket(PlainPacket):
     city_name: str

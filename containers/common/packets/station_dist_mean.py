@@ -1,10 +1,10 @@
 from dataclasses import dataclass
 
-from common.packets.basic_packet import BasicPacket
+from common.packets.plain_packet import PlainPacket
 
 
 @dataclass
-class StationDistMean(BasicPacket):
+class StationDistMean(PlainPacket):
     # TODO: check if this could cause problems
     packet_id: str
     city_name: str

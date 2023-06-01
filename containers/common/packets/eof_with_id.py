@@ -1,10 +1,9 @@
 from dataclasses import dataclass
 
-from common.packets.basic_packet import BasicPacket
+from common.packets.plain_packet import PlainPacket
 
 
-# TODO: Use this packet instead of Eof in filters and aggregators
 @dataclass
-class EofWithId(BasicPacket):
+class EofWithId(PlainPacket):
     city_name: str
     replica_id: int
