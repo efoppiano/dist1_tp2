@@ -4,8 +4,6 @@ import threading
 from abc import ABC, abstractmethod
 from typing import List, Iterator
 
-import zmq
-
 from common.linker.linker import Linker
 from common.packet_factory import PacketFactory, DIST_MEAN_REQUEST, DUR_AVG_REQUEST, TRIP_COUNT_REQUEST
 from common.packets.dur_avg_out import DurAvgOut
@@ -21,10 +19,9 @@ RABBIT_HOST = os.environ.get("RABBIT_HOST", "rabbitmq")
 
 class BasicClient(ABC):
     def __init__(self, config: dict):
-        self._req_addr = config["req_addr"]
+        self._client_id = config["client_id"]
         self._all_cities = config["cities"]
 
-        self._context = zmq.Context()
         self._rabbit = Rabbit(RABBIT_HOST)
 
         self.__set_up_signal_handler()
@@ -152,23 +149,16 @@ class BasicClient(ABC):
             else:
                 raise ValueError(f"Unexpected message type: {type(message)}")
 
-    def __get_responses(self):
-        req_socket = self._context.socket(zmq.REQ)
-        req_socket.connect(self._req_addr)
-        req_socket.setsockopt(zmq.LINGER, 0)
+    def __handle_message(self, message: bytes) -> bool:
+        packet = GenericPacket.decode(message)
+        logging.info(packet)
 
-        try:
-            self.__get_dur_avg_response(req_socket)
-            self.__get_trip_count_response(req_socket)
-            self.__get_dist_mean_response(req_socket)
-            logging.info("action: client_get_responses | result: success")
-        except zmq.ContextTerminated:
-            logging.info("action: client_get_responses | result: interrupted")
-        except Exception as e:
-            logging.error(f"action: client_get_responses | result: error | error: {e}")
-            raise e
-        finally:
-            req_socket.close(-1)
+        return True
+
+    def __get_responses(self):
+        
+        self._rabbit.consume("results", self.__handle_message)
+        self._rabbit.start()
 
     def __run(self):
         self.__send_cities_data()

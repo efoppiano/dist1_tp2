@@ -1,4 +1,4 @@
-version: '3.9'
+version: "3.9"
 name: tp2
 services:
   rabbitmq:
@@ -52,6 +52,7 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - PYTHONHASHSEED=1
+      - REPLICA_ID=0
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -67,10 +68,10 @@ services:
       - PYTHONUNBUFFERED=1
       - PYTHONHASHSEED=1
       - DATA_FOLDER_PATH=/opt/app/.data
-      - REQ_ADDR=tcp://response_provider:5555
+      - CLIENT_ID=Original
       - CITIES=montreal,washington,toronto
     volumes:
-      - ./.data_3/:/opt/app/.data/
+      - ./.data_4/:/opt/app/.data/
   synchronizer:
     build:
       context: ./containers
