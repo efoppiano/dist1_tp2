@@ -23,3 +23,9 @@ class TripsCountByYearJoinedOrEof(BasicPacket):
 @dataclass
 class StationDistMeanOrEof(BasicPacket):
     data: Union[StationDistMean, List[StationDistMean], Eof]
+
+@dataclass
+class GenericResponsePacket(BasicPacket):
+    replica_id: int
+    type: str
+    data: Union[List[bytes], bytes, Eof]

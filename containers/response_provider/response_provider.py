@@ -5,12 +5,14 @@ import pickle
 import threading
 
 from common.packets.generic_packet import GenericPacket
-from common.packet_factory import DIST_MEAN_REQUEST, TRIP_COUNT_REQUEST, DUR_AVG_REQUEST
+from common.packets.client_response_packets import GenericResponsePacket
 from common.rabbit_middleware import Rabbit
 from common.utils import initialize_log, build_eof_out_queue_name, hash_msg, save_state, load_state
 
 REPLICA_ID = os.environ["REPLICA_ID"]
 SELF_QUEUE = f"sent_responses_{REPLICA_ID}"
+
+TEMP_RESULTS_QUEUE = "results"
 
 class ResponseProvider:
     def __init__(self, replica_id: int):
@@ -52,16 +54,17 @@ class ResponseProvider:
     def __handle_message(self, message: bytes, type: str) -> bool:
 
       packet = GenericPacket.decode(message)
+      response_packet = GenericResponsePacket(packet.replica_id, type, packet.data)
+      response_message = response_packet.encode()
 
-      logging.info(packet)
-      if not self.__update_last_hash(type, packet.replica_id, hash_msg(message)):
+      logging.info(response_packet)
+      if not self.__update_last_hash(type, packet.replica_id, hash_msg(response_message)):
         logging.warning(f"Received duplicate message from replica {packet.replica_id} - ignoring")
         return True
       
 
       # TODO: Produce to different <client_id>_<city_id> queues or <client_id>_<city_id>_<type>
-      # TODO: Atomically produce for self aswell
-      self._rabbit.produce("results", message)
+      self._rabbit.send_to_route("results", "key", response_message)
 
       self.__save_state()
 
@@ -71,7 +74,7 @@ class ResponseProvider:
         return lambda message, type=type: self.__handle_message(message, type)
     
     def __save_state(self):
-       save_state(pickle.dumps(self._last_hash_by_replica))
+      save_state(pickle.dumps(self._last_hash_by_replica))
     
     def __load_state(self):
       try:
@@ -83,8 +86,12 @@ class ResponseProvider:
         pass
 
     def __load_last_sent(self):
-       # TODO: Read self queue and update last_hash_by_replica for each message
-       pass
+      self._rabbit.consume_until_empty(SELF_QUEUE, self.__handle_last_sent)
+    
+    def __handle_last_sent(self, message: bytes) -> bool:
+      packet = GenericResponsePacket.decode(message) 
+      self._last_hash_by_replica[packet.type][packet.replica_id] = hash_msg(message)
+      return True
 
     def __start(self):
 
@@ -105,6 +112,10 @@ class ResponseProvider:
         
         # Returns True every time, as this is already saved to disk if reading at runtime
         self._rabbit.consume(SELF_QUEUE, lambda _message: True)
+
+        # TODO: This should be done for each result queue when needed (remember cleanup)
+        self._rabbit.route(SELF_QUEUE, "results", "key")
+        self._rabbit.route(TEMP_RESULTS_QUEUE, "results", "key") 
 
         self._rabbit.start()
 
