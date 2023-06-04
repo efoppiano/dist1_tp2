@@ -1,15 +1,16 @@
 import logging
 import os
 import signal
+import pickle
 import threading
-from typing import List
 
 from common.packets.generic_packet import GenericPacket
 from common.packet_factory import DIST_MEAN_REQUEST, TRIP_COUNT_REQUEST, DUR_AVG_REQUEST
 from common.rabbit_middleware import Rabbit
-from common.utils import initialize_log, build_eof_out_queue_name, hash_msg
+from common.utils import initialize_log, build_eof_out_queue_name, hash_msg, save_state, load_state
 
 REPLICA_ID = os.environ["REPLICA_ID"]
+SELF_QUEUE = f"sent_responses_{REPLICA_ID}"
 
 class ResponseProvider:
     def __init__(self, replica_id: int):
@@ -27,6 +28,7 @@ class ResponseProvider:
         self._rabbit = Rabbit("rabbitmq")
         self.__set_up_signal_handler()
         self.__load_state()
+        self.__load_last_sent()
 
     def __set_up_signal_handler(self):
         def signal_handler(sig, frame):
@@ -58,24 +60,30 @@ class ResponseProvider:
       
 
       # TODO: Produce to different <client_id>_<city_id> queues or <client_id>_<city_id>_<type>
-      # TODO: Atomically produce for self
+      # TODO: Atomically produce for self aswell
       self._rabbit.produce("results", message)
 
-      self.__save_state(type)
-      # TODO
+      self.__save_state()
 
       return True
       
     def __handle_type(self, type):
         return lambda message, type=type: self.__handle_message(message, type)
     
-    def __save_state(self, type: str):
-       # TODO: Save state to disk
-       pass
+    def __save_state(self):
+       save_state(pickle.dumps(self._last_hash_by_replica))
     
     def __load_state(self):
-       # TODO: Load state from disk
-       # TODO: Load last hash from self queue
+      try:
+        _last_hash_by_replica = pickle.loads(load_state())
+        if _last_hash_by_replica is not None:
+          self._last_hash_by_replica = _last_hash_by_replica
+      except:
+        logging.warning("Failed to load state")
+        pass
+
+    def __load_last_sent(self):
+       # TODO: Read self queue and update last_hash_by_replica for each message
        pass
 
     def __start(self):
@@ -95,6 +103,9 @@ class ResponseProvider:
         self._rabbit.route(trip_count_queue, "control", build_eof_out_queue_name("trip_count_provider"), self.__handle_type("trip_count_eof"))
         self._rabbit.route(avg_queue, "control", build_eof_out_queue_name("avg_provider"), self.__handle_type("avg_eof"))
         
+        # Returns True every time, as this is already saved to disk if reading at runtime
+        self._rabbit.consume(SELF_QUEUE, lambda _message: True)
+
         self._rabbit.start()
 
     def start(self):
