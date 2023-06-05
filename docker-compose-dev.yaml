@@ -73,7 +73,7 @@ services:
       - CLIENT_ID=Original
       - CITIES=montreal,washington,toronto
     volumes:
-      - ./.data_4/:/opt/app/.data/
+      - ./.data_3/:/opt/app/.data/
   synchronizer:
     build:
       context: ./containers

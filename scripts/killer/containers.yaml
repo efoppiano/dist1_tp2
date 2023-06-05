@@ -8,3 +8,4 @@ dist_mean_provider: 1
 trip_count_provider: 1
 station_aggregator: 4
 weather_aggregator: 2
+response_provider: -1
