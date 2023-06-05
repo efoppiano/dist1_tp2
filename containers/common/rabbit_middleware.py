@@ -1,7 +1,5 @@
 import logging
 import signal
-import threading
-import time
 from typing import Callable, Union
 
 import pika
@@ -133,3 +131,6 @@ class Rabbit(MessageQueue):
 
     def start(self):
         self._channel.start_consuming()
+
+    def stop(self):
+        self._channel.stop_consuming()

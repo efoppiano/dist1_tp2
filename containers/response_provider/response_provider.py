@@ -5,7 +5,7 @@ import pickle
 import threading
 
 from common.packets.generic_packet import GenericPacket
-from common.packets.client_response_packets import GenericResponsePacket, GenericCityPacket
+from common.packets.client_response_packets import GenericResponsePacket
 from common.rabbit_middleware import Rabbit
 from common.utils import initialize_log, build_eof_out_queue_name, hash_msg, save_state, load_state
 
@@ -13,6 +13,9 @@ REPLICA_ID = os.environ["REPLICA_ID"]
 SELF_QUEUE = f"sent_responses_{REPLICA_ID}"
 
 def get_city_name( packet: GenericResponsePacket) -> str:
+
+  # TODO: This is a hackish way to get the city name from the packet
+
   try:
     # GenericResponsePacket.data = Eof(city_name='city_name')
     return packet.data.city_name
@@ -24,7 +27,6 @@ def get_city_name( packet: GenericResponsePacket) -> str:
     return packet.data[0].decode().split(',')[1]
   except:
     pass
-
 
   raise Exception("Could not get city name from packet")
   
@@ -69,7 +71,7 @@ class ResponseProvider:
     
     def __send_response(self, city_name: str, message: bytes):
 
-      result_queue = f"{city_name}_results"
+      result_queue = f"results_{city_name}"
       self._rabbit.route(SELF_QUEUE, "results", city_name)
       self._rabbit.route(result_queue, "results", city_name) 
 

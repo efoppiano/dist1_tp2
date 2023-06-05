@@ -28,8 +28,4 @@ class StationDistMeanOrEof(BasicPacket):
 class GenericResponsePacket(BasicPacket):
     replica_id: int
     type: str
-    data: Union[List[bytes], bytes, Eof]
-
-@dataclass
-class GenericCityPacket(BasicPacket):
-    city_name: str
+    data: Union[List[bytes], Eof]
