@@ -1,7 +1,5 @@
 import logging
 import signal
-import threading
-import time
 from typing import Callable, Union
 
 import pika
@@ -95,6 +93,19 @@ class Rabbit(MessageQueue):
             else:
                 self._channel.basic_nack(delivery_tag=method.delivery_tag)
 
+    def consume_until_empty(self, queue: str, callback: Callable[[bytes], bool]):
+        '''
+        Consumes messages from a queue until it is empty.
+        '''
+        # TODO: Check if this works
+        self.declare_queue(queue)
+        while True:
+            q = self._channel.queue_declare(queue=queue, passive=True)
+            if q.method.message_count == 0:
+                break
+            self.consume_one(queue, callback)
+        
+
     def produce(self, queue: str, message: bytes):
         self.declare_queue(queue)
         self._channel.basic_publish(
@@ -120,3 +131,6 @@ class Rabbit(MessageQueue):
 
     def start(self):
         self._channel.start_consuming()
+
+    def stop(self):
+        self._channel.stop_consuming()

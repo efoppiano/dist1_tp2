@@ -100,7 +100,7 @@ class Linker(metaclass=LinkerMeta):
             if link_info["out_amount"] != 1:
                 raise ValueError(f"Must provide hashing key for {curr_node_name} -> {next_node_name} because "
                                  f"{next_node_name} has {link_info['out_amount']} replicas")
-            return queue_prefix
+            return f"{queue_prefix}_0"
         replica_id = self.__get_replica_id(hashing_key, link_info["out_amount"])
         return f"{queue_prefix}_{replica_id}"
 

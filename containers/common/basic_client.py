@@ -4,13 +4,10 @@ import threading
 from abc import ABC, abstractmethod
 from typing import List, Iterator
 
-import zmq
-
 from common.linker.linker import Linker
-from common.packet_factory import PacketFactory, DIST_MEAN_REQUEST, DUR_AVG_REQUEST, TRIP_COUNT_REQUEST
+from common.packet_factory import PacketFactory
 from common.packets.dur_avg_out import DurAvgOut
-from common.packets.eof import Eof
-from common.packets.generic_packet import GenericPacket
+from common.packets.client_response_packets import GenericResponsePacket
 from common.packets.station_dist_mean import StationDistMean
 from common.packets.trips_count_by_year_joined import TripsCountByYearJoined
 from common.rabbit_middleware import Rabbit
@@ -18,13 +15,15 @@ from common.readers import WeatherInfo, StationInfo, TripInfo
 
 RABBIT_HOST = os.environ.get("RABBIT_HOST", "rabbitmq")
 
+EOF_TYPES = ["dist_mean_eof","trip_count_eof","dur_avg_eof"]
 
 class BasicClient(ABC):
     def __init__(self, config: dict):
-        self._req_addr = config["req_addr"]
+        self._client_id = config["client_id"]
         self._all_cities = config["cities"]
 
-        self._context = zmq.Context()
+        self._eofs = {}
+
         self._rabbit = Rabbit(RABBIT_HOST)
 
         self.__set_up_signal_handler()
@@ -97,78 +96,58 @@ class BasicClient(ABC):
         for city in self._all_cities:
             self.__send_data_from_city(city)
 
-    def __get_dur_avg_response(self, socket):
-        cities_ended = []
-        while len(cities_ended) < len(self._all_cities):
-            socket.send(DUR_AVG_REQUEST)
-            data = socket.recv()
-            message = GenericPacket.decode(data)
-            if isinstance(message.data, bytes):
-                dur_avg_out = DurAvgOut.decode(message.data)
-                self.handle_dur_avg_out_packet(dur_avg_out)
-            elif isinstance(message.data, list):
-                for packet_bytes in message.data:
-                    packet = DurAvgOut.decode(packet_bytes)
-                    self.handle_dur_avg_out_packet(packet)
-            elif isinstance(message.data, Eof):
-                city = message.data.city_name
-                cities_ended.append(city)
-            else:
-                raise ValueError(f"Unexpected message type: {type(message)}")
+    def __handle_dist_mean( self, data: List[bytes] ):
+        for item in data:
+          station_dist_mean = StationDistMean.decode(item)
+          self.handle_station_dist_mean_packet(station_dist_mean)
+    
+    def __handle_dur_avg( self, data: List[bytes] ):
+        for item in data:
+          dur_avg_out = DurAvgOut.decode(item)
+          self.handle_dur_avg_out_packet(dur_avg_out)
+    
+    def __handle_trip_count( self, data: List[bytes] ):
+        for item in data:
+          trips_count = TripsCountByYearJoined.decode(item)
+          self.handle_trip_count_by_year_joined_packet(trips_count)
+    
+    def __handle_eof( self, type: str, city_name: str ):
+        self._eofs.setdefault(type, set())
+        self._eofs[type].add(city_name)
 
-    def __get_trip_count_response(self, socket):
-        cities_ended = []
-        while len(cities_ended) < len(self._all_cities):
-            socket.send(TRIP_COUNT_REQUEST)
-            data = socket.recv()
-            message = GenericPacket.decode(data)
-            if isinstance(message.data, bytes):
-                trips_count = TripsCountByYearJoined.decode(message.data)
-                self.handle_trip_count_by_year_joined_packet(trips_count)
-            elif isinstance(message.data, list):
-                for packet_bytes in message.data:
-                    trips_count = TripsCountByYearJoined.decode(packet_bytes)
-                    self.handle_trip_count_by_year_joined_packet(trips_count)
-            elif isinstance(message.data, Eof):
-                city = message.data.city_name
-                cities_ended.append(city)
+    def __all_eofs_received(self) -> bool:
+        for type in EOF_TYPES:
+          if len(self._eofs.get(type, [])) != len(self._all_cities):
+            return False
 
-    def __get_dist_mean_response(self, socket):
-        cities_ended = []
-        while len(cities_ended) < len(self._all_cities):
-            socket.send(DIST_MEAN_REQUEST)
-            data = socket.recv()
-            message = GenericPacket.decode(data)
-            if isinstance(message.data, bytes):
-                station_dist_mean = StationDistMean.decode(message.data)
-                self.handle_station_dist_mean_packet(station_dist_mean)
-            elif isinstance(message.data, list):
-                for packet_bytes in message.data:
-                    station_dist_mean = StationDistMean.decode(packet_bytes)
-                    self.handle_station_dist_mean_packet(station_dist_mean)
-            elif isinstance(message.data, Eof):
-                city = message.data.city_name
-                cities_ended.append(city)
-            else:
-                raise ValueError(f"Unexpected message type: {type(message)}")
+        return True
+
+    def __handle_message(self, message: bytes) -> bool:
+        packet = GenericResponsePacket.decode(message)
+        
+        if packet.type == "dist_mean":
+          self.__handle_dist_mean(packet.data)
+        elif packet.type == "dur_avg":
+          self.__handle_dur_avg(packet.data)
+        elif packet.type == "trip_count":
+          self.__handle_trip_count(packet.data)
+        elif packet.type in EOF_TYPES:
+          self.__handle_eof(packet.type, packet.data.city_name)
+        else:
+          logging.warning(f"Unexpected message type: {packet.type}")
+
+        if self.__all_eofs_received():
+          self._rabbit.stop()
+
+        return True
 
     def __get_responses(self):
-        req_socket = self._context.socket(zmq.REQ)
-        req_socket.connect(self._req_addr)
-        req_socket.setsockopt(zmq.LINGER, 0)
+        
+        for city in self._all_cities:
+            queue = f"results_{city}"
+            self._rabbit.consume(queue, self.__handle_message)
 
-        try:
-            self.__get_dur_avg_response(req_socket)
-            self.__get_trip_count_response(req_socket)
-            self.__get_dist_mean_response(req_socket)
-            logging.info("action: client_get_responses | result: success")
-        except zmq.ContextTerminated:
-            logging.info("action: client_get_responses | result: interrupted")
-        except Exception as e:
-            logging.error(f"action: client_get_responses | result: error | error: {e}")
-            raise e
-        finally:
-            req_socket.close(-1)
+        self._rabbit.start()
 
     def __run(self):
         self.__send_cities_data()
