@@ -15,7 +15,7 @@ from common.readers import WeatherInfo, StationInfo, TripInfo
 
 RABBIT_HOST = os.environ.get("RABBIT_HOST", "rabbitmq")
 
-EOF_TYPES = ["dist_mean_eof","trip_count_eof","avg_eof"]
+EOF_TYPES = ["dist_mean_eof","trip_count_eof","dur_avg_eof"]
 
 class BasicClient(ABC):
     def __init__(self, config: dict):
@@ -132,9 +132,9 @@ class BasicClient(ABC):
         elif packet.type == "trip_count":
           self.__handle_trip_count(packet.data)
         elif packet.type in EOF_TYPES:
-          self.__handle_eof(packet.type, packet.city_name)
+          self.__handle_eof(packet.type, packet.data.city_name)
         else:
-          logging.warning(f"Unexpected message type: {type(message)}")
+          logging.warning(f"Unexpected message type: {packet.type}")
 
         if self.__all_eofs_received():
           self._rabbit.stop()

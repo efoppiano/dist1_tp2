@@ -5,6 +5,7 @@ import pickle
 import threading
 
 from common.packets.generic_packet import GenericPacket
+from common.packets.eof import Eof
 from common.packets.client_response_packets import GenericResponsePacket
 from common.rabbit_middleware import Rabbit
 from common.utils import initialize_log, build_eof_out_queue_name, hash_msg, save_state, load_state
@@ -39,10 +40,10 @@ class ResponseProvider:
         self._last_hash_by_replica = {
             "dist_mean": {},
             "trip_count": {},
-            "avg": {},
+            "dur_avg": {},
             "dist_mean_eof": {},
             "trip_count_eof": {},
-            "avg_eof": {},
+            "dur_avg_eof": {},
         }
 
         self._rabbit = Rabbit("rabbitmq")
@@ -80,6 +81,7 @@ class ResponseProvider:
     def __handle_message(self, message: bytes, type: str) -> bool:
 
       packet = GenericPacket.decode(message)
+      if isinstance(packet.data, Eof): type = f"{type}_eof"
       response_packet = GenericResponsePacket(packet.replica_id, type, packet.data)
       response_message = response_packet.encode()
 
@@ -130,14 +132,14 @@ class ResponseProvider:
 
         self._rabbit.consume(dist_mean_queue, self.__handle_type("dist_mean"))
         self._rabbit.consume(trip_count_queue, self.__handle_type("trip_count"))
-        self._rabbit.consume(avg_queue, self.__handle_type("avg"))
+        self._rabbit.consume(avg_queue, self.__handle_type("dur_avg"))
 
         # TODO
         # Q: What does this do without a callback ?
         # Q: Is there a guarantee that these will be read after normal messages ?
-        self._rabbit.route(dist_mean_queue, "control", build_eof_out_queue_name("dist_mean_provider"), self.__handle_type("dist_mean_eof"))
-        self._rabbit.route(trip_count_queue, "control", build_eof_out_queue_name("trip_count_provider"), self.__handle_type("trip_count_eof"))
-        self._rabbit.route(avg_queue, "control", build_eof_out_queue_name("avg_provider"), self.__handle_type("avg_eof"))
+        self._rabbit.route(dist_mean_queue, "control", build_eof_out_queue_name("dist_mean_provider"))
+        self._rabbit.route(trip_count_queue, "control", build_eof_out_queue_name("trip_count_provider"))
+        self._rabbit.route(avg_queue, "control", build_eof_out_queue_name("avg_provider"))
         
         # Returns True every time, as this is already saved to disk if reading at runtime
         self._rabbit.consume(SELF_QUEUE, lambda _message: True)
