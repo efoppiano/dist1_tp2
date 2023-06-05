@@ -5,14 +5,30 @@ import pickle
 import threading
 
 from common.packets.generic_packet import GenericPacket
-from common.packets.client_response_packets import GenericResponsePacket
+from common.packets.client_response_packets import GenericResponsePacket, GenericCityPacket
 from common.rabbit_middleware import Rabbit
 from common.utils import initialize_log, build_eof_out_queue_name, hash_msg, save_state, load_state
 
 REPLICA_ID = os.environ["REPLICA_ID"]
 SELF_QUEUE = f"sent_responses_{REPLICA_ID}"
 
-TEMP_RESULTS_QUEUE = "results"
+def get_city_name( packet: GenericResponsePacket) -> str:
+  try:
+    # GenericResponsePacket.data = Eof(city_name='city_name')
+    return packet.data.city_name
+  except:
+    pass
+
+  try:
+    # GenericResponsePacket.data = [b'id,city_name,...']
+    return packet.data[0].decode().split(',')[1]
+  except:
+    pass
+
+
+  raise Exception("Could not get city name from packet")
+  
+
 
 class ResponseProvider:
     def __init__(self, replica_id: int):
@@ -50,6 +66,14 @@ class ResponseProvider:
       
       self._last_hash_by_replica[type][replica_id] = new_hash
       return True
+    
+    def __send_response(self, city_name: str, message: bytes):
+
+      result_queue = f"{city_name}_results"
+      self._rabbit.route(SELF_QUEUE, "results", city_name)
+      self._rabbit.route(result_queue, "results", city_name) 
+
+      self._rabbit.send_to_route("results", city_name, message)
 
     def __handle_message(self, message: bytes, type: str) -> bool:
 
@@ -62,9 +86,12 @@ class ResponseProvider:
         logging.warning(f"Received duplicate message from replica {packet.replica_id} - ignoring")
         return True
       
-
-      # TODO: Produce to different <client_id>_<city_id> queues or <client_id>_<city_id>_<type>
-      self._rabbit.send_to_route("results", "key", response_message)
+      try:
+        city_name = get_city_name(response_packet)
+        logging.info(f"Sending response to {city_name}")
+        self.__send_response(city_name, response_message)
+      except:
+        logging.warning(f"Failed to send {response_packet}")
 
       self.__save_state()
 
@@ -112,10 +139,6 @@ class ResponseProvider:
         
         # Returns True every time, as this is already saved to disk if reading at runtime
         self._rabbit.consume(SELF_QUEUE, lambda _message: True)
-
-        # TODO: This should be done for each result queue when needed (remember cleanup)
-        self._rabbit.route(SELF_QUEUE, "results", "key")
-        self._rabbit.route(TEMP_RESULTS_QUEUE, "results", "key") 
 
         self._rabbit.start()
 

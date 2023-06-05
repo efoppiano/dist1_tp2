@@ -157,7 +157,10 @@ class BasicClient(ABC):
 
     def __get_responses(self):
         
-        self._rabbit.consume("results", self.__handle_message)
+        for city in self._all_cities:
+            queue = f"{city}_results"
+            self._rabbit.consume(queue, self.__handle_message)
+
         self._rabbit.start()
 
     def __run(self):
