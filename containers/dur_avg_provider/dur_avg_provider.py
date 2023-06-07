@@ -24,6 +24,7 @@ class DurAvgProvider(BasicStatefulFilter):
 
     def handle_eof(self, message: Eof) -> Dict[str, List[bytes]]:
         logging.info(f"Received EOF for city {message.city_name}")
+        client_id = message.client_id
         city_name = message.city_name
         eof_output_queue = Linker().get_eof_in_queue(self)
         self._avg_buffer.setdefault(city_name, {})
@@ -36,7 +37,7 @@ class DurAvgProvider(BasicStatefulFilter):
         self._avg_buffer.pop(city_name)
         return {
             self._output_queue: city_output,
-            eof_output_queue: [EofWithId(city_name, self._replica_id).encode()],
+            eof_output_queue: [EofWithId(client_id, city_name, self._replica_id).encode()],
         }
 
     def handle_message(self, message: bytes) -> Dict[str, List[bytes]]:

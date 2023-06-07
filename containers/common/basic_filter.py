@@ -39,6 +39,7 @@ class BasicFilter(ABC):
             decoded = GenericPacket.decode(msg)
         else:
             decoded = msg
+
         if isinstance(decoded.data, Eof):
             outgoing_messages = self.handle_eof(decoded.data)
         elif isinstance(decoded.data, bytes):
@@ -55,10 +56,9 @@ class BasicFilter(ABC):
             elif len(messages) > 0:
                 encoded = GenericPacket(
                     replica_id= self._basic_filter_replica_id,
-                    # TODO NEXT
-                    client_id=None,
-                    city_name=None,
-                    packet_id=None,
+                    client_id=decoded.client_id,
+                    city_name=decoded.city_name,
+                    packet_id=decoded.packet_id,
                     data= messages
                 ).encode()
                 if queue.startswith("publish_"):
@@ -74,8 +74,9 @@ class BasicFilter(ABC):
 
     def handle_eof(self, message: Eof) -> Dict[str, List[bytes]]:
         eof_output_queue = Linker().get_eof_in_queue(self)
+        eof = EofWithId(message.client_id,message.city_name, self._basic_filter_replica_id)
         return {
-            eof_output_queue: [EofWithId(message.city_name, self._basic_filter_replica_id).encode()]
+            eof_output_queue: [eof.encode()]
         }
 
     def start(self):

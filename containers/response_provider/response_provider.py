@@ -13,31 +13,6 @@ from common.utils import initialize_log, build_eof_out_queue_name, hash_msg, sav
 REPLICA_ID = os.environ["REPLICA_ID"]
 SELF_QUEUE = f"sent_responses_{REPLICA_ID}"
 
-def get_city_name( packet: GenericResponsePacket) -> str:
-
-  # TODO: This is a hackish way to get the city name from the packet
-
-  try:
-    # GenericResponsePacket.data = Eof(city_name='city_name')
-    return packet.data.city_name
-  except:
-    pass
-
-  try:
-    # GenericResponsePacket.data = [b'id,city_name,...']
-    return packet.data[0].decode().split(',')[1]
-  except:
-    pass
-
-  try:
-    inner = GenericPacket.decode(packet.data[0])
-    return inner.city_name
-  except:
-    pass
-
-  raise Exception("Could not get city name from packet")
-  
-
 
 class ResponseProvider:
     def __init__(self, replica_id: int):
@@ -88,7 +63,7 @@ class ResponseProvider:
 
       packet = GenericPacket.decode(message)
       if isinstance(packet.data, Eof): type = f"{type}_eof"
-      response_packet = GenericResponsePacket(packet.replica_id, type, packet.data)
+      response_packet = GenericResponsePacket(type, packet.data)
       response_message = response_packet.encode()
 
       logging.info(response_packet)
@@ -97,9 +72,7 @@ class ResponseProvider:
         return True
       
       try:
-        city_name = get_city_name(response_packet)
-        logging.info(f"Sending response to {city_name}")
-        self.__send_response(city_name, response_message)
+        self.__send_response(packet.city_name, response_message)
       except:
         logging.warning(f"Failed to send {response_packet}")
 

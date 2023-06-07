@@ -36,12 +36,13 @@ class WeatherAggregator(BasicAggregator):
         self._weather[packet.city_name][yesterday] = packet.prectot
 
     def handle_eof(self, message: Eof) -> Dict[str, List[bytes]]:
+        client_id = message.client_id
         city_name = message.city_name
         logging.info(f"action: handle_eof | result: in_progress | city_name: {city_name}")
 
         output_queue = Linker().get_eof_in_queue(self)
         return {
-            output_queue: [EofWithId(city_name, self._replica_id).encode()]
+            output_queue: [EofWithId(client_id, city_name, self._replica_id).encode()]
         }
 
     def __search_prec_for_date(self, city_name: str, date: str) -> Union[int, None]:

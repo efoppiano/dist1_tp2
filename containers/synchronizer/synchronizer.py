@@ -24,6 +24,7 @@ class Synchronizer(BasicSynchronizer):
         logging.info(f"Received EOF from {queue} - {message.city_name}")
         output = {}
 
+        client_id = message.client_id
         city_name = message.city_name
         self._eofs_received.setdefault(queue, {})
         self._eofs_received[queue].setdefault(city_name, set())
@@ -33,12 +34,11 @@ class Synchronizer(BasicSynchronizer):
             eof_output_queue = self._config[queue]["eof_output"]
             logging.info(f"Sending EOF to {eof_output_queue}")
             packet = GenericPacket(
-                replica_id=1, 
-                # TODO NEXT
-                client_id=None,
-                city_name=None,
-                packet_id=None,
-                data= Eof(city_name)
+                replica_id= 1,
+                client_id= client_id,
+                city_name= city_name,
+                packet_id= 1,
+                data= Eof(client_id, city_name)
             ).encode()
             output[eof_output_queue] = [packet]
 

@@ -22,6 +22,7 @@ class DistMeanCalculator(BasicStatefulFilter):
         super().__init__(replica_id)
 
     def handle_eof(self, message: Eof) -> Dict[str, List[bytes]]:
+        client_id = message.client_id
         city_name = message.city_name
         eof_output_queue = Linker().get_eof_in_queue(self)
         output = {}
@@ -34,7 +35,7 @@ class DistMeanCalculator(BasicStatefulFilter):
                                                       end_station_name,
                                                       data["mean"]).encode())
         self._mean_buffer.pop(city_name)
-        output[eof_output_queue] = [EofWithId(city_name, self._replica_id).encode()]
+        output[eof_output_queue] = [EofWithId(client_id, city_name, self._replica_id).encode()]
         return output
 
     def handle_message(self, message: bytes) -> Dict[str, List[bytes]]:

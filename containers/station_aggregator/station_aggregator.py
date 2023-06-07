@@ -28,6 +28,7 @@ class StationAggregator(BasicAggregator):
         super().__init__(replica_id, side_table_routing_key)
 
     def handle_eof(self, message: Eof) -> Dict[str, List[bytes]]:
+        client_id = message.client_id
         city_name = message.city_name
         logging.info(f"action: handle_eof | result: in_progress | city_name: {city_name}")
 
@@ -36,9 +37,9 @@ class StationAggregator(BasicAggregator):
         eof_distance_calc_queue = Linker().get_eof_in_queue(self, "DistanceCalculator")
 
         return {
-            eof_year_filter_queue: [EofWithId(city_name, self._replica_id).encode()],
-            eof_prec_filter_queue: [EofWithId(city_name, self._replica_id).encode()],
-            eof_distance_calc_queue: [EofWithId(city_name, self._replica_id).encode()],
+            eof_year_filter_queue: [EofWithId(client_id, city_name, self._replica_id).encode()],
+            eof_prec_filter_queue: [EofWithId(client_id, city_name, self._replica_id).encode()],
+            eof_distance_calc_queue: [EofWithId(client_id, city_name, self._replica_id).encode()],
         }
 
     def __handle_side_table_message(self, packet: StationSideTableInfo):

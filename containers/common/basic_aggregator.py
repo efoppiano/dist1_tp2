@@ -8,7 +8,7 @@ from typing import Dict, List, Union
 from common import utils
 from common.linker.linker import Linker
 from common.packets.eof import Eof
-from common.packets.generic_packet import GenericPacket
+from common.packets.generic_packet import GenericPacket, Identifier
 from common.rabbit_middleware import Rabbit
 
 RABBIT_HOST = os.environ.get("RABBIT_HOST", "rabbitmq")
@@ -43,7 +43,7 @@ class BasicAggregator(ABC):
                 outgoing_messages[queue] += messages
         return outgoing_messages
 
-    def __send_messages(self, outgoing_messages: Dict[str, List[bytes]]):
+    def __send_messages(self, id: Identifier, outgoing_messages: Dict[str, List[bytes]]):
         for (queue, messages) in outgoing_messages.items():
             if queue.endswith("_eof_in"):
                 for message in messages:
@@ -51,15 +51,14 @@ class BasicAggregator(ABC):
             elif len(messages) > 0:
                 encoded = GenericPacket(
                     replica_id=self._basic_agg_replica_id,
-                    # TODO NEXT
-                    client_id=None,
-                    city_name=None,
-                    packet_id=None,
+                    client_id=id.client_id,
+                    city_name=id.city_name,
+                    packet_id=id.packet_id,
                     data=messages
                 ).encode()
                 self._rabbit.produce(queue, encoded)
 
-    def __on_stream_message_without_duplicates(self, decoded: GenericPacket) -> bool:
+    def __on_stream_message_without_duplicates(self, id: Identifier, decoded: GenericPacket) -> bool:
         if isinstance(decoded.data, Eof):
             outgoing_messages = self.handle_eof(decoded.data)
         elif isinstance(decoded.data, bytes):
@@ -69,7 +68,7 @@ class BasicAggregator(ABC):
         else:
             raise Exception(f"Unknown message type: {type(decoded.data)}")
 
-        self.__send_messages(outgoing_messages)
+        self.__send_messages(id, outgoing_messages)
 
         return True
 
@@ -88,7 +87,13 @@ class BasicAggregator(ABC):
                 return True
             self._last_hash_by_replica[replica_id] = msg_hash
 
-        if not self.__on_stream_message_without_duplicates(decoded):
+        id = Identifier(
+            self._basic_agg_replica_id,
+            decoded.client_id,
+            decoded.city_name,
+            decoded.packet_id
+        )
+        if not self.__on_stream_message_without_duplicates(id, decoded):
             return False
 
         self.__save_full_state()

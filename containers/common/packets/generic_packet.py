@@ -14,3 +14,10 @@ class GenericPacket(BasicPacket):
     packet_id: int
     
     data: Union[List[bytes], bytes, Eof]
+
+@dataclass
+class Identifier:
+    replica_id: int
+    client_id: str
+    city_name: str
+    packet_id: int

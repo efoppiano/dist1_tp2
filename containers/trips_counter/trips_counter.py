@@ -22,6 +22,7 @@ class TripsCounter(BasicStatefulFilter):
         super().__init__(replica_id)
 
     def handle_eof(self, message: Eof) -> Dict[str, List[bytes]]:
+        client_id = message.client_id
         city_name = message.city_name
         output = {}
         self._count_buffer.setdefault(city_name, {})
@@ -30,15 +31,19 @@ class TripsCounter(BasicStatefulFilter):
                 continue
             queue_name = Linker().get_output_queue(self, hashing_key=start_station_name)
             output.setdefault(queue_name, [])
-            output[queue_name].append(TripsCountByYearJoined(data["id"],
-                                                             city_name,
-                                                             start_station_name,
-                                                             data[2016],
-                                                             data[2017]).encode())
+            output[queue_name].append(
+                TripsCountByYearJoined(
+                  data["id"],
+                  city_name,
+                  start_station_name,
+                  data[2016],
+                  data[2017]
+                ).encode()
+            )
 
         self._count_buffer.pop(city_name)
         eof_output_queue = Linker().get_eof_in_queue(self)
-        output[eof_output_queue] = [EofWithId(city_name, self._replica_id).encode()]
+        output[eof_output_queue] = [EofWithId(client_id, city_name, self._replica_id).encode()]
         return output
 
     def handle_message(self, message: bytes) -> Dict[str, List[bytes]]:

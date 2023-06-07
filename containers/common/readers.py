@@ -114,6 +114,7 @@ class TripInfo(BasicPacket):
 @dataclass
 class ClientEofPacket(BasicPacket):
     file_type: str  # weather, station, trip
+    client_id: str
     city_name: str
 
 

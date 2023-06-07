@@ -41,7 +41,9 @@ class Gateway(BasicFilter):
             return {
                 # The replica_id here is not relevant, because only one gateway can
                 # handle data of a city
-                queue_name: [EofWithId(packet.city_name, self._replica_id).encode()]
+                queue_name: [
+                    EofWithId(packet.client_id, packet.city_name, self._replica_id).encode()
+                ]
             }
         else:
             raise ValueError(f"Unknown file type: {packet.file_type}")

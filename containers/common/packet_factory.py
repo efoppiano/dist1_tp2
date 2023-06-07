@@ -14,9 +14,9 @@ class PacketFactory:
     replica_id = None
 
     @staticmethod
-    def init( client_id: str, replica_id: str ):
+    def init( client_id: str ):
         PacketFactory.client_id = client_id
-        GenericPacket.replica_id = replica_id
+        PacketFactory.replica_id = 0
 
     @staticmethod
     def build_weather_packet(city_name: str, weather_info: List[WeatherInfo]) -> bytes:
@@ -36,7 +36,7 @@ class PacketFactory:
             city_name= city,
             packet_id= uuid.uuid4(), # ! REMOVE THIS , use None, id generated at Gateway
             data=ClientGatewayPacket(
-                ClientEofPacket("weather", city)
+                ClientEofPacket("weather", PacketFactory.client_id, city)
             ).encode()
         ).encode()
 
@@ -58,7 +58,7 @@ class PacketFactory:
             city_name= city,
             packet_id= None,
             data=ClientGatewayPacket(
-                ClientEofPacket("station", city)
+                ClientEofPacket("station", PacketFactory.client_id, city)
             ).encode()
         ).encode()
 
@@ -82,7 +82,7 @@ class PacketFactory:
             city_name= city,
             packet_id= None,
             data=ClientGatewayPacket(
-                ClientEofPacket("trip", city)
+                ClientEofPacket("trip", PacketFactory.client_id, city)
             ).encode()
         ).encode()
 
