@@ -21,6 +21,7 @@ class BasicClient(ABC):
     def __init__(self, config: dict):
         self._client_id = config["client_id"]
         self._all_cities = config["cities"]
+        PacketFactory.init(self._client_id)
 
         self._eofs = {}
 
@@ -61,19 +62,21 @@ class BasicClient(ABC):
 
     def __send_weather_data(self, queue: str, city: str):
         for weather_info_list in self.get_weather(city):
-            self._rabbit.produce(queue, PacketFactory.build_weather_packet(weather_info_list))
+            packet = PacketFactory.build_weather_packet(city, weather_info_list)
+            self._rabbit.produce(queue,packet)
 
         self._rabbit.produce(queue, PacketFactory.build_weather_eof(city))
 
     def __send_stations_data(self, queue: str, city: str):
         for station_info_list in self.get_stations(city):
-            self._rabbit.produce(queue, PacketFactory.build_station_packet(station_info_list))
+            packet = PacketFactory.build_station_packet(city, station_info_list)
+            self._rabbit.produce(queue, packet)
 
         self._rabbit.produce(queue, PacketFactory.build_station_eof(city))
 
     def __send_trips_data(self, queue: str, city: str):
         for trip_info_list in self.get_trips(city):
-            self._rabbit.produce(queue, PacketFactory.build_trip_packet(trip_info_list))
+            self._rabbit.produce(queue, PacketFactory.build_trip_packet(city, trip_info_list))
 
         self._rabbit.produce(queue, PacketFactory.build_trip_eof(city))
 

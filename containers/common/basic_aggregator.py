@@ -49,7 +49,14 @@ class BasicAggregator(ABC):
                 for message in messages:
                     self._rabbit.produce(queue, message)
             elif len(messages) > 0:
-                encoded = GenericPacket(self._basic_agg_replica_id, messages).encode()
+                encoded = GenericPacket(
+                    replica_id=self._basic_agg_replica_id,
+                    # TODO NEXT
+                    client_id=None,
+                    city_name=None,
+                    packet_id=None,
+                    data=messages
+                ).encode()
                 self._rabbit.produce(queue, encoded)
 
     def __on_stream_message_without_duplicates(self, decoded: GenericPacket) -> bool:

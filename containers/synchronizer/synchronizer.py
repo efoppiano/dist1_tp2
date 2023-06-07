@@ -32,7 +32,15 @@ class Synchronizer(BasicSynchronizer):
         if len(self._eofs_received[queue][city_name]) == self._config[queue]["eofs_to_wait"]:
             eof_output_queue = self._config[queue]["eof_output"]
             logging.info(f"Sending EOF to {eof_output_queue}")
-            output[eof_output_queue] = [GenericPacket(1, Eof(city_name)).encode()]
+            packet = GenericPacket(
+                replica_id=1, 
+                # TODO NEXT
+                client_id=None,
+                city_name=None,
+                packet_id=None,
+                data= Eof(city_name)
+            ).encode()
+            output[eof_output_queue] = [packet]
 
         return output
 
