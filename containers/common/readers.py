@@ -3,13 +3,12 @@ from dataclasses import dataclass
 from typing import Iterator, Union, List
 
 from common.packets.basic_packet import BasicPacket
-from common.packets.plain_packet import PlainPacket
 
 CHUNK_SIZE = 1024
 
 
 @dataclass
-class WeatherInfo(PlainPacket):
+class WeatherInfo(BasicPacket):
     packet_id: str
     city_name: str
     date: str
@@ -113,7 +112,7 @@ class TripInfo(BasicPacket):
 
 
 @dataclass
-class ClientEofPacket(PlainPacket):
+class ClientEofPacket(BasicPacket):
     file_type: str  # weather, station, trip
     city_name: str
 

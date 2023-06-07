@@ -29,6 +29,12 @@ def get_city_name( packet: GenericResponsePacket) -> str:
   except:
     pass
 
+  try:
+    inner = GenericPacket.decode(packet.data[0])
+    return inner.city_name
+  except:
+    pass
+
   raise Exception("Could not get city name from packet")
   
 

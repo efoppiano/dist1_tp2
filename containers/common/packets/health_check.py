@@ -1,9 +1,9 @@
 from dataclasses import dataclass
 
-from common.packets.plain_packet import PlainPacket
+from common.packets.basic_packet import BasicPacket
 
 
 @dataclass
-class HealthCheck(PlainPacket):
+class HealthCheck(BasicPacket):
     id: str
     timestamp: int

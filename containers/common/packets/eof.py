@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 
-from common.packets.plain_packet import PlainPacket
+from common.packets.basic_packet import BasicPacket
 
 
 @dataclass
-class Eof(PlainPacket):
+class Eof(BasicPacket):
     city_name: str

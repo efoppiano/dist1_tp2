@@ -1,10 +1,10 @@
 from dataclasses import dataclass
 
-from common.packets.plain_packet import PlainPacket
+from common.packets.basic_packet import BasicPacket
 
 
 @dataclass
-class DurAvgOut(PlainPacket):
+class DurAvgOut(BasicPacket):
     packet_id: str
     city_name: str
     start_date: str

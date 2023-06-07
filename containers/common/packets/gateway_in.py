@@ -1,10 +1,10 @@
 from dataclasses import dataclass
 
-from common.packets.plain_packet import PlainPacket
+from common.packets.basic_packet import BasicPacket
 
 
 @dataclass
-class GatewayIn(PlainPacket):
+class GatewayIn(BasicPacket):
     trip_id: str
     city_name: str
     start_datetime: str
