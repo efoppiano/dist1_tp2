@@ -1,4 +1,4 @@
-import logging
+import uuid # ! REMOVE THIS 
 from typing import List
 
 from common.packets.generic_packet import GenericPacket
@@ -24,7 +24,7 @@ class PacketFactory:
             replica_id= PacketFactory.replica_id,
             client_id= PacketFactory.client_id,
             city_name= city_name,
-            packet_id= None,
+            packet_id= uuid.uuid4(), # ! REMOVE THIS , use None, id generated at Gateway
             data=ClientGatewayPacket(weather_info).encode()
         ).encode()
 
@@ -34,7 +34,7 @@ class PacketFactory:
             replica_id= PacketFactory.replica_id,
             client_id= PacketFactory.client_id,
             city_name= city,
-            packet_id= None,
+            packet_id= uuid.uuid4(), # ! REMOVE THIS , use None, id generated at Gateway
             data=ClientGatewayPacket(
                 ClientEofPacket("weather", city)
             ).encode()
@@ -46,7 +46,7 @@ class PacketFactory:
             replica_id= PacketFactory.replica_id,
             client_id= PacketFactory.client_id,
             city_name= city_name,
-            packet_id= None,
+            packet_id= uuid.uuid4(), # ! REMOVE THIS , use None, id generated at Gateway
             data=ClientGatewayPacket(station_info).encode()
         ).encode()
 
