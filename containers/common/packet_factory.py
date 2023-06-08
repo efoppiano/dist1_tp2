@@ -8,18 +8,11 @@ TRIP_COUNT_REQUEST = b'trip_count'
 DUR_AVG_REQUEST = b'dur_avg'
 
 
-MAX_PACKET_ID = 2**10 - 1
-def increment_packet_id(func):
-    def wrapper(*args, **kwargs):
-        PacketFactory.packet_id += 1
-        if PacketFactory.packet_id > MAX_PACKET_ID: PacketFactory.packet_id = 0
-        return func(*args, **kwargs)
-    return wrapper
 
 class PacketFactory:
     client_id = None
     replica_id = None
-    packet_id = 0
+    packet_id = None
 
     @staticmethod
     def init( client_id: str ):
@@ -27,7 +20,6 @@ class PacketFactory:
         PacketFactory.replica_id = 0
 
     @staticmethod
-    @increment_packet_id
     def build_weather_packet(city_name: str, weather_info: List[WeatherInfo]) -> bytes:
         return GenericPacket(
             replica_id= PacketFactory.replica_id,
@@ -38,7 +30,6 @@ class PacketFactory:
         ).encode()
 
     @staticmethod
-    @increment_packet_id
     def build_weather_eof(city: str) -> bytes:
         return GenericPacket(
             replica_id= PacketFactory.replica_id,
@@ -51,7 +42,6 @@ class PacketFactory:
         ).encode()
 
     @staticmethod
-    @increment_packet_id
     def build_station_packet(city_name: str, station_info: List[StationInfo]) -> bytes:
         return GenericPacket(
             replica_id= PacketFactory.replica_id,
@@ -62,7 +52,6 @@ class PacketFactory:
         ).encode()
 
     @staticmethod
-    @increment_packet_id
     def build_station_eof(city: str) -> bytes:
         return GenericPacket(
             replica_id= None,

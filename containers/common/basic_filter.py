@@ -7,7 +7,7 @@ from typing import List, Dict, Union
 from common.linker.linker import Linker
 from common.packets.eof import Eof
 from common.packets.eof_with_id import EofWithId
-from common.packets.generic_packet import GenericPacket, PacketIdentifier
+from common.packets.generic_packet import GenericPacket, PacketIdentifier, OverLoadedMessages, overload
 from common.rabbit_middleware import Rabbit
 
 RABBIT_HOST = os.environ.get("RABBIT_HOST", "rabbitmq")
@@ -70,6 +70,11 @@ class BasicFilter(ABC):
     def __send_messages(self, id: PacketIdentifier, outgoing_messages: Dict[str, List[bytes]]):
 
         for (queue, messages) in outgoing_messages.items():
+            
+            if isinstance(messages, OverLoadedMessages):
+                overload(id, messages.id_overload)
+                messages = messages.messages
+
             if queue.endswith("_eof_in"):
                 for message in messages:
                     self._rabbit.produce(queue, message)

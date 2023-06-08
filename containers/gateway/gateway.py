@@ -11,6 +11,7 @@ from common.packets.gateway_in_or_weather import GatewayInOrWeather
 from common.packets.gateway_out_or_station import GatewayOutOrStation
 from common.packets.station_side_table_info import StationSideTableInfo
 from common.packets.stop_packet import StopPacket
+from common.packets.generic_packet import OverLoadedMessages
 from common.packets.weather_side_table_info import WeatherSideTableInfo
 from common.readers import ClientGatewayPacket, ClientEofPacket, StationInfo, WeatherInfo, TripInfo
 from common.utils import initialize_log
@@ -30,7 +31,26 @@ class Gateway(BasicStatefulFilter):
         
         super().__init__(replica_id)
 
-    def __handle_client_eof(self, packet: ClientEofPacket) -> Dict[str, List[bytes]]:
+    def __get_next_id(self, flow_id):
+        if flow_id not in self.last_packet_id:
+            self.last_packet_id[flow_id] = 0
+        self.last_packet_id[flow_id] += 1
+        return self.last_packet_id[flow_id]
+
+    def __overload_id_decorator(func):
+        def wrapper(self, flow_id, packet):
+            outgoing_messages = func(self, flow_id, packet)
+            for queue_name, messages in outgoing_messages.items():
+                outgoing_messages[queue_name] = OverLoadedMessages(
+                    { "id": self.__get_next_id(flow_id) },
+                    messages
+                )
+            return outgoing_messages
+        return wrapper
+
+    @__overload_id_decorator
+    def __handle_client_eof(self, flow_id, packet: ClientEofPacket) -> Dict[str, List[bytes]]:
+        
         if packet.file_type == "weather":
             return {
                 self._weather_side_table_queue_name: [GatewayInOrWeather(StopPacket(packet.city_name)).encode()]
@@ -51,7 +71,8 @@ class Gateway(BasicStatefulFilter):
         else:
             raise ValueError(f"Unknown file type: {packet.file_type}")
 
-    def __handle_list(self, packet: List[Union[WeatherInfo, StationInfo, TripInfo]]) -> Dict[str, List[bytes]]:
+    @__overload_id_decorator
+    def __handle_list(self, flow_id, packet: List[Union[WeatherInfo, StationInfo, TripInfo]]) -> Dict[str, List[bytes]]:
         if len(packet) == 0:
             return {}
         element_type = type(packet[0])
@@ -98,13 +119,13 @@ class Gateway(BasicStatefulFilter):
         else:
             raise ValueError(f"Unknown packet type: {element_type}")
 
-    def handle_message(self, _flow_id, message: bytes) -> Dict[str, List[bytes]]:
+    def handle_message(self, flow_id, message: bytes) -> Dict[str, List[bytes]]:
         packet = ClientGatewayPacket.decode(message)
 
         if isinstance(packet.data, ClientEofPacket):
-            return self.__handle_client_eof(packet.data)
+            return self.__handle_client_eof(flow_id, packet.data)
         elif isinstance(packet.data, list):
-            return self.__handle_list(packet.data)
+            return self.__handle_list(flow_id, packet.data)
         else:
             raise ValueError(f"Unknown packet type: {type(packet.data)}")
         

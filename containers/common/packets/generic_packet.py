@@ -21,3 +21,20 @@ class PacketIdentifier:
     client_id: str
     city_name: str
     packet_id: int
+
+@dataclass
+class OverLoadedMessages:
+    id_overload: dict
+    messages: List[bytes]
+
+def overload( dest: Union[PacketIdentifier, GenericPacket], id_src ):
+    if "replica_id" in id_src:
+        dest.replica_id = id_src["replica_id"]
+    if "client_id" in id_src:
+        dest.client_id = id_src["client_id"]
+    if "city_name" in id_src:
+        dest.city_name = id_src["city_name"]
+    if "packet_id" in id_src:
+        dest.packet_id = id_src["packet_id"]
+
+    return dest
