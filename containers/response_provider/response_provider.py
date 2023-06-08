@@ -73,11 +73,8 @@ class ResponseProvider:
       packet = GenericPacket.decode(message)
       if isinstance(packet.data, Eof): type = f"{type}_eof"
 
-      flow_id = ( packet.client_id, packet.city_name )
-      case_id = ( type, packet.replica_id)
-
       response_packet = GenericResponsePacket(
-          flow_id, case_id, packet.packet_id, type, packet.data)
+          packet.client_id, packet.city_name, packet.packet_id, type, packet.data)
       response_message = response_packet.encode()
 
       logging.info(response_packet)
@@ -113,9 +110,12 @@ class ResponseProvider:
       self._rabbit.consume_until_empty(SELF_QUEUE, self.__handle_last_sent)
     
     def __handle_last_sent(self, message: bytes) -> bool:
-      packet = GenericResponsePacket.decode(message) 
-      self._last_hash_by_replica.setdefault(packet.flow_id, {})
-      self._last_hash_by_replica[packet.flow_id][packet.case_id] = packet.packet_id
+      packet = GenericResponsePacket.decode(message)
+      flow_id = ( packet.client_id, packet.city_name )
+      case_id = ( packet.type, packet.replica_id)
+      
+      self._last_hash_by_replica.setdefault(flow_id, {})
+      self._last_hash_by_replica[flow_id][case_id] = packet.packet_id
       return True
 
     def __start(self):

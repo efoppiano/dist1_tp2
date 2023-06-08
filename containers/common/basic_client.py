@@ -127,7 +127,7 @@ class BasicClient(ABC):
 
     def __handle_message(self, message: bytes) -> bool:
         packet = GenericResponsePacket.decode(message)
-        city_name = packet.flow_id[1] # TODO: un-obfuscate this, flow_id is used by response_provider, maybe save fields independently
+        city_name = packet.city_name
         
         if packet.type == "dist_mean":
           self.__handle_dist_mean(city_name, packet.data)
