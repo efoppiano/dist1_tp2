@@ -53,7 +53,7 @@ class ResponseProvider:
         self._last_received.setdefault(flow_id, {})
         last_packet_id = self._last_received[flow_id].get(case_id)
         if packet_id == last_packet_id:
-            logging.info(f"Received duplicate message from replica {case_id} - ignoring")
+            logging.warning(f"Received duplicate message for flow: {flow_id}, case: {case_id} - ignoring \n{packet}")
             return False
         self._last_received[flow_id][case_id] = packet_id
 
@@ -74,15 +74,17 @@ class ResponseProvider:
       if isinstance(packet.data, Eof): type = f"{type}_eof"
 
       response_packet = GenericResponsePacket(
-          packet.client_id, packet.city_name, packet.packet_id, type, packet.data)
+          packet.client_id, packet.city_name,
+          type, packet.replica_id,
+          packet.packet_id, packet.data
+      )
       response_message = response_packet.encode()
 
-      logging.info(response_packet)
       if not self.__update_last_received(type, packet):
-        logging.warning(f"Received duplicate message from replica {packet.replica_id} - ignoring")
         return True
       
       try:
+        logging.info(f"Sending {response_packet}")
         self.__send_response(packet.client_id, response_message)
       except:
         logging.warning(f"Failed to send {response_packet}")
@@ -128,9 +130,6 @@ class ResponseProvider:
         self._rabbit.consume(trip_count_queue, self.__handle_type("trip_count"))
         self._rabbit.consume(avg_queue, self.__handle_type("dur_avg"))
 
-        # TODO
-        # Q: What does this do without a callback ?
-        # Q: Is there a guarantee that these will be read after normal messages ?
         self._rabbit.route(dist_mean_queue, "control", build_eof_out_queue_name("dist_mean_provider"))
         self._rabbit.route(trip_count_queue, "control", build_eof_out_queue_name("trip_count_provider"))
         self._rabbit.route(avg_queue, "control", build_eof_out_queue_name("avg_provider"))
@@ -147,7 +146,7 @@ class ResponseProvider:
 
 
 def main():
-    initialize_log(logging.INFO)
+    initialize_log()
     response_provider = ResponseProvider(int(REPLICA_ID))
     response_provider.start()
 

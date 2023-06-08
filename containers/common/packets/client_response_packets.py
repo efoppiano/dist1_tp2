@@ -10,6 +10,7 @@ from common.packets.eof import Eof
 class GenericResponsePacket(BasicPacket):
     client_id: str
     city_name: str
-    packet_id: int
     type: str
+    replica_id: int
+    packet_id: int
     data: Union[List[bytes], Eof]
