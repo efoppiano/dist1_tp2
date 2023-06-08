@@ -1,8 +1,9 @@
 import logging
+
 import os
 from typing import Dict, List, Union
-
-from common.basic_filter import BasicFilter
+from pickle import dumps, loads
+from common.basic_stateful_filter import BasicStatefulFilter
 from common.linker.linker import Linker
 from common.packets.eof_with_id import EofWithId
 from common.packets.gateway_in import GatewayIn
@@ -19,13 +20,15 @@ WEATHER_SIDE_TABLE_QUEUE_NAME = os.environ["WEATHER_SIDE_TABLE_QUEUE_NAME"]
 STATION_SIDE_TABLE_QUEUE_NAME = os.environ["STATION_SIDE_TABLE_QUEUE_NAME"]
 
 
-class Gateway(BasicFilter):
+class Gateway(BasicStatefulFilter):
     def __init__(self, replica_id: int, weather_side_table_queue_name: str, station_side_table_queue_name: str):
-        super().__init__(replica_id)
 
         self._replica_id = replica_id
         self._weather_side_table_queue_name = weather_side_table_queue_name
         self._station_side_table_queue_name = station_side_table_queue_name
+        self.last_packet_id = {}
+        
+        super().__init__(replica_id)
 
     def __handle_client_eof(self, packet: ClientEofPacket) -> Dict[str, List[bytes]]:
         if packet.file_type == "weather":
@@ -104,6 +107,12 @@ class Gateway(BasicFilter):
             return self.__handle_list(packet.data)
         else:
             raise ValueError(f"Unknown packet type: {type(packet.data)}")
+        
+    def get_state(self) -> bytes:
+        return dumps(self.last_packet_id)
+
+    def set_state(self, state: bytes):
+        self.last_packet_id = loads(state)
 
 
 def main():

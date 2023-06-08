@@ -28,6 +28,8 @@ services:
       - REPLICA_ID=0
       - WEATHER_SIDE_TABLE_QUEUE_NAME=publish_weather
       - STATION_SIDE_TABLE_QUEUE_NAME=publish_station
+    volumes:
+      - .volumes/gateway_0:/volumes
   gateway_1:
     container_name: gateway_1
     build:
@@ -43,6 +45,8 @@ services:
       - REPLICA_ID=1
       - WEATHER_SIDE_TABLE_QUEUE_NAME=publish_weather
       - STATION_SIDE_TABLE_QUEUE_NAME=publish_station
+    volumes:
+      - .volumes/gateway_1:/volumes
   response_provider:
     container_name: response_provider
     build:
@@ -58,7 +62,7 @@ services:
         condition: service_healthy
     volumes:
       - .volumes/response_provider:/volumes
-  client:
+  client0:
     build:
       context: ./containers
       dockerfile: client/Dockerfile
