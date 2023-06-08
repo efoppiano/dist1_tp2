@@ -20,7 +20,7 @@ EOF_TYPES = ["dist_mean_eof","trip_count_eof","dur_avg_eof"]
 
 class BasicClient(ABC):
     def __init__(self, config: dict):
-        self.client_id = f'{config["client_id"]}|{time.time()}'
+        self.client_id = f'{config["client_id"]}-{int(time.time())}'
         self._all_cities = config["cities"]
         PacketFactory.init(self.client_id)
 
