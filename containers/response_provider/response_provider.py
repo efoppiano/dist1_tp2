@@ -8,7 +8,7 @@ from common.packets.generic_packet import GenericPacket
 from common.packets.eof import Eof
 from common.packets.client_response_packets import GenericResponsePacket
 from common.rabbit_middleware import Rabbit
-from common.utils import initialize_log, build_eof_out_queue_name, hash_msg, save_state, load_state
+from common.utils import initialize_log, build_eof_out_queue_name, save_state, load_state
 
 REPLICA_ID = os.environ["REPLICA_ID"]
 SELF_QUEUE = f"sent_responses_{REPLICA_ID}"
@@ -27,6 +27,8 @@ class ResponseProvider:
             "dur_avg_eof": {},
         }
 
+        self._last_received = {}
+
         self._rabbit = Rabbit("rabbitmq")
         self.__set_up_signal_handler()
         self.__load_state()
@@ -41,38 +43,50 @@ class ResponseProvider:
             logging.info("action: shutdown_response_provider | result: success")
 
         self._sig_hand_prev = signal.signal(signal.SIGTERM, signal_handler)
+    def __update_last_received(self, type, packet: GenericPacket):
+        
+        flow_id = ( packet.client_id, packet.city_name )
+        case_id = ( type, packet.replica_id)
+        packet_id = packet.packet_id
 
-    def __update_last_hash(self, type: str, replica_id: int, new_hash: str) -> bool:
 
-      last_hash = self._last_hash_by_replica[type].get(replica_id)
-      if last_hash == new_hash:
-        return False
-      
-      self._last_hash_by_replica[type][replica_id] = new_hash
-      return True
+        self._last_received.setdefault(flow_id, {})
+        last_packet_id = self._last_received[flow_id].get(case_id)
+        if packet_id == last_packet_id:
+            logging.info(f"Received duplicate message from replica {case_id} - ignoring")
+            return False
+        self._last_received[flow_id][case_id] = packet_id
+
+        return True
+
     
-    def __send_response(self, city_name: str, message: bytes):
+    def __send_response(self, destination: str, message: bytes):
 
-      result_queue = f"results_{city_name}"
-      self._rabbit.route(SELF_QUEUE, "results", city_name)
-      self._rabbit.route(result_queue, "results", city_name) 
+      result_queue = f"results_{destination}"
+      self._rabbit.route(SELF_QUEUE, "results", destination)
+      self._rabbit.route(result_queue, "results", destination) 
 
-      self._rabbit.send_to_route("results", city_name, message)
+      self._rabbit.send_to_route("results", destination, message)
 
     def __handle_message(self, message: bytes, type: str) -> bool:
 
       packet = GenericPacket.decode(message)
       if isinstance(packet.data, Eof): type = f"{type}_eof"
-      response_packet = GenericResponsePacket(type, packet.data)
+
+      flow_id = ( packet.client_id, packet.city_name )
+      case_id = ( type, packet.replica_id)
+
+      response_packet = GenericResponsePacket(
+          flow_id, case_id, packet.packet_id, type, packet.data)
       response_message = response_packet.encode()
 
       logging.info(response_packet)
-      if not self.__update_last_hash(type, packet.replica_id, hash_msg(response_message)):
+      if not self.__update_last_received(type, packet):
         logging.warning(f"Received duplicate message from replica {packet.replica_id} - ignoring")
         return True
       
       try:
-        self.__send_response(packet.city_name, response_message)
+        self.__send_response(packet.client_id, response_message)
       except:
         logging.warning(f"Failed to send {response_packet}")
 
@@ -100,7 +114,8 @@ class ResponseProvider:
     
     def __handle_last_sent(self, message: bytes) -> bool:
       packet = GenericResponsePacket.decode(message) 
-      self._last_hash_by_replica[packet.type][packet.replica_id] = hash_msg(message)
+      self._last_hash_by_replica.setdefault(packet.flow_id, {})
+      self._last_hash_by_replica[packet.flow_id][packet.case_id] = packet.packet_id
       return True
 
     def __start(self):

@@ -32,20 +32,20 @@ class Client(BasicClient):
         reader = TripReader(self._data_folder_path, city)
         yield from reader.next_data()
 
-    def handle_dur_avg_out_packet(self, packet: DurAvgOut):
+    def handle_dur_avg_out_packet(self, city_name: str, packet: DurAvgOut):
         logging.info(
             f"action: receive_dur_avg_packet | result: success | "
-            f"city: {packet.city_name} | start_date: {packet.start_date} |  dur_avg_sec: {round(packet.dur_avg_sec, 2)} | amount: {packet.dur_avg_amount}")
+            f"city: {city_name} | start_date: {packet.start_date} |  dur_avg_sec: {round(packet.dur_avg_sec, 2)} | amount: {packet.dur_avg_amount}")
 
-    def handle_trip_count_by_year_joined_packet(self, packet: TripsCountByYearJoined):
+    def handle_trip_count_by_year_joined_packet(self, city_name: str, packet: TripsCountByYearJoined):
         logging.info(
-            f"action: receive_trip_count_packet | result: success | city: {packet.city_name} |"
+            f"action: receive_trip_count_packet | result: success | city: {city_name} |"
             f" start_station_name: {packet.start_station_name} |"
             f" trips (2016): {packet.trips_16} | trips (2017): {packet.trips_17}")
 
-    def handle_station_dist_mean_packet(self, packet: StationDistMean):
+    def handle_station_dist_mean_packet(self, city_name: str, packet: StationDistMean):
         logging.info(
-            f"action: receive_dist_mean_packet | result: success | city: {packet.city_name} |"
+            f"action: receive_dist_mean_packet | result: success | city: {city_name} |"
             f" end_station_name: {packet.end_station_name} | dist_mean (km): {round(packet.dist_mean, 2)}")
 
 

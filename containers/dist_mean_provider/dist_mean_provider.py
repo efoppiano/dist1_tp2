@@ -3,7 +3,6 @@ import logging
 import os
 from typing import Dict, List
 
-from common.basic_filter import BasicFilter
 from common.basic_stateful_filter import BasicStatefulFilter
 from common.linker.linker import Linker
 from common.packets.station_dist_mean import StationDistMean
@@ -21,7 +20,7 @@ class DistMeanProvider(BasicStatefulFilter):
         self._output_queue = Linker().get_output_queue(self)
         self._mean_threshold = mean_threshold
 
-    def handle_message(self, message: bytes) -> Dict[str, List[bytes]]:
+    def handle_message(self, _flow_id, message: bytes) -> Dict[str, List[bytes]]:
         packet = StationDistMean.decode(message)
 
         output = {}

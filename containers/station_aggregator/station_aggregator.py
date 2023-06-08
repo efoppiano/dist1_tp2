@@ -27,7 +27,18 @@ class StationAggregator(BasicAggregator):
         self._stations = {}
         super().__init__(replica_id, side_table_routing_key)
 
-    def handle_eof(self, message: Eof) -> Dict[str, List[bytes]]:
+    def __handle_side_table_message(self, flow_id, packet: StationSideTableInfo):
+        station_code, yearid = packet.station_code, packet.yearid
+
+        self._stations.setdefault(flow_id, {})
+
+        self._stations[flow_id][f"{station_code}-{yearid}"] = {
+            "station_name": packet.station_name,
+            "latitude": packet.latitude,
+            "longitude": packet.longitude,
+        }
+
+    def handle_eof(self, flow_id, message: Eof) -> Dict[str, List[bytes]]:
         client_id = message.client_id
         city_name = message.city_name
         logging.info(f"action: handle_eof | result: in_progress | city_name: {city_name}")
@@ -42,30 +53,22 @@ class StationAggregator(BasicAggregator):
             eof_distance_calc_queue: [EofWithId(client_id, city_name, self._replica_id).encode()],
         }
 
-    def __handle_side_table_message(self, packet: StationSideTableInfo):
-        city_name, station_code, yearid = packet.city_name, packet.station_code, packet.yearid
-
-        self._stations.setdefault(city_name, {})
-
-        self._stations[city_name][f"{station_code}-{yearid}"] = {
-            "station_name": packet.station_name,
-            "latitude": packet.latitude,
-            "longitude": packet.longitude,
-        }
-
-    def __search_station(self, city_name: str, station_code: int, yearid: int) -> Union[dict, None]:
-        try:
-            return self._stations[city_name][f"{station_code}-{yearid}"]
-        except KeyError:
+    def __search_station(self, flow_id, station_code: int, yearid: int) -> Union[dict, None]:
+        
+        if flow_id not in self._stations:
             return None
+        if f"{station_code}-{yearid}" not in self._stations[flow_id]:
+            return None
+        return self._stations[flow_id][f"{station_code}-{yearid}"]
 
-    def __search_stations(self, packet) -> Union[Tuple[dict, dict], None]:
-        start_station = self.__search_station(packet.city_name,
+    def __search_stations(self, flow_id, packet) -> Union[Tuple[dict, dict], None]:
+
+        start_station = self.__search_station(flow_id,
                                               packet.start_station_code,
                                               packet.yearid)
         if not start_station:
             return None
-        end_station = self.__search_station(packet.city_name,
+        end_station = self.__search_station(flow_id,
                                             packet.end_station_code,
                                             packet.yearid)
         if not end_station:
@@ -78,17 +81,15 @@ class StationAggregator(BasicAggregator):
         end_station_info = stations[1]
 
         prec_filter_in_packet = PrecFilterIn(
-            packet.trip_id, packet.city_name, packet.start_date, packet.duration_sec, packet.prectot
+            packet.start_date, packet.duration_sec, packet.prectot
         )
 
         year_filter_in_packet = YearFilterIn(
-            packet.trip_id, packet.city_name, start_station_info["station_name"], packet.yearid
+            start_station_info["station_name"], packet.yearid
         )
 
         if start_station_info["latitude"] is not None:
             distance_calc_in_packet = DistanceCalcIn(
-                packet.trip_id,
-                packet.city_name,
                 start_station_info["station_name"],
                 start_station_info["latitude"],
                 start_station_info["longitude"],
@@ -102,8 +103,8 @@ class StationAggregator(BasicAggregator):
 
         return [prec_filter_in_packet.encode()], [year_filter_in_packet.encode()], distance_calc_in_packets_list
 
-    def __handle_gateway_out(self, packet: GatewayOut) -> Dict[str, List[bytes]]:
-        stations = self.__search_stations(packet)
+    def __handle_gateway_out(self, flow_id, packet: GatewayOut) -> Dict[str, List[bytes]]:
+        stations = self.__search_stations(flow_id, packet)
         if not stations:
             logging.warning(f"Could not find stations for packet: {packet}")
             return {}
@@ -121,18 +122,18 @@ class StationAggregator(BasicAggregator):
         }
         return output
 
-    def handle_message(self, message: bytes) -> Dict[str, List[bytes]]:
+    def handle_message(self, flow_id, message: bytes) -> Dict[str, List[bytes]]:
         packet = GatewayOutOrStation.decode(message)
         if isinstance(packet.data, GatewayOut):
-            return self.__handle_gateway_out(packet.data)
+            return self.__handle_gateway_out(flow_id, packet.data)
         elif isinstance(packet.data, StationSideTableInfo):
-            self.__handle_side_table_message(packet.data)
+            self.__handle_side_table_message(flow_id, packet.data)
             return {}
         elif isinstance(packet.data, StopPacket):
-            return self.__handle_stop(packet.data.city_name)
+            return self.__handle_stop(flow_id)
 
     @staticmethod
-    def __handle_stop(_city_name: str) -> Dict[str, List[bytes]]:
+    def __handle_stop(flow_id) -> Dict[str, List[bytes]]:
         return {}
 
     def get_state(self) -> bytes:

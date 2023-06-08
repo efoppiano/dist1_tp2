@@ -92,5 +92,3 @@ def load_state(path: str = "/volumes/state") -> Union[bytes, None]:
         return None
 
 
-def hash_msg(msg: bytes) -> int:
-    return hash(msg)

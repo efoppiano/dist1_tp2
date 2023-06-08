@@ -16,7 +16,7 @@ class GenericPacket(BasicPacket):
     data: Union[List[bytes], bytes, Eof]
 
 @dataclass
-class Identifier:
+class PacketIdentifier:
     replica_id: int
     client_id: str
     city_name: str

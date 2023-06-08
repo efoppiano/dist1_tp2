@@ -49,15 +49,15 @@ class BasicClient(ABC):
         pass
 
     @abstractmethod
-    def handle_dur_avg_out_packet(self, packet: DurAvgOut):
+    def handle_dur_avg_out_packet(self, city_name: str, packet: DurAvgOut):
         pass
 
     @abstractmethod
-    def handle_trip_count_by_year_joined_packet(self, packet: TripsCountByYearJoined):
+    def handle_trip_count_by_year_joined_packet(self, city_name: str, packet: TripsCountByYearJoined):
         pass
 
     @abstractmethod
-    def handle_station_dist_mean_packet(self, packet: StationDistMean):
+    def handle_station_dist_mean_packet(self, city_name: str, packet: StationDistMean):
         pass
 
     def __send_weather_data(self, queue: str, city: str):
@@ -99,20 +99,20 @@ class BasicClient(ABC):
         for city in self._all_cities:
             self.__send_data_from_city(city)
 
-    def __handle_dist_mean( self, data: List[bytes] ):
+    def __handle_dist_mean( self, city_name: str, data: List[bytes] ):
         for item in data:
           station_dist_mean = StationDistMean.decode(item)
-          self.handle_station_dist_mean_packet(station_dist_mean)
+          self.handle_station_dist_mean_packet(city_name, station_dist_mean)
     
-    def __handle_dur_avg( self, data: List[bytes] ):
+    def __handle_dur_avg( self, city_name: str, data: List[bytes] ):
         for item in data:
           dur_avg_out = DurAvgOut.decode(item)
-          self.handle_dur_avg_out_packet(dur_avg_out)
+          self.handle_dur_avg_out_packet(city_name, dur_avg_out)
     
-    def __handle_trip_count( self, data: List[bytes] ):
+    def __handle_trip_count( self, city_name: str, data: List[bytes] ):
         for item in data:
           trips_count = TripsCountByYearJoined.decode(item)
-          self.handle_trip_count_by_year_joined_packet(trips_count)
+          self.handle_trip_count_by_year_joined_packet(city_name, trips_count)
     
     def __handle_eof( self, type: str, city_name: str ):
         self._eofs.setdefault(type, set())
@@ -127,15 +127,16 @@ class BasicClient(ABC):
 
     def __handle_message(self, message: bytes) -> bool:
         packet = GenericResponsePacket.decode(message)
+        city_name = packet.flow_id[1] # TODO: un-obfuscate this, flow_id is used by response_provider, maybe save fields independently
         
         if packet.type == "dist_mean":
-          self.__handle_dist_mean(packet.data)
+          self.__handle_dist_mean(city_name, packet.data)
         elif packet.type == "dur_avg":
-          self.__handle_dur_avg(packet.data)
+          self.__handle_dur_avg(city_name, packet.data)
         elif packet.type == "trip_count":
-          self.__handle_trip_count(packet.data)
+          self.__handle_trip_count(city_name, packet.data)
         elif packet.type in EOF_TYPES:
-          self.__handle_eof(packet.type, packet.data.city_name)
+          self.__handle_eof(packet.type, city_name)
         else:
           logging.warning(f"Unexpected message type: {packet.type}")
 
@@ -146,9 +147,8 @@ class BasicClient(ABC):
 
     def __get_responses(self):
         
-        for city in self._all_cities:
-            queue = f"results_{city}"
-            self._rabbit.consume(queue, self.__handle_message)
+        queue = f"results_{self._client_id}"
+        self._rabbit.consume(queue, self.__handle_message)
 
         self._rabbit.start()
 

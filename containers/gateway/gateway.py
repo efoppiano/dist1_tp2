@@ -57,8 +57,7 @@ class Gateway(BasicFilter):
             for weather_info in packet:
                 packets_to_send.append(
                     GatewayInOrWeather(
-                        WeatherSideTableInfo(weather_info.packet_id, weather_info.city_name, weather_info.date,
-                                             weather_info.prectot)).encode())
+                        WeatherSideTableInfo(weather_info.date, weather_info.prectot)).encode())
             return {
                 self._weather_side_table_queue_name: packets_to_send
             }
@@ -67,10 +66,14 @@ class Gateway(BasicFilter):
             for station_info in packet:
                 packets_to_send.append(
                     GatewayOutOrStation(
-                        StationSideTableInfo(station_info.packet_id, station_info.city_name, station_info.code,
-                                             station_info.yearid,
-                                             station_info.name, station_info.latitude,
-                                             station_info.longitude)).encode())
+                        StationSideTableInfo(
+                            station_info.code,
+                            station_info.yearid,
+                            station_info.name, station_info.latitude,
+                            station_info.longitude
+                        )
+                    ).encode()
+                )
             return {
                 self._station_side_table_queue_name: packets_to_send
             }
@@ -78,10 +81,12 @@ class Gateway(BasicFilter):
             queue_name = Linker().get_output_queue(self, hashing_key=packet[0].start_datetime)
             packets_to_send = []
             for t in packet:
-                gateway_in = GatewayIn(t.trip_id, t.city_name, t.start_datetime,
-                                       t.start_station_code, t.end_datetime,
-                                       t.end_station_code, t.duration_sec, t.is_member,
-                                       t.yearid)
+                gateway_in = GatewayIn(
+                    t.start_datetime,
+                    t.start_station_code, t.end_datetime,
+                    t.end_station_code, t.duration_sec, t.is_member,
+                    t.yearid
+                )
                 packets_to_send.append(GatewayInOrWeather(gateway_in).encode())
 
             return {
@@ -90,7 +95,7 @@ class Gateway(BasicFilter):
         else:
             raise ValueError(f"Unknown packet type: {element_type}")
 
-    def handle_message(self, message: bytes) -> Dict[str, List[bytes]]:
+    def handle_message(self, _flow_id, message: bytes) -> Dict[str, List[bytes]]:
         packet = ClientGatewayPacket.decode(message)
 
         if isinstance(packet.data, ClientEofPacket):

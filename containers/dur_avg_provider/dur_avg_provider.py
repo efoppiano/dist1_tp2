@@ -22,36 +22,34 @@ class DurAvgProvider(BasicStatefulFilter):
         self._avg_buffer = {}
         super().__init__(replica_id)
 
-    def handle_eof(self, message: Eof) -> Dict[str, List[bytes]]:
+    def handle_eof(self, flow_id, message: Eof) -> Dict[str, List[bytes]]:
         logging.info(f"Received EOF for city {message.city_name}")
         client_id = message.client_id
         city_name = message.city_name
         eof_output_queue = Linker().get_eof_in_queue(self)
-        self._avg_buffer.setdefault(city_name, {})
+        self._avg_buffer.setdefault(flow_id, {})
         city_output = []
-        for start_date in self._avg_buffer[city_name]:
-            avg = self._avg_buffer[city_name][start_date]["avg"]
-            amount = self._avg_buffer[city_name][start_date]["count"]
-            packet_id = self._avg_buffer[city_name][start_date]["id"]
-            city_output.append(DurAvgOut(packet_id, city_name, start_date, avg, amount).encode())
-        self._avg_buffer.pop(city_name)
+        for start_date in self._avg_buffer[flow_id]:
+            avg = self._avg_buffer[flow_id][start_date]["avg"]
+            amount = self._avg_buffer[flow_id][start_date]["count"]
+            city_output.append(DurAvgOut(start_date, avg, amount).encode())
+        self._avg_buffer.pop(flow_id)
         return {
             self._output_queue: city_output,
             eof_output_queue: [EofWithId(client_id, city_name, self._replica_id).encode()],
         }
 
-    def handle_message(self, message: bytes) -> Dict[str, List[bytes]]:
+    def handle_message(self, flow_id, message: bytes) -> Dict[str, List[bytes]]:
         packet = PrecFilterIn.decode(message)
 
-        self._avg_buffer.setdefault(packet.city_name, {})
-        # TODO: check if the id could cause problems
-        self._avg_buffer[packet.city_name].setdefault(packet.start_date, {"avg": 0, "count": 0, "id": packet.trip_id})
-        old_avg = self._avg_buffer[packet.city_name][packet.start_date]["avg"]
-        old_count = self._avg_buffer[packet.city_name][packet.start_date]["count"]
+        self._avg_buffer.setdefault(flow_id, {})
+        self._avg_buffer[flow_id].setdefault(packet.start_date, {"avg": 0, "count": 0})
+        old_avg = self._avg_buffer[flow_id][packet.start_date]["avg"]
+        old_count = self._avg_buffer[flow_id][packet.start_date]["count"]
         new_count = old_count + 1
         new_avg = (old_avg * old_count + packet.duration_sec) / new_count
-        self._avg_buffer[packet.city_name][packet.start_date]["avg"] = new_avg
-        self._avg_buffer[packet.city_name][packet.start_date]["count"] = new_count
+        self._avg_buffer[flow_id][packet.start_date]["avg"] = new_avg
+        self._avg_buffer[flow_id][packet.start_date]["count"] = new_count
 
         return {}
 

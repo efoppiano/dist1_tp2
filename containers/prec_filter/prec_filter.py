@@ -3,7 +3,6 @@ import logging
 import os
 from typing import Dict, List
 
-from common.basic_filter import BasicFilter
 from common.basic_stateful_filter import BasicStatefulFilter
 from common.linker.linker import Linker
 from common.packets.prec_filter_in import PrecFilterIn
@@ -19,7 +18,7 @@ class PrecFilter(BasicStatefulFilter):
         self._prec_limit = prec_limit
         self._replica_id = replica_id
 
-    def handle_message(self, message: bytes) -> Dict[str, List[bytes]]:
+    def handle_message(self, _flow_id, message: bytes) -> Dict[str, List[bytes]]:
         packet = PrecFilterIn.decode(message)
 
         output = {}

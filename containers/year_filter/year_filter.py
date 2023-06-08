@@ -17,7 +17,7 @@ class YearFilter(BasicStatefulFilter):
 
         self._replica_id = replica_id
 
-    def handle_message(self, message: bytes) -> Dict[str, List[bytes]]:
+    def handle_message(self, _flow_id, message: bytes) -> Dict[str, List[bytes]]:
         packet = YearFilterIn.decode(message)
         output = {}
         if packet.yearid in [2016, 2017]:
