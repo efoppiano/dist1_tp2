@@ -12,5 +12,5 @@ class GenericResponsePacket(BasicPacket):
     city_name: str
     type: str
     replica_id: int
-    packet_id: int
+    packet_id: Union[int,tuple]
     data: Union[List[bytes], Eof]
