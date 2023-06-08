@@ -70,7 +70,7 @@ services:
       - PYTHONUNBUFFERED=1
       - PYTHONHASHSEED=1
       - DATA_FOLDER_PATH=/opt/app/.data
-      - CLIENT_ID=Original
+      - CLIENT_ID=original
       - CITIES=montreal,washington,toronto
     volumes:
       - ./.data_4/:/opt/app/.data/

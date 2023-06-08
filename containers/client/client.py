@@ -33,10 +33,10 @@ class Client(BasicClient):
         reader = TripReader(self._data_folder_path, city)
         yield from reader.next_data()
 
-    def save_results(self, type, city, result):
-        self.results.setdefault(type, {})
-        self.results[type].setdefault(city, [])
-        self.results[type][city].append(result)
+    def save_results(self, city, type, key, results):
+        self.results.setdefault(city, {})
+        self.results[city].setdefault(type, {})
+        self.results[city][type][key] = results
 
     def dump_results(self):
         filename = f"{self._data_folder_path}/results/{self.client_id}.json"
@@ -46,20 +46,29 @@ class Client(BasicClient):
             f.write(data)
 
     def handle_dur_avg_out_packet(self, city_name: str, packet: DurAvgOut):
-        self.save_results("dur_avg_out", city_name, packet)
+        self.save_results(
+            city_name, "duration_average_prectot>=30mm", packet.start_date,
+            {"avg": round(packet.dur_avg_sec), "count": packet.dur_avg_amount}
+        )
         logging.info(
             f"action: receive_dur_avg_packet | result: success | "
             f"city: {city_name} | start_date: {packet.start_date} |  dur_avg_sec: {round(packet.dur_avg_sec, 2)} | amount: {packet.dur_avg_amount}")
 
     def handle_trip_count_by_year_joined_packet(self, city_name: str, packet: TripsCountByYearJoined):
-        self.save_results("trip_count_by_year_joined", city_name, packet)
+        self.save_results(
+            city_name, "trip_count_by_year", packet.start_station_name,
+            {"2016": packet.trips_16, "2017": packet.trips_17}
+        )
         logging.info(
             f"action: receive_trip_count_packet | result: success | city: {city_name} |"
             f" start_station_name: {packet.start_station_name} |"
             f" trips (2016): {packet.trips_16} | trips (2017): {packet.trips_17}")
 
     def handle_station_dist_mean_packet(self, city_name: str, packet: StationDistMean):
-        self.save_results("station_dist_mean", city_name, packet)
+        self.save_results(
+            city_name, "stations_mean_dist_>=6km", packet.end_station_name,
+            {"mean_dist": round(packet.dist_mean)}
+        )
         logging.info(
             f"action: receive_dist_mean_packet | result: success | city: {city_name} |"
             f" end_station_name: {packet.end_station_name} | dist_mean (km): {round(packet.dist_mean, 2)}")
