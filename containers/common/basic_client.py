@@ -12,7 +12,7 @@ from common.packets.client_response_packets import GenericResponsePacket
 from common.packets.station_dist_mean import StationDistMean
 from common.packets.trips_count_by_year_joined import TripsCountByYearJoined
 from common.rabbit_middleware import Rabbit
-from common.readers import WeatherInfo, StationInfo, TripInfo
+from common.readers import WeatherInfo, StationInfo, TripInfo, ClientIdPacket
 
 RABBIT_HOST = os.environ.get("RABBIT_HOST", "rabbitmq")
 
@@ -22,17 +22,43 @@ class BasicClient(ABC):
     def __init__(self, config: dict):
         self.client_id = f'{config["client_id"]}-{int(time.time())}'
         self._all_cities = config["cities"]
-        PacketFactory.init(self.client_id)
-
         self._eofs = {}
 
         self._rabbit = Rabbit(RABBIT_HOST)
-
         self.__set_up_signal_handler()
+
+        self.__request_client_id()
+        PacketFactory.set_ids(self.client_id)
 
     def __set_up_signal_handler(self):
         # TODO: Implement graceful shutdown
         pass
+    
+    def __request_client_id(self):
+        queue_name = Linker().get_output_queue(self, hashing_key=self.client_id)
+        packet = PacketFactory.build_id_request_packet(self.client_id)
+        self._rabbit.produce(queue_name,packet)
+
+        def on_client_id_packet(packet: bytes):
+            response = GenericResponsePacket.decode(packet)
+            logging.debug(f"Received: {response}")
+            try:
+                packet = ClientIdPacket.decode(response.data)
+                logging.debug(f"A) Received client id: {packet}")
+                client_id = packet.client_id
+            except:
+              packet = ClientIdPacket.decode(response.data[0])
+              logging.debug(f"B) Received client id: {packet}")
+              client_id = packet.client_id
+
+            self.client_id = client_id
+            logging.info(f"Assigned Client Id: {client_id}")
+            return True
+
+        # TODO: Do not hardcode the queue name
+        response_queue = "client_id_queue"
+        self._rabbit.consume_one(response_queue, on_client_id_packet)
+
 
     @staticmethod
     @abstractmethod

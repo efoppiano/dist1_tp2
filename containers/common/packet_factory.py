@@ -1,7 +1,7 @@
 from typing import List
 
 from common.packets.generic_packet import GenericPacket
-from common.readers import WeatherInfo, StationInfo, TripInfo, ClientGatewayPacket, ClientEofPacket
+from common.readers import WeatherInfo, StationInfo, TripInfo, ClientGatewayPacket, ClientEofPacket, ClientIdPacket
 
 DIST_MEAN_REQUEST = b'dist_mean'
 TRIP_COUNT_REQUEST = b'trip_count'
@@ -15,9 +15,19 @@ class PacketFactory:
     packet_id = None
 
     @staticmethod
-    def init( client_id: str ):
+    def set_ids( client_id: str ):
         PacketFactory.client_id = client_id
         PacketFactory.replica_id = 0
+
+    @staticmethod
+    def build_id_request_packet(client_id: str) -> bytes:
+        return GenericPacket(
+            replica_id= None,
+            client_id= None,
+            city_name= None,
+            packet_id= None,
+            data=ClientGatewayPacket(ClientIdPacket(client_id)).encode()
+        ).encode()
 
     @staticmethod
     def build_weather_packet(city_name: str, weather_info: List[WeatherInfo]) -> bytes:

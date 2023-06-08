@@ -5,7 +5,6 @@ from pickle import dumps, loads
 from common.basic_stateful_filter import BasicStatefulFilter
 from common.linker.linker import Linker
 from common.packets.eof_with_id import EofWithId
-from common.packets.client_id import ClientIdPacket
 from common.packets.gateway_in import GatewayIn
 from common.packets.gateway_in_or_weather import GatewayInOrWeather
 from common.packets.gateway_out_or_station import GatewayOutOrStation
@@ -13,7 +12,7 @@ from common.packets.station_side_table_info import StationSideTableInfo
 from common.packets.stop_packet import StopPacket
 from common.packets.generic_packet import OverLoadedMessages
 from common.packets.weather_side_table_info import WeatherSideTableInfo
-from common.readers import ClientGatewayPacket, ClientEofPacket, StationInfo, WeatherInfo, TripInfo
+from common.readers import ClientGatewayPacket, ClientIdPacket, ClientEofPacket, StationInfo, WeatherInfo, TripInfo
 from common.utils import initialize_log
 
 REPLICA_ID = os.environ["REPLICA_ID"]
