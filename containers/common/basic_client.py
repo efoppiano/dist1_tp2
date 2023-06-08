@@ -148,6 +148,7 @@ class BasicClient(ABC):
 
     def __get_responses(self):
         
+        # TODO: Do not hardcode the queue name
         queue = f"results_{self.client_id}"
         self._rabbit.consume(queue, self.__handle_message)
 
