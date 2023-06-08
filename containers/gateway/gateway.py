@@ -1,11 +1,11 @@
-import logging
-
 import os
+import time
 from typing import Dict, List, Union
 from pickle import dumps, loads
 from common.basic_stateful_filter import BasicStatefulFilter
 from common.linker.linker import Linker
 from common.packets.eof_with_id import EofWithId
+from common.packets.client_id import ClientIdPacket
 from common.packets.gateway_in import GatewayIn
 from common.packets.gateway_in_or_weather import GatewayInOrWeather
 from common.packets.gateway_out_or_station import GatewayOutOrStation
@@ -71,6 +71,16 @@ class Gateway(BasicStatefulFilter):
         else:
             raise ValueError(f"Unknown file type: {packet.file_type}")
 
+    def __handle_client_id_req(self, flow_id, packet: ClientIdPacket) -> Dict[str, List[bytes]]:
+        
+        new_client_id = (self._replica_id, time.time_ns())
+        response = ClientIdPacket(new_client_id).encode()
+
+        return {
+            # TODO: Do not hardcode the queue name
+            "client_id_queue": [response]
+        }
+        
     @__overload_id_decorator
     def __handle_list(self, flow_id, packet: List[Union[WeatherInfo, StationInfo, TripInfo]]) -> Dict[str, List[bytes]]:
         if len(packet) == 0:
@@ -124,6 +134,8 @@ class Gateway(BasicStatefulFilter):
 
         if isinstance(packet.data, ClientEofPacket):
             return self.__handle_client_eof(flow_id, packet.data)
+        elif isinstance(packet.data, ClientIdPacket):
+            return self.__handle_client_id_req(flow_id, packet.data)
         elif isinstance(packet.data, list):
             return self.__handle_list(flow_id, packet.data)
         else:
