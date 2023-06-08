@@ -31,7 +31,7 @@ class DistMeanProvider(BasicStatefulFilter):
 
 
 def main():
-    initialize_log(logging.INFO)
+    initialize_log()
     filter = DistMeanProvider(int(REPLICA_ID), float(MEAN_THRESHOLD))
     filter.start()
 

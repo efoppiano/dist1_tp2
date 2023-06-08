@@ -39,7 +39,7 @@ class DistanceCalculator(BasicStatefulFilter):
 
 
 def main():
-    initialize_log(logging.INFO)
+    initialize_log()
     filter = DistanceCalculator(int(REPLICA_ID))
     filter.start()
 

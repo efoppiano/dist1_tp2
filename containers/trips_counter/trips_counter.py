@@ -67,7 +67,7 @@ class TripsCounter(BasicStatefulFilter):
 
 
 def main():
-    initialize_log(logging.INFO)
+    initialize_log()
     filter = TripsCounter(int(REPLICA_ID))
     filter.start()
 

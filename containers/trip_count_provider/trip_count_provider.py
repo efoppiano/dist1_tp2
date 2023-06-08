@@ -32,7 +32,7 @@ class TripCountProvider(BasicStatefulFilter):
 
 
 def main():
-    initialize_log(logging.INFO)
+    initialize_log()
 
     filter = TripCountProvider(int(REPLICA_ID), float(MULT_THRESHOLD))
     filter.start()

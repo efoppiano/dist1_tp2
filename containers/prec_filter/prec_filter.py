@@ -30,7 +30,7 @@ class PrecFilter(BasicStatefulFilter):
 
 
 def main():
-    initialize_log(logging.INFO)
+    initialize_log()
     filter = PrecFilter(int(REPLICA_ID), int(PREC_LIMIT))
     filter.start()
 

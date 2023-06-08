@@ -65,7 +65,7 @@ class DurAvgProvider(BasicStatefulFilter):
 
 
 def main():
-    initialize_log(logging.INFO)
+    initialize_log()
     filter = DurAvgProvider(int(REPLICA_ID))
     filter.start()
 

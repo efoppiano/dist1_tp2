@@ -83,7 +83,7 @@ class BasicAggregator(ABC):
 
         if isinstance(packet.data, Eof):
             if flow_id in self._eofs_received:
-                logging.info(f"Received duplicate EOF from flow_id {flow_id} - ignoring")
+                logging.warning(f"Received duplicate EOF from flow_id {flow_id} - ignoring")
                 return False
             self._eofs_received.add(flow_id)
         else:
@@ -91,7 +91,7 @@ class BasicAggregator(ABC):
             self._last_received.setdefault(flow_id, {})
             last_packet_id = self._last_received[flow_id].get(replica_id)
             if packet_id == last_packet_id and packet_id is not None:
-                logging.info(f"Received duplicate message from replica {replica_id} - ignoring")
+                logging.warning(f"Received duplicate message for flow {flow_id} from replica {replica_id} - ignoring")
                 return False
             self._last_received[flow_id][replica_id] = packet_id
 

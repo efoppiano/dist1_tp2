@@ -28,7 +28,7 @@ class YearFilter(BasicStatefulFilter):
 
 
 def main():
-    initialize_log(logging.INFO)
+    initialize_log()
     filter = YearFilter(int(REPLICA_ID))
     filter.start()
 

@@ -56,7 +56,7 @@ class Synchronizer(BasicSynchronizer):
 
 
 def main():
-    initialize_log(logging.INFO)
+    initialize_log()
     with open("/opt/app/config.yaml", "r") as f:
         config = yaml.safe_load(f)
 

@@ -100,7 +100,7 @@ class WeatherAggregator(BasicAggregator):
 
 
 def main():
-    initialize_log(logging.INFO)
+    initialize_log()
     aggregator = WeatherAggregator(int(REPLICA_ID), SIDE_TABLE_ROUTING_KEY)
     aggregator.start()
 

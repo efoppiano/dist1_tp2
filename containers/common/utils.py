@@ -1,13 +1,11 @@
 import logging
 import os
 import json
-from base64 import b64encode
 from datetime import datetime, date
-from time import sleep
 from typing import Union
 
 
-def initialize_log(logging_level):
+def initialize_log(logging_level = logging.DEBUG):
     """
     Python custom logging initialization
 

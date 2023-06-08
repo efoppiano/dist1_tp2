@@ -66,7 +66,7 @@ class DistMeanCalculator(BasicStatefulFilter):
 
 
 def main():
-    initialize_log(logging.INFO)
+    initialize_log()
     filter = DistMeanCalculator(int(REPLICA_ID))
     filter.start()
 
