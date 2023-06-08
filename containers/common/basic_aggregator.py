@@ -83,14 +83,14 @@ class BasicAggregator(ABC):
 
         if isinstance(packet.data, Eof):
             if flow_id in self._eofs_received:
-                logging.info(f"Received duplicate EOF from city {id} - ignoring")
+                logging.info(f"Received duplicate EOF from flow_id {flow_id} - ignoring")
                 return False
             self._eofs_received.add(flow_id)
         else:
             # self.last_received [flow_id][replica_id] = packet_id
             self._last_received.setdefault(flow_id, {})
-            self._last_received[flow_id].setdefault(replica_id, -1)
-            if packet_id == self._last_received[flow_id][replica_id]:
+            last_packet_id = self._last_received[flow_id].get(replica_id)
+            if packet_id == last_packet_id and packet_id is not None:
                 logging.info(f"Received duplicate message from replica {replica_id} - ignoring")
                 return False
             self._last_received[flow_id][replica_id] = packet_id
