@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-import logging
 import os
 import pickle
 from typing import Dict, List
 
+from common.packets.generic_packet import overload_messages_ids
 from common.basic_stateful_filter import BasicStatefulFilter
 from common.linker.linker import Linker
 from common.packets.eof import Eof
@@ -42,7 +42,7 @@ class TripsCounter(BasicStatefulFilter):
         self._count_buffer.pop(flow_id)
         eof_output_queue = Linker().get_eof_in_queue(self)
         output[eof_output_queue] = [EofWithId(client_id, city_name, self._replica_id).encode()]
-        return output
+        return overload_messages_ids(output, self._replica_id)
 
     def handle_message(self, flow_id, message: bytes) -> Dict[str, List[bytes]]:
         packet = YearFilterIn.decode(message)

@@ -69,6 +69,8 @@ class BasicFilter(ABC):
     
     def __send_messages(self, id: PacketIdentifier, outgoing_messages: Dict[str, List[bytes]]):
 
+        # logging.debug(f"outgoing: {outgoing_messages}")
+
         for (queue, messages) in outgoing_messages.items():
             
             if isinstance(messages, OverLoadedMessages):
