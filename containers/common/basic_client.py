@@ -19,9 +19,9 @@ EOF_TYPES = ["dist_mean_eof","trip_count_eof","dur_avg_eof"]
 
 class BasicClient(ABC):
     def __init__(self, config: dict):
-        self._client_id = config["client_id"]
+        self.client_id = config["client_id"]
         self._all_cities = config["cities"]
-        PacketFactory.init(self._client_id)
+        PacketFactory.init(self.client_id)
 
         self._eofs = {}
 
@@ -147,7 +147,7 @@ class BasicClient(ABC):
 
     def __get_responses(self):
         
-        queue = f"results_{self._client_id}"
+        queue = f"results_{self.client_id}"
         self._rabbit.consume(queue, self.__handle_message)
 
         self._rabbit.start()

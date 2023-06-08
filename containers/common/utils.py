@@ -1,6 +1,6 @@
 import logging
 import os
-import time
+import json
 from base64 import b64encode
 from datetime import datetime, date
 from time import sleep
@@ -91,4 +91,9 @@ def load_state(path: str = "/volumes/state") -> Union[bytes, None]:
     else:
         return None
 
-
+def json_serialize(obj):
+    try:
+        return json.dumps(obj, default=lambda o: o.__dict__, sort_keys=True, indent=4)
+    except TypeError:
+        return json.dumps(obj, default=lambda o: str(o), sort_keys=True, indent=4)
+    
