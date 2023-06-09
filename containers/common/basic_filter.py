@@ -9,6 +9,7 @@ from common.packets.eof import Eof
 from common.packets.eof_with_id import EofWithId
 from common.packets.generic_packet import GenericPacket, PacketIdentifier
 from common.rabbit_middleware import Rabbit
+from common.utils import min_hash
 
 RABBIT_HOST = os.environ.get("RABBIT_HOST", "rabbitmq")
 
@@ -69,8 +70,6 @@ class BasicFilter(ABC):
     
     def __send_messages(self, id: PacketIdentifier, outgoing_messages: Dict[str, List[bytes]]):
 
-        # logging.debug(f"outgoing: {outgoing_messages}")
-
         for (queue, messages) in outgoing_messages.items():
 
             if queue.endswith("_eof_in"):
@@ -85,8 +84,10 @@ class BasicFilter(ABC):
                     data= messages
                 ).encode()
                 if queue.startswith("publish_"):
+                    logging.debug(f"Sending {id.replica_id}-{id.packet_id}-{min_hash(messages)} to publish_{queue}")
                     self._rabbit.send_to_route("publish", queue, encoded)
                 else:
+                    logging.debug(f"Sending {id.replica_id}-{id.packet_id}-{min_hash(messages)} to {queue}")
                     self._rabbit.produce(queue, encoded)
 
     @abc.abstractmethod

@@ -43,12 +43,12 @@ class BasicStatefulFilter(BasicFilter, ABC):
                 return False
             self._eofs_received.add(flow_id)
         else:
-            current_id = ( packet.client_id, packet.city_name, packet.packet_id )
+            current_id = packet.packet_id
             last_id = self._last_received.get(replica_id)
             if current_id == last_id:
-                logging.warning(f"Received duplicate message from replica {replica_id}: {current_id} - ignoring")
-                logging.debug(f"Dupe data hash: {min_hash(packet.data)}")
+                logging.warning(f"Received duplicate {replica_id}-{current_id}-{min_hash(packet.data)} - ignoring")
                 return False
+            logging.debug(f"Received {replica_id}-{current_id}-{min_hash(packet.data)}")
             self._last_received[replica_id] = current_id
 
         return True
