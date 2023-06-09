@@ -62,6 +62,7 @@ class ResponseProvider:
     
     def __send_response(self, destination: str, message: bytes):
 
+      # TODO: Do not hardcode the queue name
       result_queue = f"results_{destination}"
       self._rabbit.route(SELF_QUEUE, "results", destination)
       self._rabbit.route(result_queue, "results", destination) 

@@ -36,6 +36,8 @@ class BasicStatefulFilter(BasicFilter, ABC):
         flow_id = ( packet.client_id, packet.city_name )
         packet_id = packet.packet_id
 
+        if flow_id == (None, None): return True
+
         if isinstance(packet.data, Eof):
             if flow_id in self._eofs_received:
                 logging.warning(f"Received duplicate EOF from flow_id {flow_id} - ignoring")

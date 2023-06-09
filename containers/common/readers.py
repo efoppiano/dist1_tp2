@@ -117,10 +117,15 @@ class ClientEofPacket(BasicPacket):
     client_id: str
     city_name: str
 
+@dataclass
+class ClientIdPacket(BasicPacket):
+    '''Works both as request and response'''
+    client_id: str
+
 
 @dataclass
 class ClientGatewayPacket(BasicPacket):
-    data: Union[ClientEofPacket, List[WeatherInfo], List[StationInfo], List[TripInfo]]
+    data: Union[ClientIdPacket, ClientEofPacket, List[WeatherInfo], List[StationInfo], List[TripInfo]]
 
 
 class WeatherReader:
