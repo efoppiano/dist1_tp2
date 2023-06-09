@@ -96,4 +96,6 @@ def json_serialize(obj):
         return json.dumps(obj, default=lambda o: str(o), sort_keys=True, indent=4)
     
 def min_hash(obj, n=6):
+    if hasattr(obj, '__iter__'):
+        return hash(tuple(obj)) % (10 ** n)
     return hash(obj) % (10 ** n)
