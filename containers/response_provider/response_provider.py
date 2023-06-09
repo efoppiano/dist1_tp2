@@ -8,7 +8,7 @@ from common.packets.generic_packet import GenericPacket
 from common.packets.eof import Eof
 from common.packets.client_response_packets import GenericResponsePacket
 from common.rabbit_middleware import Rabbit
-from common.utils import initialize_log, build_eof_out_queue_name, save_state, load_state
+from common.utils import initialize_log, build_eof_out_queue_name, save_state, load_state, min_hash
 
 REPLICA_ID = os.environ["REPLICA_ID"]
 SELF_QUEUE = f"sent_responses_{REPLICA_ID}"
@@ -43,6 +43,7 @@ class ResponseProvider:
 
         if current_id == last_id:
             logging.warning(f"Received duplicate message from replica {replica_id}: {current_id} - ignoring")
+            logging.debug(f"Dupe data hash: {min_hash(packet.data)}")
             return False
         self._last_received[replica_id] = current_id
 

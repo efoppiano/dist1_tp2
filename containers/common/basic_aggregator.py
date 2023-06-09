@@ -5,7 +5,7 @@ import pickle
 from abc import ABC
 from typing import Dict, List, Union
 
-from common import utils
+from common.utils import save_state, load_state, min_hash
 from common.linker.linker import Linker
 from common.packets.eof import Eof
 from common.packets.generic_packet import GenericPacket, PacketIdentifier
@@ -90,6 +90,7 @@ class BasicAggregator(ABC):
             last_id = self._last_received.get(replica_id)
             if current_id == last_id:
                 logging.warning(f"Received duplicate message from replica {replica_id}: {current_id} - ignoring")
+                logging.debug(f"Dupe data hash: {min_hash(packet.data)}")
                 return False
             self._last_received[replica_id] = current_id
 
@@ -138,10 +139,10 @@ class BasicAggregator(ABC):
             "_last_received": self._last_received,
             "_eofs_received": self._eofs_received,
         }
-        utils.save_state(pickle.dumps(state))
+        save_state(pickle.dumps(state))
 
     def __load_full_state(self) -> Union[dict, None]:
-        state = utils.load_state()
+        state = load_state()
         if not state:
             return None
         return pickle.loads(state)

@@ -95,3 +95,5 @@ def json_serialize(obj):
     except TypeError:
         return json.dumps(obj, default=lambda o: str(o), sort_keys=True, indent=4)
     
+def min_hash(obj, n=6):
+    return hash(obj) % (10 ** n)
