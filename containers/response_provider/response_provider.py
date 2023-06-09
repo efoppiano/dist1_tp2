@@ -18,15 +18,6 @@ class ResponseProvider:
     def __init__(self, replica_id: int):
         self._replica_id = replica_id
 
-        self._last_hash_by_replica = {
-            "dist_mean": {},
-            "trip_count": {},
-            "dur_avg": {},
-            "dist_mean_eof": {},
-            "trip_count_eof": {},
-            "dur_avg_eof": {},
-        }
-
         self._last_received = {}
 
         self._rabbit = Rabbit("rabbitmq")
@@ -43,7 +34,7 @@ class ResponseProvider:
             logging.info("action: shutdown_response_provider | result: success")
 
         self._sig_hand_prev = signal.signal(signal.SIGTERM, signal_handler)
-        
+
     def __update_last_received(self, type, packet: GenericPacket):
         
         replica_id = packet.replica_id
@@ -96,13 +87,13 @@ class ResponseProvider:
         return lambda message, type=type: self.__handle_message(message, type)
     
     def __save_state(self):
-      save_state(pickle.dumps(self._last_hash_by_replica))
+      save_state(pickle.dumps(self._last_received))
     
     def __load_state(self):
       try:
-        _last_hash_by_replica = pickle.loads(load_state())
-        if _last_hash_by_replica is not None:
-          self._last_hash_by_replica = _last_hash_by_replica
+        _last_received = pickle.loads(load_state())
+        if _last_received is not None:
+          self._last_received = _last_received
       except:
         logging.warning("Failed to load state")
         pass
@@ -112,11 +103,10 @@ class ResponseProvider:
     
     def __handle_last_sent(self, message: bytes) -> bool:
       packet = GenericResponsePacket.decode(message)
-      flow_id = ( packet.client_id, packet.city_name )
-      case_id = ( packet.type, packet.replica_id)
+      replica_id = packet.replica_id
+      current_id = ( packet.client_id, packet.city_name, packet.type, packet.packet_id )
       
-      self._last_hash_by_replica.setdefault(flow_id, {})
-      self._last_hash_by_replica[flow_id][case_id] = packet.packet_id
+      self._last_received[replica_id] = current_id
       return True
 
     def __start(self):
