@@ -12,7 +12,7 @@ from common.packets.generic_packet import GenericPacket, PacketIdentifier
 from common.rabbit_middleware import Rabbit
 
 RABBIT_HOST = os.environ.get("RABBIT_HOST", "rabbitmq")
-
+MAX_PACKET_ID = 2**10 # 2 packet ids would be enough, but we more for traceability
 
 class BasicAggregator(ABC):
     def __init__(self, replica_id: int, side_table_routing_key: str):
@@ -28,6 +28,7 @@ class BasicAggregator(ABC):
         self._rabbit.route(input_queue, "publish", side_table_routing_key)
 
         self._last_received = {}
+        self._last_packet_id = 0
         self._eofs_received = set()
 
         state = self.__load_full_state()
@@ -95,6 +96,10 @@ class BasicAggregator(ABC):
             self._last_received[replica_id] = current_id
 
         return True
+    
+    def __get_next_packet_id(self) -> int:
+        self._last_packet_id = (self._last_packet_id + 1) % MAX_PACKET_ID
+        return self._last_packet_id
 
     def __on_stream_message_callback(self, msg: bytes) -> bool:
         decoded = GenericPacket.decode(msg)
@@ -106,7 +111,7 @@ class BasicAggregator(ABC):
             self._basic_agg_replica_id,
             decoded.client_id,
             decoded.city_name,
-            decoded.packet_id
+            self.__get_next_packet_id()
         )
         if not self.__on_stream_message_without_duplicates(id, decoded):
             return False
@@ -137,6 +142,7 @@ class BasicAggregator(ABC):
         state = {
             "concrete_state": self.get_state(),
             "_last_received": self._last_received,
+            "_last_packet_id": self._last_packet_id,
             "_eofs_received": self._eofs_received,
         }
         save_state(pickle.dumps(state))
@@ -150,4 +156,5 @@ class BasicAggregator(ABC):
     def __set_full_state(self, state: dict):
         self.set_state(state["concrete_state"])
         self._last_received = state["_last_received"]
+        self._last_packet_id = state["_last_packet_id"]
         self._eofs_received = state["_eofs_received"]

@@ -37,15 +37,15 @@ class ResponseProvider:
 
     def __update_last_received(self, type, packet: GenericPacket):
         
-        replica_id = packet.replica_id
-        current_id = ( packet.client_id, packet.city_name, type, packet.packet_id )
-        last_id = self._last_received.get(replica_id)
+        sender_id = ( type, packet.replica_id )
+        current_id = ( packet.client_id, packet.city_name, packet.packet_id )
+        last_id = self._last_received.get(sender_id)
 
         if current_id == last_id:
-            logging.warning(f"Received duplicate message from replica {replica_id}: {current_id} - ignoring")
+            logging.warning(f"Received duplicate message from {sender_id}: {current_id} - ignoring")
             logging.debug(f"Dupe data hash: {min_hash(packet.data)}")
             return False
-        self._last_received[replica_id] = current_id
+        self._last_received[sender_id] = current_id
 
         return True
 
@@ -104,10 +104,13 @@ class ResponseProvider:
     
     def __handle_last_sent(self, message: bytes) -> bool:
       packet = GenericResponsePacket.decode(message)
-      replica_id = packet.replica_id
-      current_id = ( packet.client_id, packet.city_name, packet.type, packet.packet_id )
+      sender_id = ( packet.type, packet.replica_id )
+      current_id = ( packet.client_id, packet.city_name, packet.packet_id )
       
-      self._last_received[replica_id] = current_id
+      self._last_received[sender_id] = current_id
+
+      self.__save_state()
+
       return True
 
     def __start(self):
