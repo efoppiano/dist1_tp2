@@ -41,15 +41,8 @@ class BasicClient(ABC):
 
         def on_client_id_packet(packet: bytes):
             response = GenericResponsePacket.decode(packet)
-            logging.debug(f"Received: {response}")
-            try:
-                packet = ClientIdPacket.decode(response.data)
-                logging.debug(f"A) Received client id: {packet}")
-                client_id = packet.client_id
-            except:
-              packet = ClientIdPacket.decode(response.data[0])
-              logging.debug(f"B) Received client id: {packet}")
-              client_id = packet.client_id
+            packet = ClientIdPacket.decode(response.data[0])
+            client_id = packet.client_id
 
             self.client_id = client_id
             logging.info(f"Assigned Client Id: {client_id}")

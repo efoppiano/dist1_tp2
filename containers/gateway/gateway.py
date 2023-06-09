@@ -72,7 +72,7 @@ class Gateway(BasicStatefulFilter):
 
     def __handle_client_id_req(self, flow_id, packet: ClientIdPacket) -> Dict[str, List[bytes]]:
         
-        new_client_id = (self._replica_id, time.time_ns())
+        new_client_id = f"{self._replica_id}_{time.time_ns()}"
         response = ClientIdPacket(new_client_id).encode()
 
         return {
