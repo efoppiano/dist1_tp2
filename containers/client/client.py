@@ -48,7 +48,7 @@ class Client(BasicClient):
     def handle_dur_avg_out_packet(self, city_name: str, packet: DurAvgOut):
         self.save_results(
             city_name, "duration_average_prectot>=30mm", packet.start_date,
-            {"avg": round(packet.dur_avg_sec), "count": packet.dur_avg_amount}
+            {"avg": round(packet.dur_avg_sec, 2), "count": packet.dur_avg_amount}
         )
         logging.info(
             f"action: receive_dur_avg_packet | result: success | "
@@ -67,7 +67,7 @@ class Client(BasicClient):
     def handle_station_dist_mean_packet(self, city_name: str, packet: StationDistMean):
         self.save_results(
             city_name, "stations_mean_dist_>=6km", packet.end_station_name,
-            {"mean_dist": round(packet.dist_mean)}
+            {"mean_dist": round(packet.dist_mean, 2), "count": packet.dist_mean_amount}
         )
         logging.info(
             f"action: receive_dist_mean_packet | result: success | city: {city_name} |"

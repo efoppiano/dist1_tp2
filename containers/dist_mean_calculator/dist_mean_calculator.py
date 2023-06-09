@@ -31,7 +31,7 @@ class DistMeanCalculator(BasicStatefulFilter):
             queue_name = Linker().get_output_queue(self, hashing_key=end_station_name)
             output.setdefault(queue_name, [])
             output[queue_name].append(
-                StationDistMean(end_station_name,data["mean"]).encode()
+                StationDistMean(end_station_name,data["mean"],data["count"]).encode()
             )
 
         self._mean_buffer.pop(flow_id)

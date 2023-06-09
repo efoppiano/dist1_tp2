@@ -7,3 +7,4 @@ from common.packets.basic_packet import BasicPacket
 class StationDistMean(BasicPacket):
     end_station_name: str
     dist_mean: float
+    dist_mean_amount: int
