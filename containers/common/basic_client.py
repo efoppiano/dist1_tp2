@@ -1,6 +1,6 @@
 import logging
 import os
-import time
+import datetime
 import threading
 from abc import ABC, abstractmethod
 from typing import List, Iterator
@@ -20,7 +20,10 @@ EOF_TYPES = ["dist_mean_eof","trip_count_eof","dur_avg_eof"]
 
 class BasicClient(ABC):
     def __init__(self, config: dict):
-        self.client_id = f'{config["client_id"]}-{int(time.time())}'
+        timestamp = datetime.datetime.now().strftime("%Y-%m%d-%H%M")
+        self.client_id = f'{config["client_id"]}-{timestamp}'
+        self._client_id = None # Assigned by the server
+
         self._all_cities = config["cities"]
         self._eofs = {}
 
@@ -28,7 +31,7 @@ class BasicClient(ABC):
         self.__set_up_signal_handler()
 
         self.__request_client_id()
-        PacketFactory.set_ids(self.client_id)
+        PacketFactory.set_ids(self._client_id)
 
     def __set_up_signal_handler(self):
         # TODO: Implement graceful shutdown
@@ -44,7 +47,7 @@ class BasicClient(ABC):
             packet = ClientIdPacket.decode(response.data[0])
             client_id = packet.client_id
 
-            self.client_id = client_id
+            self._client_id = client_id
             logging.info(f"Assigned Client Id: {client_id}")
             return True
 
@@ -168,7 +171,7 @@ class BasicClient(ABC):
     def __get_responses(self):
         
         # TODO: Do not hardcode the queue name
-        queue = f"results_{self.client_id}"
+        queue = f"results_{self._client_id}"
         self._rabbit.consume(queue, self.__handle_message)
 
         self._rabbit.start()
