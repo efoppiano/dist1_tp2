@@ -7,7 +7,6 @@ from typing import Dict, List
 from common.basic_stateful_filter import BasicStatefulFilter
 from common.linker.linker import Linker
 from common.packets.dur_avg_out import DurAvgOut
-from common.packets.generic_packet import overload_messages_ids
 from common.packets.eof import Eof
 from common.packets.eof_with_id import EofWithId
 from common.packets.prec_filter_in import PrecFilterIn
@@ -35,10 +34,10 @@ class DurAvgProvider(BasicStatefulFilter):
             amount = self._avg_buffer[flow_id][start_date]["count"]
             city_output.append(DurAvgOut(start_date, avg, amount).encode())
         self._avg_buffer.pop(flow_id)
-        return overload_messages_ids({
+        return {
             self._output_queue: city_output,
             eof_output_queue: [EofWithId(client_id, city_name, self._replica_id).encode()],
-        }, self._replica_id)
+        }
 
     def handle_message(self, flow_id, message: bytes) -> Dict[str, List[bytes]]:
         packet = PrecFilterIn.decode(message)

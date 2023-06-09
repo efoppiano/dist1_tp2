@@ -3,7 +3,6 @@ import os
 import pickle
 from typing import Dict, List
 
-from common.packets.generic_packet import overload_messages_ids
 from common.basic_stateful_filter import BasicStatefulFilter
 from common.linker.linker import Linker
 from common.packets.dist_info import DistInfo
@@ -37,7 +36,7 @@ class DistMeanCalculator(BasicStatefulFilter):
 
         self._mean_buffer.pop(flow_id)
         output[eof_output_queue] = [EofWithId(client_id, city_name, self._replica_id).encode()]
-        return overload_messages_ids(output, self._replica_id)
+        return output
     
 
     def handle_message(self, flow_id, message: bytes) -> Dict[str, List[bytes]]:
