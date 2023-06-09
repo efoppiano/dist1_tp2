@@ -43,19 +43,17 @@ class ResponseProvider:
             logging.info("action: shutdown_response_provider | result: success")
 
         self._sig_hand_prev = signal.signal(signal.SIGTERM, signal_handler)
+        
     def __update_last_received(self, type, packet: GenericPacket):
         
-        flow_id = ( packet.client_id, packet.city_name )
-        case_id = ( type, packet.replica_id)
-        packet_id = packet.packet_id
+        replica_id = packet.replica_id
+        current_id = ( packet.client_id, packet.city_name, type, packet.packet_id )
+        last_id = self._last_received.get(replica_id)
 
-
-        self._last_received.setdefault(flow_id, {})
-        last_packet_id = self._last_received[flow_id].get(case_id)
-        if packet_id == last_packet_id:
-            logging.warning(f"Received duplicate message for flow: {flow_id}, case: {case_id} - ignoring \n{packet}")
+        if current_id == last_id:
+            logging.warning(f"Received duplicate message from replica {replica_id}: {current_id} - ignoring")
             return False
-        self._last_received[flow_id][case_id] = packet_id
+        self._last_received[replica_id] = current_id
 
         return True
 

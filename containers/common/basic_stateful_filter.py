@@ -33,24 +33,20 @@ class BasicStatefulFilter(BasicFilter, ABC):
     def __update_last_received(self, packet: GenericPacket):
         
         replica_id = packet.replica_id
-        flow_id = ( packet.client_id, packet.city_name )
-        packet_id = packet.packet_id
-
-        if flow_id == (None, None): return True
 
         if isinstance(packet.data, Eof):
+            flow_id = ( packet.client_id, packet.city_name )
             if flow_id in self._eofs_received:
                 logging.warning(f"Received duplicate EOF from flow_id {flow_id} - ignoring")
                 return False
             self._eofs_received.add(flow_id)
         else:
-            # self.last_received [flow_id][replica_id] = packet_id
-            self._last_received.setdefault(flow_id, {})
-            last_packet_id = self._last_received[flow_id].get(replica_id)
-            if packet_id == last_packet_id and packet_id is not None:
-                logging.warning(f"Received duplicate message for {flow_id} from replica {replica_id} - ignoring")
+            current_id = ( packet.client_id, packet.city_name, packet.packet_id )
+            last_id = self._last_received.get(replica_id)
+            if current_id == last_id:
+                logging.warning(f"Received duplicate message from replica {replica_id}: {current_id} - ignoring")
                 return False
-            self._last_received[flow_id][replica_id] = packet_id
+            self._last_received[replica_id] = current_id
 
         return True
 
