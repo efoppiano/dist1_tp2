@@ -12,7 +12,8 @@ from common.packets.generic_packet import GenericPacket, PacketIdentifier
 from common.rabbit_middleware import Rabbit
 
 RABBIT_HOST = os.environ.get("RABBIT_HOST", "rabbitmq")
-MAX_PACKET_ID = 2**10 # 2 packet ids would be enough, but we more for traceability
+MAX_PACKET_ID = 2 ** 10  # 2 packet ids would be enough, but we more for traceability
+
 
 class BasicAggregator(ABC):
     def __init__(self, replica_id: int, side_table_routing_key: str):
@@ -61,8 +62,8 @@ class BasicAggregator(ABC):
                 self._rabbit.produce(queue, encoded)
 
     def __on_stream_message_without_duplicates(self, id: PacketIdentifier, decoded: GenericPacket) -> bool:
-        
-        flow_id = ( decoded.client_id, decoded.city_name )
+
+        flow_id = (decoded.client_id, decoded.city_name)
 
         if isinstance(decoded.data, Eof):
             outgoing_messages = self.handle_eof(flow_id, decoded.data)
@@ -78,11 +79,11 @@ class BasicAggregator(ABC):
         return True
 
     def __update_last_received(self, packet: GenericPacket):
-        
+
         replica_id = packet.replica_id
 
         if isinstance(packet.data, Eof):
-            flow_id = ( packet.client_id, packet.city_name )
+            flow_id = (packet.client_id, packet.city_name)
             if flow_id in self._eofs_received:
                 logging.warning(f"Received duplicate EOF from flow_id {flow_id} - ignoring")
                 return False
@@ -97,14 +98,14 @@ class BasicAggregator(ABC):
             self._last_received[replica_id] = current_id
 
         return True
-    
+
     def __get_next_packet_id(self) -> int:
         self._last_packet_id = (self._last_packet_id + 1) % MAX_PACKET_ID
         return self._last_packet_id
 
     def __on_stream_message_callback(self, msg: bytes) -> bool:
         decoded = GenericPacket.decode(msg)
-        
+
         if not self.__update_last_received(decoded):
             return True
 

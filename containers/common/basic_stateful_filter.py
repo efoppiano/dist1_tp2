@@ -12,7 +12,8 @@ from common.packets.generic_packet import GenericPacket
 from common.packets.generic_packet import PacketIdentifier
 
 RABBIT_HOST = os.environ.get("RABBIT_HOST", "rabbitmq")
-MAX_PACKET_ID = 2**10 # 2 packet ids would be enough, but we more for traceability
+MAX_PACKET_ID = 2 ** 10  # 2 packet ids would be enough, but we more for traceability
+
 
 class BasicStatefulFilter(BasicFilter, ABC):
     def __init__(self, replica_id: int):
@@ -31,13 +32,13 @@ class BasicStatefulFilter(BasicFilter, ABC):
 
     def set_state(self, state: bytes):
         pass
-    
+
     def __update_last_received(self, packet: GenericPacket):
-        
+
         replica_id = packet.replica_id
 
         if isinstance(packet.data, Eof):
-            flow_id = ( packet.client_id, packet.city_name )
+            flow_id = (packet.client_id, packet.city_name)
             if flow_id in self._eofs_received:
                 logging.warning(f"Received duplicate EOF from flow_id {flow_id} - ignoring")
                 return False
@@ -55,7 +56,7 @@ class BasicStatefulFilter(BasicFilter, ABC):
 
     def on_message_callback(self, msg: bytes) -> bool:
         decoded = GenericPacket.decode(msg)
-        
+
         if not self.__update_last_received(decoded):
             return True
 
@@ -70,10 +71,10 @@ class BasicStatefulFilter(BasicFilter, ABC):
         return self._last_packet_id
 
     def send_messages(self, id: PacketIdentifier, outgoing_messages: Dict[str, List[bytes]]):
-        id.replica_id = self._basic_filter_replica_id
+        id.replica_id = self.basic_filter_replica_id
         id.packet_id = self.__next_packet_id(id)
         return super().send_messages(id, outgoing_messages)
-    
+
     @staticmethod
     def __load_full_state() -> Optional[dict]:
         state = load_state()

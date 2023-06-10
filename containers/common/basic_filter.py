@@ -24,7 +24,7 @@ class BasicFilter(ABC):
         eof_routing_key = Linker().get_eof_out_routing_key(self)
         self._rabbit.route(self._input_queue, "control", eof_routing_key)
 
-        self._basic_filter_replica_id = replica_id
+        self.basic_filter_replica_id = replica_id
 
     def __handle_chunk(self, flow_id, chunk: List[bytes]) -> Dict[str, List[bytes]]:
         outgoing_messages = {}
@@ -51,7 +51,7 @@ class BasicFilter(ABC):
         self.__on_message_without_duplicates(id, decoded)
 
         return True
-    
+
     def __on_message_without_duplicates(self, id: PacketIdentifier, decoded: GenericPacket) -> bool:
         flow_id = (id.client_id, id.city_name)
 
@@ -77,11 +77,11 @@ class BasicFilter(ABC):
                     self._rabbit.produce(queue, message)
             elif len(messages) > 0:
                 encoded = GenericPacket(
-                    replica_id= self._basic_filter_replica_id,
+                    replica_id=id.replica_id,
                     client_id=id.client_id,
                     city_name=id.city_name,
                     packet_id=id.packet_id,
-                    data= messages
+                    data=messages
                 ).encode()
                 if queue.startswith("publish_"):
                     logging.debug(f"Sending {id.replica_id}-{id.packet_id}-{min_hash(messages)} [{idx}] to {queue}")
@@ -96,7 +96,7 @@ class BasicFilter(ABC):
 
     def handle_eof(self, _flow_id, message: Eof) -> Dict[str, List[bytes]]:
         eof_output_queue = Linker().get_eof_in_queue(self)
-        eof = EofWithId(message.client_id, message.city_name, self._basic_filter_replica_id)
+        eof = EofWithId(message.client_id, message.city_name, self.basic_filter_replica_id)
         return {
             eof_output_queue: [eof.encode()]
         }

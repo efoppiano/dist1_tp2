@@ -118,7 +118,6 @@ class Gateway(BasicStatefulFilter):
             return self.__handle_list(flow_id, packet.data)
         else:
             raise ValueError(f"Unknown packet type: {type(packet.data)}")
-        
 
 
 def main():
