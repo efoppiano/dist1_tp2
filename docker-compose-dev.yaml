@@ -56,7 +56,7 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - PYTHONHASHSEED=1
-      - REPLICA_ID=2
+      - REPLICA_ID=0
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -104,7 +104,7 @@ services:
       - PYTHONUNBUFFERED=1
       - SIDE_TABLE_QUEUE_PREFIX=weather
       - SIDE_TABLE_ROUTING_KEY=publish_weather
-      - REPLICA_ID=3
+      - REPLICA_ID=0
     volumes:
       - .volumes/weather_aggregator_0:/volumes
   weather_aggregator_1:
@@ -120,7 +120,7 @@ services:
       - PYTHONUNBUFFERED=1
       - SIDE_TABLE_QUEUE_PREFIX=weather
       - SIDE_TABLE_ROUTING_KEY=publish_weather
-      - REPLICA_ID=4
+      - REPLICA_ID=1
     volumes:
       - .volumes/weather_aggregator_1:/volumes
   station_aggregator_0:
@@ -136,7 +136,7 @@ services:
       - PYTHONUNBUFFERED=1
       - SIDE_TABLE_QUEUE_PREFIX=station
       - SIDE_TABLE_ROUTING_KEY=publish_station
-      - REPLICA_ID=5
+      - REPLICA_ID=0
     volumes:
       - .volumes/station_aggregator_0:/volumes
   station_aggregator_1:
@@ -152,7 +152,7 @@ services:
       - PYTHONUNBUFFERED=1
       - SIDE_TABLE_QUEUE_PREFIX=station
       - SIDE_TABLE_ROUTING_KEY=publish_station
-      - REPLICA_ID=6
+      - REPLICA_ID=1
     volumes:
       - .volumes/station_aggregator_1:/volumes
   station_aggregator_2:
@@ -168,7 +168,7 @@ services:
       - PYTHONUNBUFFERED=1
       - SIDE_TABLE_QUEUE_PREFIX=station
       - SIDE_TABLE_ROUTING_KEY=publish_station
-      - REPLICA_ID=7
+      - REPLICA_ID=2
     volumes:
       - .volumes/station_aggregator_2:/volumes
   station_aggregator_3:
@@ -184,7 +184,7 @@ services:
       - PYTHONUNBUFFERED=1
       - SIDE_TABLE_QUEUE_PREFIX=station
       - SIDE_TABLE_ROUTING_KEY=publish_station
-      - REPLICA_ID=8
+      - REPLICA_ID=3
     volumes:
       - .volumes/station_aggregator_3:/volumes
   prec_filter_0:
@@ -199,7 +199,7 @@ services:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
       - PREC_LIMIT=30
-      - REPLICA_ID=9
+      - REPLICA_ID=0
     volumes:
       - .volumes/prec_filter_0:/volumes
   prec_filter_1:
@@ -214,7 +214,7 @@ services:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
       - PREC_LIMIT=30
-      - REPLICA_ID=10
+      - REPLICA_ID=1
     volumes:
       - .volumes/prec_filter_1:/volumes
   dur_avg_provider_0:
@@ -228,7 +228,7 @@ services:
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
-      - REPLICA_ID=11
+      - REPLICA_ID=0
     volumes:
       - .volumes/dur_avg_provider_0:/volumes
   distance_calculator_0:
@@ -242,7 +242,7 @@ services:
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
-      - REPLICA_ID=12
+      - REPLICA_ID=0
     volumes:
       - .volumes/distance_calculator_0:/volumes
   distance_calculator_1:
@@ -256,7 +256,7 @@ services:
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
-      - REPLICA_ID=13
+      - REPLICA_ID=1
     volumes:
       - .volumes/distance_calculator_1:/volumes
   dist_mean_calculator_0:
@@ -270,7 +270,7 @@ services:
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
-      - REPLICA_ID=14
+      - REPLICA_ID=0
     volumes:
       - .volumes/dist_mean_calculator_0:/volumes
   dist_mean_calculator_1:
@@ -284,7 +284,7 @@ services:
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
-      - REPLICA_ID=15
+      - REPLICA_ID=1
     volumes:
       - .volumes/dist_mean_calculator_1:/volumes
   dist_mean_provider_0:
@@ -299,7 +299,7 @@ services:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
       - MEAN_THRESHOLD=6.0
-      - REPLICA_ID=16
+      - REPLICA_ID=0
     volumes:
       - .volumes/dist_mean_provider_0:/volumes
   year_filter_0:
@@ -313,7 +313,7 @@ services:
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
-      - REPLICA_ID=17
+      - REPLICA_ID=0
     volumes:
       - .volumes/year_filter_0:/volumes
   year_filter_1:
@@ -327,7 +327,7 @@ services:
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
-      - REPLICA_ID=18
+      - REPLICA_ID=1
     volumes:
       - .volumes/year_filter_1:/volumes
   trips_counter_0:
@@ -341,7 +341,7 @@ services:
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
-      - REPLICA_ID=19
+      - REPLICA_ID=0
     volumes:
       - .volumes/trips_counter_0:/volumes
   trips_counter_1:
@@ -355,7 +355,7 @@ services:
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
-      - REPLICA_ID=20
+      - REPLICA_ID=1
     volumes:
       - .volumes/trips_counter_1:/volumes
   trip_count_provider_0:
@@ -370,6 +370,6 @@ services:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
       - MULT_THRESHOLD=2
-      - REPLICA_ID=21
+      - REPLICA_ID=0
     volumes:
       - .volumes/trip_count_provider_0:/volumes
