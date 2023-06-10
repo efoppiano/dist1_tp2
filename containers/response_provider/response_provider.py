@@ -36,8 +36,8 @@ class ResponseProvider:
         self._sig_hand_prev = signal.signal(signal.SIGTERM, signal_handler)
 
     def __update_last_received(self, type, packet: GenericPacket):
-        
-        sender_id = ( type, packet.replica_id )
+
+        sender_id = (type, packet.replica_id)
         current_id = packet.packet_id
         last_id = self._last_received.get(sender_id)
 
@@ -48,68 +48,67 @@ class ResponseProvider:
 
         return True
 
-    
     def __send_response(self, destination: str, message: bytes):
 
-      # TODO: Do not hardcode the queue name
-      result_queue = f"results_{destination}"
-      self._rabbit.route(SELF_QUEUE, "results", destination)
-      self._rabbit.route(result_queue, "results", destination) 
+        # TODO: Do not hardcode the queue name
+        result_queue = f"results_{destination}"
+        self._rabbit.route(SELF_QUEUE, "results", destination)
+        self._rabbit.route(result_queue, "results", destination)
 
-      self._rabbit.send_to_route("results", destination, message)
+        self._rabbit.send_to_route("results", destination, message)
 
     def __handle_message(self, message: bytes, type: str) -> bool:
 
-      packet = GenericPacket.decode(message)
-      if isinstance(packet.data, Eof): type = f"{type}_eof"
+        packet = GenericPacket.decode(message)
+        if isinstance(packet.data, Eof): type = f"{type}_eof"
 
-      response_packet = GenericResponsePacket(
-          packet.client_id, packet.city_name,
-          type, packet.replica_id,
-          packet.packet_id, packet.data
-      )
-      response_message = response_packet.encode()
+        response_packet = GenericResponsePacket(
+            packet.client_id, packet.city_name,
+            type, packet.replica_id,
+            packet.packet_id, packet.data
+        )
+        response_message = response_packet.encode()
 
-      if not self.__update_last_received(type, packet):
+        if not self.__update_last_received(type, packet):
+            return True
+
+        try:
+            logging.info(f"Sending {response_packet}")
+            self.__send_response(packet.client_id, response_message)
+        except:
+            logging.warning(f"Failed to send {response_packet}")
+
+        self.__save_state()
+
         return True
-      
-      try:
-        logging.info(f"Sending {response_packet}")
-        self.__send_response(packet.client_id, response_message)
-      except:
-        logging.warning(f"Failed to send {response_packet}")
 
-      self.__save_state()
-
-      return True
-      
     def __handle_type(self, type):
         return lambda message, type=type: self.__handle_message(message, type)
-    
+
     def __save_state(self):
-      save_state(pickle.dumps(self._last_received))
-    
+        save_state(pickle.dumps(self._last_received))
+
     def __load_state(self):
-      try:
-        _last_received = pickle.loads(load_state())
-        if _last_received is not None:
-          self._last_received = _last_received
-      except:
-        logging.warning("Failed to load state")
-        pass
+        try:
+            _last_received = pickle.loads(load_state())
+            if _last_received is not None:
+                self._last_received = _last_received
+        except:
+            logging.warning("Failed to load state")
+            pass
 
     def __load_last_sent(self):
-      self._rabbit.consume_until_empty(SELF_QUEUE, self.__handle_last_sent)
-    
+        self._rabbit.consume_until_empty(SELF_QUEUE, self.__handle_last_sent)
+
     def __handle_last_sent(self, message: bytes) -> bool:
-      packet = GenericResponsePacket.decode(message)
-      sender_id = ( packet.type, packet.replica_id )
-      
-      self._last_received[sender_id] = packet.packet_id
+        packet = GenericResponsePacket.decode(message)
+        sender_id = (packet.type, packet.replica_id)
 
-      self.__save_state()
+        self._last_received[sender_id] = packet.packet_id
 
-      return True
+        self.__save_state()
+
+        return True
 
     def __start(self):
 
@@ -124,7 +123,7 @@ class ResponseProvider:
         self._rabbit.route(dist_mean_queue, "control", build_eof_out_queue_name("dist_mean_provider"))
         self._rabbit.route(trip_count_queue, "control", build_eof_out_queue_name("trip_count_provider"))
         self._rabbit.route(avg_queue, "control", build_eof_out_queue_name("avg_provider"))
-        
+
         # Returns True every time, as this is already saved to disk if reading at runtime
         self._rabbit.consume(SELF_QUEUE, lambda _message: True)
 

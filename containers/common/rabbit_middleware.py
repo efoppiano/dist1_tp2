@@ -104,7 +104,6 @@ class Rabbit(MessageQueue):
             if q.method.message_count == 0:
                 break
             self.consume_one(queue, callback)
-        
 
     def produce(self, queue: str, message: bytes):
         self.declare_queue(queue)

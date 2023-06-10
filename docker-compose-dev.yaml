@@ -14,7 +14,6 @@ services:
       retries: 10
       start_period: 50s
   gateway_0:
-    container_name: gateway_0
     build:
       context: ./containers
       dockerfile: gateway/Dockerfile
@@ -31,7 +30,6 @@ services:
     volumes:
       - .volumes/gateway_0:/volumes
   gateway_1:
-    container_name: gateway_1
     build:
       context: ./containers
       dockerfile: gateway/Dockerfile
@@ -77,7 +75,7 @@ services:
       - CLIENT_ID=original
       - CITIES=montreal,washington,toronto
     volumes:
-      - ./.data_4/:/opt/app/.data/
+      - ./.data_3/:/opt/app/.data/
   synchronizer:
     build:
       context: ./containers
