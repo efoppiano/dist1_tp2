@@ -64,11 +64,11 @@ class BasicFilter(ABC):
         else:
             raise ValueError(f"Unknown packet type: {type(decoded.data)}")
         
-        self.__send_messages(id, outgoing_messages)
+        self.send_messages(id, outgoing_messages)
 
         return True
     
-    def __send_messages(self, id: PacketIdentifier, outgoing_messages: Dict[str, List[bytes]]):
+    def send_messages(self, id: PacketIdentifier, outgoing_messages: Dict[str, List[bytes]]):
 
         for idx, (queue, messages) in enumerate(outgoing_messages.items()):
 

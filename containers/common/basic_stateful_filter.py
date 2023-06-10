@@ -69,10 +69,10 @@ class BasicStatefulFilter(BasicFilter, ABC):
         self._last_packet_id = (self._last_packet_id + 1) % MAX_PACKET_ID
         return self._last_packet_id
 
-    def __send_messages(self, id: PacketIdentifier, outgoing_messages: Dict[str, List[bytes]]):
+    def send_messages(self, id: PacketIdentifier, outgoing_messages: Dict[str, List[bytes]]):
         id.replica_id = self._basic_filter_replica_id
         id.packet_id = self.__next_packet_id(id)
-        return super().__send_messages(id, outgoing_messages, False)
+        return super().send_messages(id, outgoing_messages, False)
     
     @staticmethod
     def __load_full_state() -> Optional[dict]:
