@@ -95,7 +95,16 @@ def json_serialize(obj):
     except TypeError:
         return json.dumps(obj, default=lambda o: str(o), sort_keys=True, indent=4)
     
-def min_hash(obj, n=6):
-    if hasattr(obj, '__iter__'):
-        return hash(tuple(obj)) % (10 ** n)
-    return hash(obj) % (10 ** n)
+def min_hash(obj, n=4):
+    try:
+        if hasattr(obj, '__iter__'):
+            _obj = tuple(obj)
+            if len(_obj) == 0: _name = "##"
+            else: _name = "#"+type(obj[0])
+        else:
+            _obj = obj
+            _name = type(obj)
+        hex_num = hex( hash(_obj) % (16 ** (n)) )
+        return _name +"-"+ hex_num[2:].upper()
+    except:
+        return "<"+type(obj).__name__+">"

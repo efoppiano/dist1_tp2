@@ -45,19 +45,19 @@ class BasicAggregator(ABC):
         return outgoing_messages
 
     def __send_messages(self, id: PacketIdentifier, outgoing_messages: Dict[str, List[bytes]]):
-        for (queue, messages) in outgoing_messages.items():
+        for idx, (queue, messages) in enumerate(outgoing_messages.items()):
             if queue.endswith("_eof_in"):
                 for message in messages:
                     self._rabbit.produce(queue, message)
             elif len(messages) > 0:
                 encoded = GenericPacket(
-                    replica_id=self._basic_agg_replica_id,
+                    replica_id=id.replica_id,
                     client_id=id.client_id,
                     city_name=id.city_name,
                     packet_id=id.packet_id,
                     data=messages
                 ).encode()
-                logging.debug(f"Sending {id.replica_id}-{id.packet_id}-{min_hash(messages)} to {queue}")
+                logging.debug(f"Sending {id.replica_id}-{id.packet_id}-{min_hash(messages)} [{idx}] to {queue}")
                 self._rabbit.produce(queue, encoded)
 
     def __on_stream_message_without_duplicates(self, id: PacketIdentifier, decoded: GenericPacket) -> bool:
