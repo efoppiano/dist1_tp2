@@ -25,7 +25,6 @@ class Gateway(BasicStatefulFilter):
         self._replica_id = replica_id
         self._weather_side_table_queue_name = weather_side_table_queue_name
         self._station_side_table_queue_name = station_side_table_queue_name
-        self.last_packet_id = {}
         
         super().__init__(replica_id)
 
@@ -120,11 +119,6 @@ class Gateway(BasicStatefulFilter):
         else:
             raise ValueError(f"Unknown packet type: {type(packet.data)}")
         
-    def get_state(self) -> bytes:
-        return dumps(self.last_packet_id)
-
-    def set_state(self, state: bytes):
-        self.last_packet_id = loads(state)
 
 
 def main():
