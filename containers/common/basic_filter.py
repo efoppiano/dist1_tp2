@@ -77,7 +77,7 @@ class BasicFilter(ABC):
                     self._rabbit.produce(queue, message)
             elif len(messages) > 0:
                 encoded = GenericPacket(
-                    replica_id= id.replica_id,
+                    replica_id= self._basic_filter_replica_id,
                     client_id=id.client_id,
                     city_name=id.city_name,
                     packet_id=id.packet_id,

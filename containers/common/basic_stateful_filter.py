@@ -70,7 +70,7 @@ class BasicStatefulFilter(BasicFilter, ABC):
         return self._last_packet_id
 
     def __send_messages(self, id: PacketIdentifier, outgoing_messages: Dict[str, List[bytes]]):
-        id.replica_id = self.replica_id
+        id.replica_id = self._basic_filter_replica_id
         id.packet_id = self.__next_packet_id(id)
         return super().__send_messages(id, outgoing_messages, False)
     
