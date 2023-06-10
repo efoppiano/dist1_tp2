@@ -96,15 +96,19 @@ def json_serialize(obj):
         return json.dumps(obj, default=lambda o: str(o), sort_keys=True, indent=4)
     
 def min_hash(obj, n=4):
+    
+    _hex = None
     try:
-        if hasattr(obj, '__iter__'):
-            _obj = tuple(obj)
-            if len(_obj) == 0: _name = "##"
-            else: _name = "#"+type(obj[0])
-        else:
-            _obj = obj
-            _name = type(obj)
+        if hasattr(obj, '__iter__'): _obj = tuple(obj)
+        else: _obj = obj
         hex_num = hex( hash(_obj) % (16 ** (n)) )
-        return _name +"-"+ hex_num[2:].upper()
-    except:
-        return "<"+type(obj).__name__+">"
+        _hex = hex_num[2:].upper()
+    except: _hex = "#"
+
+    _type = None
+    try:
+        if hasattr(obj, '__iter__'): _type = type(obj[0]).__name__
+        else: _type = type(obj).__name__
+    except: _type = "#"
+
+    return f"{_type}{_hex}"
