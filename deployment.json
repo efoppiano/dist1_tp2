@@ -28,7 +28,10 @@
 
     "prec_filter": {
       "amount": 2,
-      "next": "dur_avg_provider"
+      "next": "dur_avg_provider",
+      "env": {
+        "PREC_LIMIT": 30
+      }
     },
     "dur_avg_provider": {
       "amount": 1,
@@ -45,7 +48,10 @@
     },
     "trip_count_provider": {
       "amount": 1,
-      "next": "response_provider_trip_count"
+      "next": "response_provider_trip_count",
+      "env": {
+        "MULT_THRESHOLD": 2
+      }
     },
 
     "distance_calculator": {
@@ -58,7 +64,10 @@
     },
     "dist_mean_provider": {
       "amount": 1,
-      "next": "response_provider_dist_mean"
+      "next": "response_provider_dist_mean",
+      "env": {
+        "MEAN_THRESHOLD": "6.0"
+      }
     }
   },
   "response_provider": {
