@@ -15,7 +15,8 @@ from common.packets.generic_packet import PacketIdentifier
 RABBIT_HOST = os.environ.get("RABBIT_HOST", "rabbitmq")
 PREV_AMOUNT = int(os.environ["PREV_AMOUNT"])
 NEXT = os.environ["NEXT"]
-NEXT_AMOUNT = int(os.environ["NEXT_AMOUNT"])
+NEXT_AMOUNT = os.environ.get("NEXT_AMOUNT")
+if NEXT_AMOUNT is not None: NEXT_AMOUNT = int(NEXT_AMOUNT)
 MAX_PACKET_ID = 2 ** 10  # 2 packet ids would be enough, but we more for traceability
 
 

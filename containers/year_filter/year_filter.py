@@ -4,7 +4,6 @@ import os
 from typing import Dict, List
 
 from common.basic_stateful_filter import BasicStatefulFilter
-from common.linker.linker import Linker
 from common.packets.year_filter_in import YearFilterIn
 from common.utils import initialize_log
 
@@ -21,7 +20,7 @@ class YearFilter(BasicStatefulFilter):
         packet = YearFilterIn.decode(message)
         output = {}
         if packet.yearid in [2016, 2017]:
-            output_queue = Linker().get_output_queue(self, hashing_key=packet.start_station_name)
+            output_queue = self.router.route(packet.start_station_name)
             output[output_queue] = [message]
 
         return output
