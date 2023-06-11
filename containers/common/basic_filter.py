@@ -7,8 +7,9 @@ from typing import List, Dict, Union
 from common.linker.linker import Linker
 from common.packets.eof import Eof
 from common.packets.eof_with_id import EofWithId
-from common.packets.generic_packet import GenericPacket
+from common.packets.generic_packet import GenericPacket, PacketIdentifier
 from common.rabbit_middleware import Rabbit
+from common.utils import min_hash
 
 RABBIT_HOST = os.environ.get("RABBIT_HOST", "rabbitmq")
 
@@ -23,12 +24,12 @@ class BasicFilter(ABC):
         eof_routing_key = Linker().get_eof_out_routing_key(self)
         self._rabbit.route(self._input_queue, "control", eof_routing_key)
 
-        self._basic_filter_replica_id = replica_id
+        self.basic_filter_replica_id = replica_id
 
-    def __handle_chunk(self, chunk: List[bytes]) -> Dict[str, List[bytes]]:
+    def __handle_chunk(self, flow_id, chunk: List[bytes]) -> Dict[str, List[bytes]]:
         outgoing_messages = {}
         for message in chunk:
-            responses = self.handle_message(message)
+            responses = self.handle_message(flow_id, message)
             for (queue, messages) in responses.items():
                 outgoing_messages.setdefault(queue, [])
                 outgoing_messages[queue] += messages
@@ -39,36 +40,65 @@ class BasicFilter(ABC):
             decoded = GenericPacket.decode(msg)
         else:
             decoded = msg
+
+        id = PacketIdentifier(
+            replica_id=decoded.replica_id,
+            client_id=decoded.client_id,
+            city_name=decoded.city_name,
+            packet_id=decoded.packet_id
+        )
+
+        self.__on_message_without_duplicates(id, decoded)
+
+        return True
+
+    def __on_message_without_duplicates(self, id: PacketIdentifier, decoded: GenericPacket) -> bool:
+        flow_id = (id.client_id, id.city_name)
+
         if isinstance(decoded.data, Eof):
-            outgoing_messages = self.handle_eof(decoded.data)
+            outgoing_messages = self.handle_eof(flow_id, decoded.data)
         elif isinstance(decoded.data, bytes):
-            outgoing_messages = self.handle_message(decoded.data)
+            outgoing_messages = self.handle_message(flow_id, decoded.data)
         elif isinstance(decoded.data, list):
-            outgoing_messages = self.__handle_chunk(decoded.data)
+            outgoing_messages = self.__handle_chunk(flow_id, decoded.data)
         else:
             raise ValueError(f"Unknown packet type: {type(decoded.data)}")
+        
+        self.send_messages(id, outgoing_messages)
 
-        for (queue, messages) in outgoing_messages.items():
+        return True
+    
+    def send_messages(self, id: PacketIdentifier, outgoing_messages: Dict[str, List[bytes]]):
+
+        for idx, (queue, messages) in enumerate(outgoing_messages.items()):
+
             if queue.endswith("_eof_in"):
                 for message in messages:
                     self._rabbit.produce(queue, message)
             elif len(messages) > 0:
-                encoded = GenericPacket(self._basic_filter_replica_id, messages).encode()
+                encoded = GenericPacket(
+                    replica_id=id.replica_id,
+                    client_id=id.client_id,
+                    city_name=id.city_name,
+                    packet_id=id.packet_id,
+                    data=messages
+                ).encode()
                 if queue.startswith("publish_"):
+                    logging.debug(f"Sending {id.replica_id}-{id.packet_id}-{min_hash(messages)} [{idx}] to {queue}")
                     self._rabbit.send_to_route("publish", queue, encoded)
                 else:
+                    logging.debug(f"Sending {id.replica_id}-{id.packet_id}-{min_hash(messages)} [{idx}] to {queue}")
                     self._rabbit.produce(queue, encoded)
 
-        return True
-
     @abc.abstractmethod
-    def handle_message(self, message: bytes) -> Dict[str, List[bytes]]:
+    def handle_message(self, flow_id, message: bytes) -> Dict[str, List[bytes]]:
         pass
 
-    def handle_eof(self, message: Eof) -> Dict[str, List[bytes]]:
+    def handle_eof(self, _flow_id, message: Eof) -> Dict[str, List[bytes]]:
         eof_output_queue = Linker().get_eof_in_queue(self)
+        eof = EofWithId(message.client_id, message.city_name, self.basic_filter_replica_id)
         return {
-            eof_output_queue: [EofWithId(message.city_name, self._basic_filter_replica_id).encode()]
+            eof_output_queue: [eof.encode()]
         }
 
     def start(self):

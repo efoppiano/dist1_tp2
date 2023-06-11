@@ -1,11 +1,9 @@
 from dataclasses import dataclass
 
-from common.packets.plain_packet import PlainPacket
+from common.packets.basic_packet import BasicPacket
 
 
 @dataclass
-class DistInfo(PlainPacket):
-    trip_id: str
-    city_name: str
+class DistInfo(BasicPacket):
     end_station_name: str
     distance_km: float

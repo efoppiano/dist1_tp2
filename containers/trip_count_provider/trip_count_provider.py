@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
-import logging
 import os
 from typing import Dict, List
 
-from common.basic_filter import BasicFilter
 from common.basic_stateful_filter import BasicStatefulFilter
 from common.linker.linker import Linker
 from common.packets.eof import Eof
@@ -21,7 +19,7 @@ class TripCountProvider(BasicStatefulFilter):
         self._mult_threshold = mult_threshold
         self._replica_id = replica_id
 
-    def handle_message(self, message: bytes) -> Dict[str, List[bytes]]:
+    def handle_message(self, _flow_id, message: bytes) -> Dict[str, List[bytes]]:
         packet = TripsCountByYearJoined.decode(message)
 
         output = {}
@@ -33,7 +31,7 @@ class TripCountProvider(BasicStatefulFilter):
 
 
 def main():
-    initialize_log(logging.INFO)
+    initialize_log()
 
     filter = TripCountProvider(int(REPLICA_ID), float(MULT_THRESHOLD))
     filter.start()

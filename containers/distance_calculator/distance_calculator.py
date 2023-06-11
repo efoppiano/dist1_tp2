@@ -4,7 +4,6 @@ import os
 from typing import Dict, List
 from haversine import haversine
 
-from common.basic_filter import BasicFilter
 from common.basic_stateful_filter import BasicStatefulFilter
 from common.linker.linker import Linker
 from common.packets.dist_info import DistInfo
@@ -20,7 +19,7 @@ class DistanceCalculator(BasicStatefulFilter):
 
         self._replica_id = replica_id
 
-    def handle_message(self, message: bytes) -> Dict[str, List[bytes]]:
+    def handle_message(self, _flow_id, message: bytes) -> Dict[str, List[bytes]]:
         packet = DistanceCalcIn.decode(message)
 
         output_queue = Linker().get_output_queue(self, hashing_key=packet.end_station_name)
@@ -29,10 +28,7 @@ class DistanceCalculator(BasicStatefulFilter):
                                              packet.end_station_latitude,
                                              packet.end_station_longitude)
         return {
-            output_queue: [DistInfo(packet.trip_id,
-                                    packet.city_name,
-                                    packet.end_station_name,
-                                    distance).encode()]
+            output_queue: [DistInfo(packet.end_station_name, distance).encode()]
         }
 
     @staticmethod
@@ -43,7 +39,7 @@ class DistanceCalculator(BasicStatefulFilter):
 
 
 def main():
-    initialize_log(logging.INFO)
+    initialize_log()
     filter = DistanceCalculator(int(REPLICA_ID))
     filter.start()
 

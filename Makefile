@@ -30,11 +30,11 @@ write-compose:
 .PHONY: write-compose
 
 client-logs:
-	docker compose -f docker-compose-dev.yaml logs client
+	docker compose -f docker-compose-dev.yaml logs client0
 .PHONY: client-logs
 
 client-logs-live:
-	docker compose -f docker-compose-dev.yaml logs client -f
+	docker compose -f docker-compose-dev.yaml logs client0 -f
 .PHONY: client-logs-live
 
 tests:

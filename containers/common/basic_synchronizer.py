@@ -16,7 +16,8 @@ class BasicSynchronizer(ABC):
         self._rabbit = Rabbit(RABBIT_HOST)
         for input_queue in self._input_queues:
             self._rabbit.consume(input_queue,
-                                 lambda msg, input_queue=input_queue: self.__on_message_callback(input_queue, msg))
+                lambda msg, input_queue=input_queue: self.__on_message_callback(input_queue, msg)
+            )
 
         state = utils.load_state()
         if state is not None:

@@ -1,12 +1,10 @@
 from dataclasses import dataclass
 
-from common.packets.plain_packet import PlainPacket
+from common.packets.basic_packet import BasicPacket
 
 
 @dataclass
-class TripsCountByYearJoined(PlainPacket):
-    packet_id: str
-    city_name: str
+class TripsCountByYearJoined(BasicPacket):
     start_station_name: str
     trips_16: int
     trips_17: int

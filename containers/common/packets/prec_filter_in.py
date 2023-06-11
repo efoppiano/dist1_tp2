@@ -1,12 +1,10 @@
 from dataclasses import dataclass
 
-from common.packets.plain_packet import PlainPacket
+from common.packets.basic_packet import BasicPacket
 
 
 @dataclass
-class PrecFilterIn(PlainPacket):
-    trip_id: str
-    city_name: str
+class PrecFilterIn(BasicPacket):
     start_date: str
     duration_sec: float
     prectot: float

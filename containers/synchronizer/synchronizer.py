@@ -18,12 +18,14 @@ class Synchronizer(BasicSynchronizer):
         super().__init__(input_queues)
         self._config = config
         self._eofs_received = {}
+        self._packet_id = 0
         logging.info(f"action: synchronizer_init | status: success | input_queues: {input_queues}")
 
     def handle_message(self, queue: str, message: EofWithId) -> Dict[str, List[bytes]]:
         logging.info(f"Received EOF from {queue} - {message.city_name}")
         output = {}
 
+        client_id = message.client_id
         city_name = message.city_name
         self._eofs_received.setdefault(queue, {})
         self._eofs_received[queue].setdefault(city_name, set())
@@ -31,8 +33,16 @@ class Synchronizer(BasicSynchronizer):
 
         if len(self._eofs_received[queue][city_name]) == self._config[queue]["eofs_to_wait"]:
             eof_output_queue = self._config[queue]["eof_output"]
+            self._packet_id += 1
+            packet = GenericPacket(
+                replica_id= None,
+                client_id= client_id,
+                city_name= city_name,
+                packet_id= -self._packet_id,
+                data= Eof(client_id, city_name)
+            ).encode()
+            output[eof_output_queue] = [packet]
             logging.info(f"Sending EOF to {eof_output_queue}")
-            output[eof_output_queue] = [GenericPacket(1, Eof(city_name)).encode()]
 
         return output
 
@@ -48,7 +58,7 @@ class Synchronizer(BasicSynchronizer):
 
 
 def main():
-    initialize_log(logging.INFO)
+    initialize_log()
     with open("/opt/app/config.yaml", "r") as f:
         config = yaml.safe_load(f)
 

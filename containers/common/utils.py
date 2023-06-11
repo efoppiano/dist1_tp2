@@ -1,13 +1,11 @@
 import logging
 import os
-import time
-from base64 import b64encode
+import json
 from datetime import datetime, date
-from time import sleep
 from typing import Union
 
 
-def initialize_log(logging_level):
+def initialize_log(logging_level=logging.INFO):
     """
     Python custom logging initialization
 
@@ -92,5 +90,32 @@ def load_state(path: str = "/volumes/state") -> Union[bytes, None]:
         return None
 
 
-def hash_msg(msg: bytes) -> int:
-    return hash(msg)
+def json_serialize(obj):
+    try:
+        return json.dumps(obj, default=lambda o: o.__dict__, sort_keys=True, indent=4)
+    except TypeError:
+        return json.dumps(obj, default=lambda o: str(o), sort_keys=True, indent=4)
+
+
+def min_hash(obj, n=4):
+    _hex = None
+    try:
+        if hasattr(obj, '__iter__'):
+            _obj = tuple(obj)
+        else:
+            _obj = obj
+        hex_num = hex(hash(_obj) % (16 ** (n)))
+        _hex = hex_num[2:].upper()
+    except:
+        _hex = "#"
+
+    _type = None
+    try:
+        if hasattr(obj, '__iter__'):
+            _type = type(obj[0]).__name__
+        else:
+            _type = type(obj).__name__
+    except:
+        _type = "#"
+
+    return f"{_type}{_hex}"

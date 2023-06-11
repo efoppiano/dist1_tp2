@@ -8,43 +8,17 @@ from common.packets.generic_packet import GenericPacket
 from common.packets.eof import Eof
 from common.packets.client_response_packets import GenericResponsePacket
 from common.rabbit_middleware import Rabbit
-from common.utils import initialize_log, build_eof_out_queue_name, hash_msg, save_state, load_state
+from common.utils import initialize_log, build_eof_out_queue_name, save_state, load_state, min_hash
 
 REPLICA_ID = os.environ["REPLICA_ID"]
 SELF_QUEUE = f"sent_responses_{REPLICA_ID}"
-
-def get_city_name( packet: GenericResponsePacket) -> str:
-
-  # TODO: This is a hackish way to get the city name from the packet
-
-  try:
-    # GenericResponsePacket.data = Eof(city_name='city_name')
-    return packet.data.city_name
-  except:
-    pass
-
-  try:
-    # GenericResponsePacket.data = [b'id,city_name,...']
-    return packet.data[0].decode().split(',')[1]
-  except:
-    pass
-
-  raise Exception("Could not get city name from packet")
-  
 
 
 class ResponseProvider:
     def __init__(self, replica_id: int):
         self._replica_id = replica_id
 
-        self._last_hash_by_replica = {
-            "dist_mean": {},
-            "trip_count": {},
-            "dur_avg": {},
-            "dist_mean_eof": {},
-            "trip_count_eof": {},
-            "dur_avg_eof": {},
-        }
+        self._last_received = {}
 
         self._rabbit = Rabbit("rabbitmq")
         self.__set_up_signal_handler()
@@ -61,68 +35,80 @@ class ResponseProvider:
 
         self._sig_hand_prev = signal.signal(signal.SIGTERM, signal_handler)
 
-    def __update_last_hash(self, type: str, replica_id: int, new_hash: str) -> bool:
+    def __update_last_received(self, type, packet: GenericPacket):
 
-      last_hash = self._last_hash_by_replica[type].get(replica_id)
-      if last_hash == new_hash:
-        return False
-      
-      self._last_hash_by_replica[type][replica_id] = new_hash
-      return True
-    
-    def __send_response(self, city_name: str, message: bytes):
+        sender_id = (type, packet.replica_id)
+        current_id = packet.packet_id
+        last_id = self._last_received.get(sender_id)
 
-      result_queue = f"results_{city_name}"
-      self._rabbit.route(SELF_QUEUE, "results", city_name)
-      self._rabbit.route(result_queue, "results", city_name) 
+        if current_id == last_id:
+            logging.warning(f"Received duplicate {sender_id}-{current_id}-{min_hash(packet.data)} - ignoring")
+            return False
+        self._last_received[sender_id] = current_id
 
-      self._rabbit.send_to_route("results", city_name, message)
+        return True
+
+    def __send_response(self, destination: str, message: bytes):
+
+        # TODO: Do not hardcode the queue name
+        result_queue = f"results_{destination}"
+        self._rabbit.route(SELF_QUEUE, "results", destination)
+        self._rabbit.route(result_queue, "results", destination)
+
+        self._rabbit.send_to_route("results", destination, message)
 
     def __handle_message(self, message: bytes, type: str) -> bool:
 
-      packet = GenericPacket.decode(message)
-      if isinstance(packet.data, Eof): type = f"{type}_eof"
-      response_packet = GenericResponsePacket(packet.replica_id, type, packet.data)
-      response_message = response_packet.encode()
+        packet = GenericPacket.decode(message)
+        if isinstance(packet.data, Eof): type = f"{type}_eof"
 
-      logging.info(response_packet)
-      if not self.__update_last_hash(type, packet.replica_id, hash_msg(response_message)):
-        logging.warning(f"Received duplicate message from replica {packet.replica_id} - ignoring")
+        response_packet = GenericResponsePacket(
+            packet.client_id, packet.city_name,
+            type, packet.replica_id,
+            packet.packet_id, packet.data
+        )
+        response_message = response_packet.encode()
+
+        if not self.__update_last_received(type, packet):
+            return True
+
+        try:
+            logging.info(f"Sending {response_packet}")
+            self.__send_response(packet.client_id, response_message)
+        except:
+            logging.warning(f"Failed to send {response_packet}")
+
+        self.__save_state()
+
         return True
-      
-      try:
-        city_name = get_city_name(response_packet)
-        logging.info(f"Sending response to {city_name}")
-        self.__send_response(city_name, response_message)
-      except:
-        logging.warning(f"Failed to send {response_packet}")
 
-      self.__save_state()
-
-      return True
-      
     def __handle_type(self, type):
         return lambda message, type=type: self.__handle_message(message, type)
-    
+
     def __save_state(self):
-      save_state(pickle.dumps(self._last_hash_by_replica))
-    
+        save_state(pickle.dumps(self._last_received))
+
     def __load_state(self):
-      try:
-        _last_hash_by_replica = pickle.loads(load_state())
-        if _last_hash_by_replica is not None:
-          self._last_hash_by_replica = _last_hash_by_replica
-      except:
-        logging.warning("Failed to load state")
-        pass
+        try:
+            _last_received = pickle.loads(load_state())
+            if _last_received is not None:
+                self._last_received = _last_received
+        except:
+            logging.warning("Failed to load state")
+            pass
 
     def __load_last_sent(self):
-      self._rabbit.consume_until_empty(SELF_QUEUE, self.__handle_last_sent)
-    
+        self._rabbit.consume_until_empty(SELF_QUEUE, self.__handle_last_sent)
+
     def __handle_last_sent(self, message: bytes) -> bool:
-      packet = GenericResponsePacket.decode(message) 
-      self._last_hash_by_replica[packet.type][packet.replica_id] = hash_msg(message)
-      return True
+        packet = GenericResponsePacket.decode(message)
+        sender_id = (packet.type, packet.replica_id)
+
+        self._last_received[sender_id] = packet.packet_id
+
+        self.__save_state()
+
+        return True
 
     def __start(self):
 
@@ -134,13 +120,10 @@ class ResponseProvider:
         self._rabbit.consume(trip_count_queue, self.__handle_type("trip_count"))
         self._rabbit.consume(avg_queue, self.__handle_type("dur_avg"))
 
-        # TODO
-        # Q: What does this do without a callback ?
-        # Q: Is there a guarantee that these will be read after normal messages ?
         self._rabbit.route(dist_mean_queue, "control", build_eof_out_queue_name("dist_mean_provider"))
         self._rabbit.route(trip_count_queue, "control", build_eof_out_queue_name("trip_count_provider"))
         self._rabbit.route(avg_queue, "control", build_eof_out_queue_name("avg_provider"))
-        
+
         # Returns True every time, as this is already saved to disk if reading at runtime
         self._rabbit.consume(SELF_QUEUE, lambda _message: True)
 
@@ -153,7 +136,7 @@ class ResponseProvider:
 
 
 def main():
-    initialize_log(logging.INFO)
+    initialize_log()
     response_provider = ResponseProvider(int(REPLICA_ID))
     response_provider.start()
 

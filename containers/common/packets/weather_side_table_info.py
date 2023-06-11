@@ -1,11 +1,9 @@
 from dataclasses import dataclass
 
-from common.packets.plain_packet import PlainPacket
+from common.packets.basic_packet import BasicPacket
 
 
 @dataclass
-class WeatherSideTableInfo(PlainPacket):
-    packet_id: str
-    city_name: str
+class WeatherSideTableInfo(BasicPacket):
     date: str
     prectot: float

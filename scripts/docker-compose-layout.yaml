@@ -15,7 +15,6 @@ services:
       start_period: 50s
 
   gateway:
-    container_name: gateway
     build:
       context: ./containers
       dockerfile: gateway/Dockerfile

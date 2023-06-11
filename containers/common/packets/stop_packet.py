@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 
-from common.packets.plain_packet import PlainPacket
+from common.packets.basic_packet import BasicPacket
 
 
 @dataclass
-class StopPacket(PlainPacket):
+class StopPacket(BasicPacket):
     city_name: str
