@@ -28,6 +28,7 @@ services:
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
+      - INPUT_QUEUE=gateway_0
       - REPLICA_ID=0
       - PREV_AMOUNT=1
       - NEXT=weather_aggregator
@@ -48,6 +49,7 @@ services:
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
+      - INPUT_QUEUE=gateway_1
       - REPLICA_ID=1
       - PREV_AMOUNT=1
       - NEXT=weather_aggregator
@@ -68,6 +70,7 @@ services:
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
+      - INPUT_QUEUE=weather_aggregator_0
       - REPLICA_ID=0
       - PREV_AMOUNT=2
       - NEXT=station_aggregator
@@ -86,6 +89,7 @@ services:
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
+      - INPUT_QUEUE=weather_aggregator_1
       - REPLICA_ID=1
       - PREV_AMOUNT=2
       - NEXT=station_aggregator
@@ -104,6 +108,7 @@ services:
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
+      - INPUT_QUEUE=station_aggregator_0
       - REPLICA_ID=0
       - PREV_AMOUNT=2
       - NEXT_AMOUNT_PREC_FILTER=2
@@ -126,6 +131,7 @@ services:
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
+      - INPUT_QUEUE=station_aggregator_1
       - REPLICA_ID=1
       - PREV_AMOUNT=2
       - NEXT_AMOUNT_PREC_FILTER=2
@@ -148,6 +154,7 @@ services:
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
+      - INPUT_QUEUE=station_aggregator_2
       - REPLICA_ID=2
       - PREV_AMOUNT=2
       - NEXT_AMOUNT_PREC_FILTER=2
@@ -170,6 +177,7 @@ services:
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
+      - INPUT_QUEUE=prec_filter_0
       - REPLICA_ID=0
       - PREV_AMOUNT=3
       - NEXT=dur_avg_provider
@@ -189,6 +197,7 @@ services:
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
+      - INPUT_QUEUE=prec_filter_1
       - REPLICA_ID=1
       - PREV_AMOUNT=3
       - NEXT=dur_avg_provider
@@ -208,6 +217,7 @@ services:
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
+      - INPUT_QUEUE=dur_avg_provider_0
       - REPLICA_ID=0
       - PREV_AMOUNT=2
       - NEXT=response_provider_dur_avg
@@ -225,6 +235,7 @@ services:
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
+      - INPUT_QUEUE=year_filter_0
       - REPLICA_ID=0
       - PREV_AMOUNT=3
       - NEXT=trips_counter
@@ -243,6 +254,7 @@ services:
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
+      - INPUT_QUEUE=year_filter_1
       - REPLICA_ID=1
       - PREV_AMOUNT=3
       - NEXT=trips_counter
@@ -261,6 +273,7 @@ services:
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
+      - INPUT_QUEUE=trips_counter_0
       - REPLICA_ID=0
       - PREV_AMOUNT=2
       - NEXT=trip_count_provider
@@ -279,6 +292,7 @@ services:
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
+      - INPUT_QUEUE=trips_counter_1
       - REPLICA_ID=1
       - PREV_AMOUNT=2
       - NEXT=trip_count_provider
@@ -297,6 +311,7 @@ services:
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
+      - INPUT_QUEUE=trip_count_provider_0
       - REPLICA_ID=0
       - PREV_AMOUNT=2
       - NEXT=response_provider_trip_count
@@ -315,6 +330,7 @@ services:
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
+      - INPUT_QUEUE=distance_calculator_0
       - REPLICA_ID=0
       - PREV_AMOUNT=3
       - NEXT=dist_mean_calculator
@@ -333,6 +349,7 @@ services:
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
+      - INPUT_QUEUE=distance_calculator_1
       - REPLICA_ID=1
       - PREV_AMOUNT=3
       - NEXT=dist_mean_calculator
@@ -351,6 +368,7 @@ services:
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
+      - INPUT_QUEUE=dist_mean_calculator_0
       - REPLICA_ID=0
       - PREV_AMOUNT=2
       - NEXT=dist_mean_provider
@@ -369,6 +387,7 @@ services:
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
+      - INPUT_QUEUE=dist_mean_calculator_1
       - REPLICA_ID=1
       - PREV_AMOUNT=2
       - NEXT=dist_mean_provider
@@ -387,6 +406,7 @@ services:
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
+      - INPUT_QUEUE=dist_mean_provider_0
       - REPLICA_ID=0
       - PREV_AMOUNT=2
       - NEXT=response_provider_dist_mean

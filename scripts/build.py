@@ -75,6 +75,7 @@ def add_container(name, container, n):
     environment:'''
 
   env = data["common_env"].copy()
+  env["INPUT_QUEUE"] = f"{name}_{n}"
   env["REPLICA_ID"] = n
   if "prev_amount" in container:
     env["PREV_AMOUNT"] = container["prev_amount"]
