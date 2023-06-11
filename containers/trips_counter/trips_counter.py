@@ -5,7 +5,6 @@ from typing import Dict, List
 
 from common.basic_stateful_filter import BasicStatefulFilter
 from common.packets.eof import Eof
-from common.packets.eof_with_id import EofWithId
 from common.packets.trips_count_by_year_joined import TripsCountByYearJoined
 from common.packets.year_filter_in import YearFilterIn
 from common.utils import initialize_log

@@ -5,7 +5,6 @@ from abc import ABC
 from typing import List, Dict, Union
 
 from common.packets.eof import Eof
-from common.packets.eof_with_id import EofWithId
 from common.packets.generic_packet import GenericPacket, PacketIdentifier
 from common.rabbit_middleware import Rabbit
 from common.utils import min_hash

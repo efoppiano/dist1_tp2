@@ -7,7 +7,6 @@ from typing import Dict, List
 from common.basic_stateful_filter import BasicStatefulFilter
 from common.packets.dur_avg_out import DurAvgOut
 from common.packets.eof import Eof
-from common.packets.eof_with_id import EofWithId
 from common.packets.prec_filter_in import PrecFilterIn
 from common.utils import initialize_log
 
