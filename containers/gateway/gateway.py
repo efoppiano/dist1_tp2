@@ -3,7 +3,7 @@ import time
 from typing import Dict, List, Union
 from pickle import dumps, loads
 from common.basic_stateful_filter import BasicStatefulFilter
-from common.packets.eof_with_id import EofWithId
+from common.packets.eof import Eof
 from common.packets.gateway_in import GatewayIn
 from common.packets.gateway_in_or_weather import GatewayInOrWeather
 from common.packets.gateway_out_or_station import GatewayOutOrStation
@@ -40,14 +40,9 @@ class Gateway(BasicStatefulFilter):
               GatewayOutOrStation(StopPacket(packet.city_name)).encode()]
       }
     elif packet.file_type == "trip":
-      queue_name = Linker().get_eof_in_queue(self)
+      queue_name = self.router.publish()
       return {
-          # The replica_id here is not relevant, because only one gateway can
-          # handle data of a city
-          queue_name: [
-              EofWithId(packet.client_id, packet.city_name,
-                        self._replica_id).encode()
-          ]
+          queue_name: [Eof(False).encode()]
       }
     else:
       raise ValueError(f"Unknown file type: {packet.file_type}")
@@ -92,8 +87,7 @@ class Gateway(BasicStatefulFilter):
           self._station_side_table_queue_name: packets_to_send
       }
     elif element_type == TripInfo:
-      queue_name = Linker().get_output_queue(
-          self, hashing_key=packet[0].start_datetime)
+      queue_name = self.router.route(packet[0].start_datetime)
       packets_to_send = []
       for t in packet:
         gateway_in = GatewayIn(
