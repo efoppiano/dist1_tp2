@@ -4,10 +4,8 @@ import pickle
 from typing import Dict, List
 
 from common.basic_stateful_filter import BasicStatefulFilter
-from common.linker.linker import Linker
 from common.packets.dist_info import DistInfo
 from common.packets.eof import Eof
-from common.packets.eof_with_id import EofWithId
 from common.packets.station_dist_mean import StationDistMean
 from common.utils import initialize_log
 
@@ -23,19 +21,20 @@ class DistMeanCalculator(BasicStatefulFilter):
     def handle_eof(self, flow_id, message: Eof) -> Dict[str, List[bytes]]:
         client_id = message.client_id
         city_name = message.city_name
-        eof_output_queue = Linker().get_eof_in_queue(self)
+        eof_output_queue = self.router.publish()
         output = {}
         self._mean_buffer.setdefault(flow_id, {})
 
-        for end_station_name, data in self._mean_buffer[flow_id].items():
-            queue_name = Linker().get_output_queue(self, hashing_key=end_station_name)
-            output.setdefault(queue_name, [])
-            output[queue_name].append(
-                StationDistMean(end_station_name,data["mean"],data["count"]).encode()
-            )
+        if not message.drop:
+          for end_station_name, data in self._mean_buffer[flow_id].items():
+              queue_name = self.router.route(end_station_name)
+              output.setdefault(queue_name, [])
+              output[queue_name].append(
+                  StationDistMean(end_station_name,data["mean"],data["count"]).encode()
+              )
 
         self._mean_buffer.pop(flow_id)
-        output[eof_output_queue] = [EofWithId(client_id, city_name, self._replica_id).encode()]
+        output[eof_output_queue] = [message.encode()]
         return output
     
 
