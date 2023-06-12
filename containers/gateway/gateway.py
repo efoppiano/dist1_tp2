@@ -1,3 +1,4 @@
+import logging
 import os
 import time
 from typing import Dict, List, Union
@@ -49,6 +50,8 @@ class Gateway(BasicStatefulFilter):
     def __handle_client_id_req(self, flow_id, packet: ClientIdPacket) -> Dict[str, List[bytes]]:
 
         new_client_id = f"{self._replica_id}_{time.time_ns()}"
+        logging.info(f"New client id: {new_client_id}")
+
         response = ClientIdPacket(new_client_id).encode()
 
         return {

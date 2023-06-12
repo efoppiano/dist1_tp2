@@ -89,12 +89,23 @@ class BasicAggregator(ABC):
         replica_id = packet.replica_id
 
         current_id = packet.packet_id
-        last_id = self._last_received.get(replica_id)
-        if current_id == last_id:
-            logging.warning(f"Received duplicate {replica_id}-{current_id}-{min_hash(packet.data)} - ignoring")
-            return False
-        logging.debug(f"Received {replica_id}-{current_id}-{min_hash(packet.data)}")
-        self._last_received[replica_id] = current_id
+        last_chunk_id, last_eof_id = self._last_received.get(replica_id, (None, None))
+
+        if packet.is_eof():
+            if current_id == last_eof_id:
+                logging.warning(
+                    f"Received duplicate EOF {replica_id}-{current_id}-{min_hash(packet.data)} - ignoring")
+                return False
+            self._last_received[replica_id][1] = current_id
+        elif packet.is_chunk():
+            if current_id == last_chunk_id:
+                logging.warning(
+                    f"Received duplicate chunk {replica_id}-{current_id}-{min_hash(packet.data)} - ignoring")
+                return False
+            self._last_received[replica_id][0] = current_id
+
+        logging.debug(
+            f"Received {replica_id}-{current_id}-{min_hash(packet.data)}")
 
         return True
 

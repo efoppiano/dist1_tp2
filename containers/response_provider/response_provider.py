@@ -46,15 +46,26 @@ class ResponseProvider:
         self._sig_hand_prev = signal.signal(signal.SIGTERM, signal_handler)
 
     def __update_last_received(self, packet_type, packet: GenericPacket):
-
         sender_id = (packet_type, packet.replica_id)
-        current_id = packet.packet_id
-        last_id = self._last_received.get(sender_id)
 
-        if current_id == last_id:
-            logging.warning(f"Received duplicate {sender_id}-{current_id}-{min_hash(packet.data)} - ignoring")
-            return False
-        self._last_received[sender_id] = current_id
+        current_id = packet.packet_id
+        last_chunk_id, last_eof_id = self._last_received.get(sender_id, (None, None))
+
+        if packet.is_eof():
+            if current_id == last_eof_id:
+                logging.warning(
+                    f"Received duplicate EOF {sender_id}-{current_id}-{min_hash(packet.data)} - ignoring")
+                return False
+            self._last_received[sender_id][1] = current_id
+        elif packet.is_chunk():
+            if current_id == last_chunk_id:
+                logging.warning(
+                    f"Received duplicate chunk {sender_id}-{current_id}-{min_hash(packet.data)} - ignoring")
+                return False
+            self._last_received[sender_id][0] = current_id
+
+        logging.debug(
+            f"Received {sender_id}-{current_id}-{min_hash(packet.data)}")
 
         return True
 

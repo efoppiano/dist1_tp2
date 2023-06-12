@@ -14,6 +14,12 @@ class GenericPacket(BasicPacket):
 
     data: Union[List[bytes], Eof]
 
+    def is_eof(self) -> bool:
+        return isinstance(self.data, Eof)
+
+    def is_chunk(self) -> bool:
+        return isinstance(self.data, list)
+
 
 @dataclass
 class PacketIdentifier:
