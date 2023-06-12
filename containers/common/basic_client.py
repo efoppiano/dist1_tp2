@@ -8,6 +8,7 @@ from typing import List, Iterator
 from common.packet_factory import PacketFactory
 from common.packets.dur_avg_out import DurAvgOut
 from common.packets.client_response_packets import GenericResponsePacket
+from common.packets.eof import Eof
 from common.packets.station_dist_mean import StationDistMean
 from common.packets.trips_count_by_year_joined import TripsCountByYearJoined
 from common.rabbit_middleware import Rabbit
@@ -19,7 +20,7 @@ ID_REQ_QUEUE = os.environ["ID_REQ_QUEUE"]
 GATEWAY = os.environ["GATEWAY"]
 GATEWAY_AMOUNT = int(os.environ["GATEWAY_AMOUNT"])
 
-EOF_TYPES = ["dist_mean_eof", "trip_count_eof", "dur_avg_eof"]
+EOF_TYPES = ["dist_mean", "trip_count", "dur_avg"]
 
 
 class BasicClient(ABC):
@@ -155,14 +156,14 @@ class BasicClient(ABC):
         packet = GenericResponsePacket.decode(message)
         city_name = packet.city_name
 
-        if packet.type == "dist_mean":
+        if isinstance(packet.data, Eof):
+            self.__handle_eof(packet.type, city_name)
+        elif packet.type == "dist_mean":
             self.__handle_dist_mean(city_name, packet.data)
         elif packet.type == "dur_avg":
             self.__handle_dur_avg(city_name, packet.data)
         elif packet.type == "trip_count":
             self.__handle_trip_count(city_name, packet.data)
-        elif packet.type in EOF_TYPES:
-            self.__handle_eof(packet.type, city_name)
         else:
             logging.warning(f"Unexpected message type: {packet.type}")
 

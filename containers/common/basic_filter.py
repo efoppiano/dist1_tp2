@@ -11,6 +11,7 @@ from common.utils import min_hash
 
 RABBIT_HOST = os.environ.get("RABBIT_HOST", "rabbitmq")
 INPUT_QUEUE = os.environ["INPUT_QUEUE"]
+EOF_ROUTING_KEY = os.environ["EOF_ROUTING_KEY"]
 
 
 class BasicFilter(ABC):
@@ -20,7 +21,7 @@ class BasicFilter(ABC):
         self._input_queue = INPUT_QUEUE
         self._rabbit = Rabbit(RABBIT_HOST)
         self._rabbit.consume(self._input_queue, self.on_message_callback)
-        eof_routing_key = INPUT_QUEUE
+        eof_routing_key = EOF_ROUTING_KEY
         self._rabbit.route(self._input_queue, "publish", eof_routing_key)
 
         self.basic_filter_replica_id = replica_id
@@ -67,25 +68,25 @@ class BasicFilter(ABC):
 
         return True
 
-    def send_messages(self, id: PacketIdentifier, outgoing_messages: Dict[str, List[bytes]]):
+    def send_messages(self, id: PacketIdentifier, outgoing_messages: Dict[str, Union[List[bytes], Eof]]):
 
-        for idx, (queue, messages) in enumerate(outgoing_messages.items()):
-            if len(messages) > 0:
+        for (queue, messages_or_eof) in outgoing_messages.items():
+            if isinstance(messages_or_eof, Eof) or len(messages_or_eof) > 0:
                 encoded = GenericPacket(
                     replica_id=id.replica_id,
                     client_id=id.client_id,
                     city_name=id.city_name,
-                    packet_id=id.packet_id,
-                    data=messages
+                    packet_id=self.get_next_packet_id(),
+                    data=messages_or_eof
                 ).encode()
                 if queue.startswith("publish_"):
                     queue = queue[len("publish_"):]
                     logging.debug(
-                        f"Sending {id.replica_id}-{id.packet_id}-{min_hash(messages)} [{idx}] to {queue}")
+                        f"Sending {id.replica_id}-{id.packet_id}-{min_hash(messages_or_eof)} to {queue}")
                     self._rabbit.send_to_route("publish", queue, encoded)
                 else:
                     logging.debug(
-                        f"Sending {id.replica_id}-{id.packet_id}-{min_hash(messages)} [{idx}] to {queue}")
+                        f"Sending {id.replica_id}-{id.packet_id}-{min_hash(messages_or_eof)} to {queue}")
                     self._rabbit.produce(queue, encoded)
 
     @abc.abstractmethod
@@ -93,7 +94,11 @@ class BasicFilter(ABC):
         pass
 
     @abc.abstractmethod
-    def handle_eof_message(self, flow_id, message: Eof) -> Dict[str, List[bytes]]:
+    def handle_eof_message(self, flow_id, message: Eof) -> Dict[str, Union[List[bytes], Eof]]:
+        pass
+
+    @abc.abstractmethod
+    def get_next_packet_id(self) -> int:
         pass
 
     def start(self):

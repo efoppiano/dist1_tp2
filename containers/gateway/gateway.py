@@ -26,7 +26,7 @@ class Gateway(BasicStatefulFilter):
 
         super().__init__(replica_id)
 
-    def __handle_client_eof(self, flow_id, packet: ClientEofPacket) -> Dict[str, List[bytes]]:
+    def __handle_client_eof(self, flow_id, packet: ClientEofPacket) -> Dict[str, Union[List[bytes], Eof]]:
 
         if packet.file_type == "weather":
             return {
@@ -41,7 +41,7 @@ class Gateway(BasicStatefulFilter):
         elif packet.file_type == "trip":
             queue_name = self.router.publish()
             return {
-                queue_name: [Eof(False).encode()]
+                queue_name: Eof(False)
             }
         else:
             raise ValueError(f"Unknown file type: {packet.file_type}")

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import os
 import pickle
-from typing import Dict, List
+from typing import Dict, List, Union
 
 from common.basic_stateful_filter import BasicStatefulFilter
 from common.packets.eof import Eof
@@ -18,7 +18,7 @@ class TripsCounter(BasicStatefulFilter):
         self._count_buffer = {}
         super().__init__(replica_id)
 
-    def handle_eof(self, flow_id, message: Eof) -> Dict[str, List[bytes]]:
+    def handle_eof(self, flow_id, message: Eof) -> Dict[str, Union[List[bytes], Eof]]:
         output = {}
         self._count_buffer.setdefault(flow_id, {})
         if not message.drop:
@@ -37,7 +37,7 @@ class TripsCounter(BasicStatefulFilter):
 
         self._count_buffer.pop(flow_id)
         eof_output_queue = self.router.publish()
-        output[eof_output_queue] = [message.encode()]
+        output[eof_output_queue] = message
         return output
 
     def handle_message(self, flow_id, message: bytes) -> Dict[str, List[bytes]]:

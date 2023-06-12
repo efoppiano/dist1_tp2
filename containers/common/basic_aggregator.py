@@ -13,6 +13,7 @@ from common.rabbit_middleware import Rabbit
 
 INPUT_QUEUE = os.environ["INPUT_QUEUE"]
 PREV_AMOUNT = int(os.environ["PREV_AMOUNT"])
+EOF_ROUTING_KEY = os.environ["EOF_ROUTING_KEY"]
 
 RABBIT_HOST = os.environ.get("RABBIT_HOST", "rabbitmq")
 MAX_PACKET_ID = 2 ** 10  # 2 packet ids would be enough, but we use more for traceability
@@ -25,7 +26,7 @@ class BasicAggregator(ABC):
         self._rabbit = Rabbit(RABBIT_HOST)
         input_queue = INPUT_QUEUE
         self._rabbit.consume(input_queue, self.__on_stream_message_callback)
-        eof_routing_key = INPUT_QUEUE
+        eof_routing_key = EOF_ROUTING_KEY
         logging.info(f"Routing packets to {input_queue} using routing key {eof_routing_key}")
         self._rabbit.route(input_queue, "publish", eof_routing_key)
 
@@ -50,24 +51,24 @@ class BasicAggregator(ABC):
                 outgoing_messages[queue] += messages
         return outgoing_messages
 
-    def __send_messages(self, id: PacketIdentifier, outgoing_messages: Dict[str, List[bytes]]):
-        for idx, (queue, messages) in enumerate(outgoing_messages.items()):
-            if len(messages) > 0:
+    def __send_messages(self, id: PacketIdentifier, outgoing_messages: Dict[str, Union[List[bytes], Eof]]):
+        for (queue, messages_or_eof) in outgoing_messages.items():
+            if isinstance(messages_or_eof, Eof) or len(messages_or_eof) > 0:
                 encoded = GenericPacket(
                     replica_id=id.replica_id,
                     client_id=id.client_id,
                     city_name=id.city_name,
-                    packet_id=id.packet_id,
-                    data=messages
+                    packet_id=self.__get_next_packet_id(),
+                    data=messages_or_eof
                 ).encode()
                 if queue.startswith("publish_"):
                     queue = queue[len("publish_"):]
                     logging.debug(
-                        f"Sending {id.replica_id}-{id.packet_id}-{min_hash(messages)} [{idx}] to {queue}")
+                        f"Sending {id.replica_id}-{id.packet_id}-{min_hash(messages_or_eof)} to {queue}")
                     self._rabbit.send_to_route("publish", queue, encoded)
                 else:
                     logging.debug(
-                        f"Sending {id.replica_id}-{id.packet_id}-{min_hash(messages)} [{idx}] to {queue}")
+                        f"Sending {id.replica_id}-{id.packet_id}-{min_hash(messages_or_eof)} to {queue}")
                     self._rabbit.produce(queue, encoded)
 
     def __on_stream_message_without_duplicates(self, id: PacketIdentifier, decoded: GenericPacket) -> bool:
@@ -75,8 +76,6 @@ class BasicAggregator(ABC):
 
         if isinstance(decoded.data, Eof):
             outgoing_messages = self.handle_eof_message(flow_id, decoded.data)
-        elif isinstance(decoded.data, bytes):
-            outgoing_messages = self.handle_message(flow_id, decoded.data)
         elif isinstance(decoded.data, list):
             outgoing_messages = self.__handle_chunk(flow_id, decoded.data)
         else:
@@ -121,7 +120,7 @@ class BasicAggregator(ABC):
         self.__save_full_state()
         return True
 
-    def handle_eof_message(self, flow_id, message: Eof) -> Dict[str, List[bytes]]:
+    def handle_eof_message(self, flow_id, message: Eof) -> Dict[str, Eof]:
         self._eofs_received.setdefault(flow_id, 0)
         self._eofs_received[flow_id] += 1
 
@@ -136,12 +135,11 @@ class BasicAggregator(ABC):
     def handle_message(self, flow_id, message: bytes) -> Dict[str, List[bytes]]:
         pass
 
-    def handle_eof(self, flow_id, message: Eof) -> Dict[str, List[bytes]]:
+    def handle_eof(self, flow_id, message: Eof) -> Dict[str, Eof]:
         eof_output_queue = self.router.publish()
         output = {}
-        encoded = message.encode()
         for queue in eof_output_queue:
-            output[queue] = [encoded]
+            output[queue] = message
 
         return output
 

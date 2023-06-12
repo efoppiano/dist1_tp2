@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import os
 import pickle
-from typing import Dict, List
+from typing import Dict, List, Union
 
 from common.basic_stateful_filter import BasicStatefulFilter
 from common.packets.dur_avg_out import DurAvgOut
@@ -19,7 +19,7 @@ class DurAvgProvider(BasicStatefulFilter):
         super().__init__(replica_id)
         self._output_queue = self.router.route()
 
-    def handle_eof(self, flow_id, message: Eof) -> Dict[str, List[bytes]]:
+    def handle_eof(self, flow_id, message: Eof) -> Dict[str, Union[List[bytes], Eof]]:
         eof_output_queue = self.router.publish()
         self._avg_buffer.setdefault(flow_id, {})
         city_output = []
@@ -31,7 +31,7 @@ class DurAvgProvider(BasicStatefulFilter):
         self._avg_buffer.pop(flow_id)
         return {
             self._output_queue: city_output,
-            eof_output_queue: [message.encode()],
+            eof_output_queue: message,
         }
 
     def handle_message(self, flow_id, message: bytes) -> Dict[str, List[bytes]]:

@@ -2,7 +2,7 @@ import logging
 import os
 import pickle
 from abc import ABC
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
 from common.utils import save_state, load_state, min_hash
 from common.router import Router
@@ -44,6 +44,7 @@ class BasicStatefulFilter(BasicFilter, ABC):
         replica_id = packet.replica_id
 
         current_id = packet.packet_id
+        # FIXME: differentiate between EOF and normal packets
         last_id = self._last_received.get(replica_id)
         if current_id == last_id:
             logging.warning(
@@ -76,21 +77,26 @@ class BasicStatefulFilter(BasicFilter, ABC):
         id.packet_id = self.__next_packet_id(id)
         return super().send_messages(id, outgoing_messages)
 
-    def handle_eof(self, flow_id, message: Eof) -> Dict[str, List[bytes]]:
+    def handle_eof(self, flow_id, message: Eof) -> Dict[str, Union[List[bytes], Eof]]:
         eof_output_queue = self.router.publish()
         return {
-            eof_output_queue: [message.encode()]
+            eof_output_queue: message
         }
 
-    def handle_eof_message(self, flow_id, message: Eof) -> Dict[str, List[bytes]]:
+    def handle_eof_message(self, flow_id, message: Eof) -> Dict[str, Union[List[bytes], Eof]]:
         self._eofs_received.setdefault(flow_id, 0)
         self._eofs_received[flow_id] += 1
 
-        if self._eofs_received[flow_id] < PREV_AMOUNT: return {}
+        if self._eofs_received[flow_id] < PREV_AMOUNT:
+            return {}
 
         self._eofs_received.pop(flow_id)
 
         return self.handle_eof(flow_id, message)
+
+    def get_next_packet_id(self) -> int:
+        self._last_packet_id = (self._last_packet_id + 1) % MAX_PACKET_ID
+        return self._last_packet_id
 
     @staticmethod
     def __load_full_state() -> Optional[dict]:

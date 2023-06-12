@@ -79,6 +79,8 @@ class ResponseProvider:
             self._eofs_received.setdefault(flow_id, 0)
             self._eofs_received[flow_id] += 1
 
+            logging.info(
+                f"Received EOF {flow_id} - {self._eofs_received[flow_id]}/{self.input_queues[packet_type][1]}")
             if self._eofs_received[flow_id] < self.input_queues[packet_type][1]:
                 self.__save_state()
                 return True
@@ -107,19 +109,19 @@ class ResponseProvider:
     def __save_state(self):
         state = {
             "_last_received": self._last_received,
-            "_eofs_received":  self._eofs_received
+            "_eofs_received": self._eofs_received
         }
         save_state(pickle.dumps(state))
 
     def __load_state(self):
-        try:
-            state = pickle.loads(load_state())
-            if state is not None:
-                self._last_received = state["_last_received"]
-                self._eofs_received = state["_eofs_received"]
-        except:
-            logging.warning("Failed to load state")
-            pass
+        state_bytes = load_state()
+        if state_bytes is None:
+            return
+
+        state = pickle.loads(state_bytes)
+        if state is not None:
+            self._last_received = state["_last_received"]
+            self._eofs_received = state["_eofs_received"]
 
     def __load_last_sent(self):
         self._rabbit.consume_until_empty(SELF_QUEUE, self.__handle_last_sent)

@@ -30,7 +30,7 @@ class WeatherAggregator(BasicAggregator):
 
         super().__init__(router, replica_id, side_table_routing_key)
 
-    def handle_eof(self, flow_id, message: Eof) -> Dict[str, List[bytes]]:
+    def handle_eof(self, flow_id, message: Eof) -> Dict[str, Eof]:
         self._weather.pop(flow_id, None)
         return super().handle_eof(flow_id, message)
 

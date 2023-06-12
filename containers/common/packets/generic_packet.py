@@ -12,7 +12,7 @@ class GenericPacket(BasicPacket):
     city_name: str
     packet_id: Union[int, tuple]
 
-    data: Union[List[bytes], bytes, Eof]
+    data: Union[List[bytes], Eof]
 
 
 @dataclass

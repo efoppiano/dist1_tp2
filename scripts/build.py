@@ -15,7 +15,6 @@ def increase_prev_amount(container_name, amount):
 
 
 for name, container in data["containers"].items():
-
     next = container["next"]
 
     if isinstance(next, str):
@@ -78,6 +77,7 @@ def add_container(name, container, n):
 
     env = data["common_env"].copy()
     env["INPUT_QUEUE"] = f"{name}_{n}"
+    env["EOF_ROUTING_KEY"] = name
     env["REPLICA_ID"] = n
     if "prev_amount" in container:
         env["PREV_AMOUNT"] = container["prev_amount"]
@@ -136,7 +136,7 @@ def add_response_provider():
 
     for src_type, provider in data["response_provider"].items():
         provider_amount = data["containers"][provider]["amount"]
-        env[f"{src_type.upper()}_SRC"] = provider
+        env[f"{src_type.upper()}_SRC"] = data["containers"][provider]["next"]
         env[f"{src_type.upper()}_AMOUNT"] = provider_amount
 
     for key, value in env.items():
