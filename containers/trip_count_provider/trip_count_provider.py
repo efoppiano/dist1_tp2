@@ -3,7 +3,6 @@ import os
 from typing import Dict, List
 
 from common.basic_stateful_filter import BasicStatefulFilter
-from common.packets.eof import Eof
 from common.packets.trips_count_by_year_joined import TripsCountByYearJoined
 from common.utils import initialize_log
 

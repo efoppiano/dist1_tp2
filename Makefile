@@ -5,6 +5,7 @@ default: build
 all:
 
 docker-compose-up: docker-compose-down
+	python3 scripts/build.py
 	docker compose -f docker-compose-dev.yaml up -d --build
 .PHONY: docker-compose-up
 

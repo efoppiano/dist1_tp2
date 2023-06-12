@@ -14,18 +14,25 @@
     },
     "weather_aggregator": {
       "amount": 2,
-      "next": "station_aggregator"
+      "next": "station_aggregator",
+      "env": {
+        "SIDE_TABLE_ROUTING_KEY": "weather"
+      }
     },
     "station_aggregator": {
       "amount": 3,
-      "next": ["prec_filter", "year_filter", "distance_calculator"],
+      "next": [
+        "prec_filter",
+        "year_filter",
+        "distance_calculator"
+      ],
       "env": {
         "PREC_FILTER_QUEUE": "prec_filter",
         "YEAR_FILTER_QUEUE": "year_filter",
-        "DISTANCE_CALCULATOR_QUEUE": "distance_calculator"
+        "DISTANCE_CALCULATOR_QUEUE": "distance_calculator",
+        "SIDE_TABLE_ROUTING_KEY": "station"
       }
     },
-
     "prec_filter": {
       "amount": 2,
       "next": "dur_avg_provider",
@@ -37,7 +44,6 @@
       "amount": 1,
       "next": "response_provider_dur_avg"
     },
-
     "year_filter": {
       "amount": 2,
       "next": "trips_counter"
@@ -53,7 +59,6 @@
         "MULT_THRESHOLD": 2
       }
     },
-
     "distance_calculator": {
       "amount": 2,
       "next": "dist_mean_calculator"
@@ -78,8 +83,14 @@
   "clients": {
     "data": "./.data_3/",
     "clients": {
-      "original": ["montreal", "washington", "toronto"],
-      "capital": ["washington"]
+      "original": [
+        "montreal",
+        "washington",
+        "toronto"
+      ],
+      "capital": [
+        "washington"
+      ]
     }
   }
 }

@@ -19,24 +19,21 @@ class DistMeanCalculator(BasicStatefulFilter):
         super().__init__(replica_id)
 
     def handle_eof(self, flow_id, message: Eof) -> Dict[str, List[bytes]]:
-        client_id = message.client_id
-        city_name = message.city_name
         eof_output_queue = self.router.publish()
         output = {}
         self._mean_buffer.setdefault(flow_id, {})
 
         if not message.drop:
-          for end_station_name, data in self._mean_buffer[flow_id].items():
-              queue_name = self.router.route(end_station_name)
-              output.setdefault(queue_name, [])
-              output[queue_name].append(
-                  StationDistMean(end_station_name,data["mean"],data["count"]).encode()
-              )
+            for end_station_name, data in self._mean_buffer[flow_id].items():
+                queue_name = self.router.route(end_station_name)
+                output.setdefault(queue_name, [])
+                output[queue_name].append(
+                    StationDistMean(end_station_name, data["mean"], data["count"]).encode()
+                )
 
         self._mean_buffer.pop(flow_id)
         output[eof_output_queue] = [message.encode()]
         return output
-    
 
     def handle_message(self, flow_id, message: bytes) -> Dict[str, List[bytes]]:
         packet = DistInfo.decode(message)

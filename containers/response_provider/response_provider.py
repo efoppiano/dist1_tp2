@@ -8,16 +8,19 @@ from common.packets.generic_packet import GenericPacket
 from common.packets.eof import Eof
 from common.packets.client_response_packets import GenericResponsePacket
 from common.rabbit_middleware import Rabbit
-from common.utils import initialize_log, build_eof_out_queue_name, save_state, load_state, min_hash
+from common.utils import initialize_log, save_state, load_state, min_hash
 
-REPLICA_ID = os.environ["REPLICA_ID"]
-SELF_QUEUE = f"sent_responses_{REPLICA_ID}"
+SELF_QUEUE = f"sent_responses"
+DIST_MEAN_SRC = os.environ["DIST_MEAN_SRC"]
+DIST_MEAN_AMOUNT = int(os.environ["DIST_MEAN_AMOUNT"])
+TRIP_COUNT_SRC = os.environ["TRIP_COUNT_SRC"]
+TRIP_COUNT_AMOUNT = int(os.environ["TRIP_COUNT_AMOUNT"])
+DUR_AVG_SRC = os.environ["DUR_AVG_SRC"]
+DUR_AVG_AMOUNT = int(os.environ["DUR_AVG_AMOUNT"])
 
 
 class ResponseProvider:
-    def __init__(self, replica_id: int):
-        self._replica_id = replica_id
-
+    def __init__(self):
         self._last_received = {}
 
         self._rabbit = Rabbit("rabbitmq")
@@ -112,17 +115,13 @@ class ResponseProvider:
 
     def __start(self):
 
-        dist_mean_queue = f"dist_mean_provider_{REPLICA_ID}"
-        trip_count_queue = f"trip_count_provider_{REPLICA_ID}"
-        avg_queue = f"avg_provider_{REPLICA_ID}"
+        dist_mean_queue = DIST_MEAN_SRC
+        trip_count_queue = TRIP_COUNT_SRC
+        avg_queue = DUR_AVG_SRC
 
         self._rabbit.consume(dist_mean_queue, self.__handle_type("dist_mean"))
         self._rabbit.consume(trip_count_queue, self.__handle_type("trip_count"))
         self._rabbit.consume(avg_queue, self.__handle_type("dur_avg"))
-
-        self._rabbit.route(dist_mean_queue, "control", build_eof_out_queue_name("dist_mean_provider"))
-        self._rabbit.route(trip_count_queue, "control", build_eof_out_queue_name("trip_count_provider"))
-        self._rabbit.route(avg_queue, "control", build_eof_out_queue_name("avg_provider"))
 
         # Returns True every time, as this is already saved to disk if reading at runtime
         self._rabbit.consume(SELF_QUEUE, lambda _message: True)
@@ -137,7 +136,7 @@ class ResponseProvider:
 
 def main():
     initialize_log()
-    response_provider = ResponseProvider(int(REPLICA_ID))
+    response_provider = ResponseProvider()
     response_provider.start()
 
 

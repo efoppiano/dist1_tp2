@@ -72,9 +72,10 @@ services:
       - PYTHONUNBUFFERED=1
       - INPUT_QUEUE=weather_aggregator_0
       - REPLICA_ID=0
-      - PREV_AMOUNT=2
+      - PREV_AMOUNT=1
       - NEXT=station_aggregator
       - NEXT_AMOUNT=3
+      - SIDE_TABLE_ROUTING_KEY=weather
 
   weather_aggregator_1:
     build:
@@ -91,9 +92,10 @@ services:
       - PYTHONUNBUFFERED=1
       - INPUT_QUEUE=weather_aggregator_1
       - REPLICA_ID=1
-      - PREV_AMOUNT=2
+      - PREV_AMOUNT=1
       - NEXT=station_aggregator
       - NEXT_AMOUNT=3
+      - SIDE_TABLE_ROUTING_KEY=weather
 
   station_aggregator_0:
     build:
@@ -117,6 +119,7 @@ services:
       - PREC_FILTER_QUEUE=prec_filter
       - YEAR_FILTER_QUEUE=year_filter
       - DISTANCE_CALCULATOR_QUEUE=distance_calculator
+      - SIDE_TABLE_ROUTING_KEY=station
 
   station_aggregator_1:
     build:
@@ -140,6 +143,7 @@ services:
       - PREC_FILTER_QUEUE=prec_filter
       - YEAR_FILTER_QUEUE=year_filter
       - DISTANCE_CALCULATOR_QUEUE=distance_calculator
+      - SIDE_TABLE_ROUTING_KEY=station
 
   station_aggregator_2:
     build:
@@ -163,6 +167,7 @@ services:
       - PREC_FILTER_QUEUE=prec_filter
       - YEAR_FILTER_QUEUE=year_filter
       - DISTANCE_CALCULATOR_QUEUE=distance_calculator
+      - SIDE_TABLE_ROUTING_KEY=station
 
   prec_filter_0:
     build:

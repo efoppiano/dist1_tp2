@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import logging
 import os
 from typing import Dict, List
 from haversine import haversine

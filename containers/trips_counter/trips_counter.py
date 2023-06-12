@@ -19,23 +19,21 @@ class TripsCounter(BasicStatefulFilter):
         super().__init__(replica_id)
 
     def handle_eof(self, flow_id, message: Eof) -> Dict[str, List[bytes]]:
-        client_id = message.client_id
-        city_name = message.city_name
         output = {}
         self._count_buffer.setdefault(flow_id, {})
         if not message.drop:
-          for start_station_name, data in self._count_buffer[flow_id].items():
-              if data[2016] == 0:
-                  continue
-              queue_name = self.router.route(start_station_name)
-              output.setdefault(queue_name, [])
-              output[queue_name].append(
-                  TripsCountByYearJoined(
-                    start_station_name,
-                    data[2016],
-                    data[2017]
-                  ).encode()
-              )
+            for start_station_name, data in self._count_buffer[flow_id].items():
+                if data[2016] == 0:
+                    continue
+                queue_name = self.router.route(start_station_name)
+                output.setdefault(queue_name, [])
+                output[queue_name].append(
+                    TripsCountByYearJoined(
+                        start_station_name,
+                        data[2016],
+                        data[2017]
+                    ).encode()
+                )
 
         self._count_buffer.pop(flow_id)
         eof_output_queue = self.router.publish()
