@@ -49,7 +49,8 @@ class ResponseProvider:
         sender_id = (packet_type, packet.replica_id)
 
         current_id = packet.packet_id
-        last_chunk_id, last_eof_id = self._last_received.get(sender_id, (None, None))
+        self._last_received.setdefault(sender_id, [None, None])
+        last_chunk_id, last_eof_id = self._last_received[sender_id]
 
         if packet.is_eof():
             if current_id == last_eof_id:

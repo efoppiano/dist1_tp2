@@ -44,7 +44,8 @@ class BasicStatefulFilter(BasicFilter, ABC):
         replica_id = packet.replica_id
 
         current_id = packet.packet_id
-        last_chunk_id, last_eof_id = self._last_received.get(replica_id, (None, None))
+        self._last_received.setdefault(replica_id, [None, None])
+        last_chunk_id, last_eof_id = self._last_received[replica_id]
 
         if packet.is_eof():
             if current_id == last_eof_id:
