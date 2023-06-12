@@ -5,7 +5,6 @@ import threading
 from abc import ABC, abstractmethod
 from typing import List, Iterator
 
-from common.linker.linker import Linker
 from common.packet_factory import PacketFactory
 from common.packets.dur_avg_out import DurAvgOut
 from common.packets.client_response_packets import GenericResponsePacket
@@ -15,6 +14,9 @@ from common.rabbit_middleware import Rabbit
 from common.readers import WeatherInfo, StationInfo, TripInfo, ClientIdPacket
 
 RABBIT_HOST = os.environ.get("RABBIT_HOST", "rabbitmq")
+ID_REQ_QUEUE = os.environ["ID_REQ_QUEUE"]
+GATEWAY = os.environ["GATEWAY"]
+GATEWAY_AMOUNT = int(os.environ["GATEWAY_AMOUNT"])
 
 EOF_TYPES = ["dist_mean_eof","trip_count_eof","dur_avg_eof"]
 
@@ -22,7 +24,8 @@ class BasicClient(ABC):
     def __init__(self, config: dict):
         timestamp = datetime.datetime.now().strftime("%Y-%m%d-%H%M")
         self.client_id = f'{config["client_id"]}-{timestamp}'
-        self._client_id = None # Assigned by the server
+        self.session_id = None # Assigned by the server
+        self.router = Router(GATEWAY, GATEWAY_AMOUNT)
 
         self._all_cities = config["cities"]
         self._eofs = {}
@@ -30,29 +33,28 @@ class BasicClient(ABC):
         self._rabbit = Rabbit(RABBIT_HOST)
         self.__set_up_signal_handler()
 
-        self.__request_client_id()
-        PacketFactory.set_ids(self._client_id)
+        self.__request_session_id()
+        PacketFactory.set_ids(self.session_id)
 
     def __set_up_signal_handler(self):
         # TODO: Implement graceful shutdown
         pass
     
-    def __request_client_id(self):
-        queue_name = Linker().get_output_queue(self, hashing_key=self.client_id)
+    def __request_session_id(self):
+        queue_name = self.router.route(self.client_id)
         packet = PacketFactory.build_id_request_packet(self.client_id)
         self._rabbit.produce(queue_name,packet)
 
         def on_client_id_packet(packet: bytes):
             response = GenericResponsePacket.decode(packet)
             packet = ClientIdPacket.decode(response.data[0])
-            client_id = packet.client_id
+            session_id = packet.client_id
 
-            self._client_id = client_id
-            logging.info(f"Assigned Client Id: {client_id}")
+            self.session_id = session_id
+            logging.info(f"Assigned Session Id: {session_id}")
             return True
 
-        # TODO: Do not hardcode the queue name
-        response_queue = "client_id_queue"
+        response_queue = ID_REQ_QUEUE
         self._rabbit.consume_one(response_queue, on_client_id_packet)
 
 
@@ -105,7 +107,7 @@ class BasicClient(ABC):
 
     def __send_data_from_city(self, city: str):
         logging.info(f"action: client_send_data | result: in_progress | city: {city}")
-        queue_name = Linker().get_output_queue(self, hashing_key=city)
+        queue_name = self.router.route(hashing_key=city)
 
         try:
             self.__send_weather_data(queue_name, city)

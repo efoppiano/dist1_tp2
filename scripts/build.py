@@ -168,6 +168,9 @@ def add_client(name, cities, data_path):
   env["DATA_FOLDER_PATH"] = "/opt/app/.data"
   env["CLIENT_ID"] = name
   env["CITIES"] = ",".join(cities)
+  env["ID_REQ_QUEUE"] = "client_id_queue"
+  env["GATEWAY"] = "gateway"
+  env["GATEWAY_AMOUNT"] = data["containers"]["gateway"]["amount"]
 
   for key, value in env.items():
     output += f'''

@@ -448,6 +448,9 @@ services:
       - DATA_FOLDER_PATH=/opt/app/.data
       - CLIENT_ID=original
       - CITIES=montreal,washington,toronto
+      - ID_REQ_QUEUE=client_id_queue
+      - GATEWAY=gateway
+      - GATEWAY_AMOUNT=2
 
   client_capital:
     build:
@@ -465,3 +468,6 @@ services:
       - DATA_FOLDER_PATH=/opt/app/.data
       - CLIENT_ID=capital
       - CITIES=washington
+      - ID_REQ_QUEUE=client_id_queue
+      - GATEWAY=gateway
+      - GATEWAY_AMOUNT=2
