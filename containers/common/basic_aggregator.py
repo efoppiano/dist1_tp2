@@ -27,7 +27,7 @@ class BasicAggregator(ABC):
         self._rabbit.consume(input_queue, self.__on_stream_message_callback)
         eof_routing_key = INPUT_QUEUE
         logging.info(f"Routing packets to {input_queue} using routing key {eof_routing_key}")
-        self._rabbit.route(input_queue, "control", eof_routing_key)
+        self._rabbit.route(input_queue, "publish", eof_routing_key)
 
         self._rabbit.route(input_queue, "publish", side_table_routing_key)
 

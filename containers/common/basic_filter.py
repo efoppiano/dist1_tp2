@@ -21,7 +21,7 @@ class BasicFilter(ABC):
         self._rabbit = Rabbit(RABBIT_HOST)
         self._rabbit.consume(self._input_queue, self.on_message_callback)
         eof_routing_key = INPUT_QUEUE
-        self._rabbit.route(self._input_queue, "control", eof_routing_key)
+        self._rabbit.route(self._input_queue, "publish", eof_routing_key)
 
         self.basic_filter_replica_id = replica_id
 

@@ -22,6 +22,13 @@ DUR_AVG_AMOUNT = int(os.environ["DUR_AVG_AMOUNT"])
 class ResponseProvider:
     def __init__(self):
         self._last_received = {}
+        self._eofs_received = {}
+
+        self.input_queues = {
+            "dist_mean": (DIST_MEAN_SRC, DIST_MEAN_AMOUNT),
+            "trip_count": (TRIP_COUNT_SRC, TRIP_COUNT_AMOUNT),
+            "dur_avg": (DUR_AVG_SRC, DUR_AVG_AMOUNT),
+        }
 
         self._rabbit = Rabbit("rabbitmq")
         self.__set_up_signal_handler()
@@ -38,9 +45,9 @@ class ResponseProvider:
 
         self._sig_hand_prev = signal.signal(signal.SIGTERM, signal_handler)
 
-    def __update_last_received(self, type, packet: GenericPacket):
+    def __update_last_received(self, packet_type, packet: GenericPacket):
 
-        sender_id = (type, packet.replica_id)
+        sender_id = (packet_type, packet.replica_id)
         current_id = packet.packet_id
         last_id = self._last_received.get(sender_id)
 
@@ -60,20 +67,30 @@ class ResponseProvider:
 
         self._rabbit.send_to_route("results", destination, message)
 
-    def __handle_message(self, message: bytes, type: str) -> bool:
+    def __handle_message(self, message: bytes, packet_type: str) -> bool:
 
         packet = GenericPacket.decode(message)
-        if isinstance(packet.data, Eof): type = f"{type}_eof"
+
+        if not self.__update_last_received(packet_type, packet):
+            return True
+
+        if isinstance(packet.data, Eof):
+            flow_id = (packet.client_id, packet.city_name, packet_type)
+            self._eofs_received.setdefault(flow_id, 0)
+            self._eofs_received[flow_id] += 1
+
+            if self._eofs_received[flow_id] < self.input_queues[packet_type][1]:
+                self.__save_state()
+                return True
+
+            self._eofs_received.pop(flow_id)
 
         response_packet = GenericResponsePacket(
             packet.client_id, packet.city_name,
-            type, packet.replica_id,
+            packet_type, packet.replica_id,
             packet.packet_id, packet.data
         )
         response_message = response_packet.encode()
-
-        if not self.__update_last_received(type, packet):
-            return True
 
         try:
             logging.info(f"Sending {response_packet}")
@@ -82,20 +99,24 @@ class ResponseProvider:
             logging.warning(f"Failed to send {response_packet}")
 
         self.__save_state()
-
         return True
 
     def __handle_type(self, type):
         return lambda message, type=type: self.__handle_message(message, type)
 
     def __save_state(self):
-        save_state(pickle.dumps(self._last_received))
+        state = {
+            "_last_received": self._last_received,
+            "_eofs_received":  self._eofs_received
+        }
+        save_state(pickle.dumps(state))
 
     def __load_state(self):
         try:
-            _last_received = pickle.loads(load_state())
-            if _last_received is not None:
-                self._last_received = _last_received
+            state = pickle.loads(load_state())
+            if state is not None:
+                self._last_received = state["_last_received"]
+                self._eofs_received = state["_eofs_received"]
         except:
             logging.warning("Failed to load state")
             pass
@@ -115,13 +136,17 @@ class ResponseProvider:
 
     def __start(self):
 
-        dist_mean_queue = DIST_MEAN_SRC
-        trip_count_queue = TRIP_COUNT_SRC
-        avg_queue = DUR_AVG_SRC
+        dist_mean_queue = self.input_queues["dist_mean"][0]
+        trip_count_queue = self.input_queues["trip_count"][0]
+        avg_queue = self.input_queues["dur_avg"][0]
 
         self._rabbit.consume(dist_mean_queue, self.__handle_type("dist_mean"))
         self._rabbit.consume(trip_count_queue, self.__handle_type("trip_count"))
         self._rabbit.consume(avg_queue, self.__handle_type("dur_avg"))
+
+        self._rabbit.route(dist_mean_queue, "publish", dist_mean_queue)
+        self._rabbit.route(trip_count_queue, "publish", trip_count_queue)
+        self._rabbit.route(avg_queue, "publish", avg_queue)
 
         # Returns True every time, as this is already saved to disk if reading at runtime
         self._rabbit.consume(SELF_QUEUE, lambda _message: True)
