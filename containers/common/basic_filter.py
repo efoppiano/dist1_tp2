@@ -64,7 +64,7 @@ class BasicFilter(ABC):
             raise ValueError(f"Unknown packet type: {type(decoded.data)}")
 
         self._message_sender.send(builder, outgoing_messages)
-        self.__save_full_state()
+        save_state(self.get_state())
 
         return True
 
@@ -75,10 +75,6 @@ class BasicFilter(ABC):
     @abc.abstractmethod
     def handle_eof_message(self, flow_id, message: Eof) -> Dict[str, Union[List[bytes], Eof]]:
         pass
-
-    def __save_full_state(self):
-        state = self.get_state()
-        save_state(pickle.dumps(state))
 
     def set_state(self, state_bytes: bytes):
         state = pickle.loads(state_bytes)
