@@ -134,9 +134,13 @@ class BasicGateway(ABC):
     def get_state(self) -> bytes:
         state = {
             "message_sender": self._message_sender.get_state(),
+            "last_chunk_received": self._last_chunk_received,
+            "last_eof_received": self._last_eof_received,
         }
         return pickle.dumps(state)
 
     def set_state(self, state: bytes):
         state = pickle.loads(state)
         self._message_sender.set_state(state["message_sender"])
+        self._last_chunk_received = state["last_chunk_received"]
+        self._last_eof_received = state["last_eof_received"]

@@ -89,6 +89,7 @@ class BasicAggregator(ABC):
         self._eofs_received.setdefault(flow_id, 0)
         self._eofs_received[flow_id] += 1
 
+        logging.info(f"Received EOF for flow {flow_id} ({self._eofs_received[flow_id]}/{PREV_AMOUNT})")
         if self._eofs_received[flow_id] < PREV_AMOUNT:
             return {}
 
@@ -112,6 +113,7 @@ class BasicAggregator(ABC):
     def get_state(self) -> bytes:
         state = {
             "message_sender": self._message_sender.get_state(),
+            "eofs_received": self._eofs_received,
         }
         return pickle.dumps(state)
 
@@ -119,6 +121,7 @@ class BasicAggregator(ABC):
     def set_state(self, state_bytes: bytes):
         state = pickle.loads(state_bytes)
         self._message_sender.set_state(state["message_sender"])
+        self._eofs_received = state["eofs_received"]
 
     def start(self):
         self._rabbit.start()

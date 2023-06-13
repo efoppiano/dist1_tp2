@@ -1,10 +1,10 @@
+import logging
 import os
 import pickle
 from abc import ABC
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Union
 
 from common.last_received import MultiLastReceivedManager
-from common.utils import load_state
 from common.router import Router
 from common.basic_filter import BasicFilter
 from common.packets.eof import Eof
@@ -29,13 +29,14 @@ class BasicStatefulFilter(BasicFilter, ABC):
 
     def get_state(self) -> bytes:
         return pickle.dumps({
-            "last_received": self._last_received,
+            "last_received": self._last_received.get_state(),
             "eofs_received": self._eofs_received,
             "parent_state": super().get_state()
         })
 
-    def set_state(self, state: dict):
-        self._last_received = state["last_received"]
+    def set_state(self, state_bytes: bytes):
+        state = pickle.loads(state_bytes)
+        self._last_received.set_state(state["last_received"])
         self._eofs_received = state["eofs_received"]
         super().set_state(state["parent_state"])
 
@@ -60,6 +61,7 @@ class BasicStatefulFilter(BasicFilter, ABC):
         self._eofs_received.setdefault(flow_id, 0)
         self._eofs_received[flow_id] += 1
 
+        logging.info(f"Received EOF for flow {flow_id} ({self._eofs_received[flow_id]}/{PREV_AMOUNT})")
         if self._eofs_received[flow_id] < PREV_AMOUNT:
             return {}
 
