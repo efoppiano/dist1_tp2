@@ -457,6 +457,36 @@ services:
       - DUR_AVG_SRC=response_provider_dur_avg
       - DUR_AVG_AMOUNT=1
 
+  health_checker_0:
+    build:
+      context: ./containers
+      dockerfile: health_checker/Dockerfile
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    entrypoint: python3 /opt/app/health_checker.py
+    volumes:
+      - .volumes/health_checker_0:/volumes
+    environment:
+      - PYTHONHASHSEED=0
+      - PYTHONUNBUFFERED=1
+      - CONTAINERS=gateway_0,weather_aggregator_0,station_aggregator_0,station_aggregator_2,prec_filter_1,year_filter_0,trips_counter_0,trip_count_provider_0,distance_calculator_1,dist_mean_calculator_1,response_provider,health_checker_1
+
+  health_checker_1:
+    build:
+      context: ./containers
+      dockerfile: health_checker/Dockerfile
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    entrypoint: python3 /opt/app/health_checker.py
+    volumes:
+      - .volumes/health_checker_1:/volumes
+    environment:
+      - PYTHONHASHSEED=0
+      - PYTHONUNBUFFERED=1
+      - CONTAINERS=gateway_1,weather_aggregator_1,station_aggregator_1,prec_filter_0,dur_avg_provider_0,year_filter_1,trips_counter_1,distance_calculator_0,dist_mean_calculator_0,dist_mean_provider_0,health_checker_0
+
   client_original:
     build:
       context: ./containers
