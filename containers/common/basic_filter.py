@@ -3,7 +3,7 @@ import logging
 import os
 import pickle
 from abc import ABC
-from typing import List, Dict, Union, Optional
+from typing import List, Dict, Union
 
 from common.message_sender import MessageSender
 from common.packets.eof import Eof
@@ -25,7 +25,7 @@ class BasicFilter(ABC):
         self.basic_filter_replica_id = replica_id
         self._message_sender = MessageSender(self._rabbit)
 
-        state = self.__load_full_state()
+        state = load_state()
         if state is not None:
             logging.info(f"Found previous state, setting it")
             self.set_state(state)
@@ -54,23 +54,17 @@ class BasicFilter(ABC):
 
         builder = GenericPacketBuilder(self.basic_filter_replica_id, decoded.client_id, decoded.city_name)
 
-        self.__on_message_without_duplicates(builder, decoded)
-
-        return True
-
-    def __on_message_without_duplicates(self, builder: GenericPacketBuilder, decoded: GenericPacket) -> bool:
         flow_id = decoded.get_flow_id()
 
         if isinstance(decoded.data, Eof):
             outgoing_messages = self.handle_eof_message(flow_id, decoded.data)
-        elif isinstance(decoded.data, bytes):
-            outgoing_messages = self.handle_message(flow_id, decoded.data)
         elif isinstance(decoded.data, list):
             outgoing_messages = self.__handle_chunk(flow_id, decoded.data)
         else:
             raise ValueError(f"Unknown packet type: {type(decoded.data)}")
 
         self._message_sender.send(builder, outgoing_messages)
+        self.__save_full_state()
 
         return True
 
@@ -82,28 +76,19 @@ class BasicFilter(ABC):
     def handle_eof_message(self, flow_id, message: Eof) -> Dict[str, Union[List[bytes], Eof]]:
         pass
 
-    @abc.abstractmethod
-    def get_next_seq_number(self) -> int:
-        pass
-
-    @staticmethod
-    def __load_full_state() -> Optional[dict]:
-        state = load_state()
-        if not state:
-            return None
-        return pickle.loads(state)
-
     def __save_full_state(self):
         state = self.get_state()
         save_state(pickle.dumps(state))
 
-    def set_state(self, state: dict):
-        self._message_sender = state["message_sender"]
+    def set_state(self, state_bytes: bytes):
+        state = pickle.loads(state_bytes)
+        self._message_sender.set_state(state["message_sender"])
 
-    def get_state(self) -> dict:
-        return {
-            "message_sender": self._message_sender,
+    def get_state(self) -> bytes:
+        state = {
+            "message_sender": self._message_sender.get_state()
         }
+        return pickle.dumps(state)
 
     def start(self):
         self._rabbit.start()

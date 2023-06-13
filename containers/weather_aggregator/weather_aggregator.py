@@ -7,7 +7,7 @@ from typing import List, Dict, Union
 
 from common.basic_aggregator import BasicAggregator
 from common.packets.eof import Eof
-from common.packets.weather_aggregator_trip import StationAggregatorPacket
+from common.packets.gateway_in import GatewayIn
 from common.packets.gateway_in_or_weather import GatewayInOrWeather
 from common.packets.gateway_out import GatewayOut
 from common.packets.gateway_out_or_station import GatewayOutOrStation
@@ -48,7 +48,7 @@ class WeatherAggregator(BasicAggregator):
             return None
         return self._weather[flow_id][date]
 
-    def __handle_gateway_in(self, flow_id: tuple, packet: StationAggregatorPacket) -> Dict[str, List[bytes]]:
+    def __handle_gateway_in(self, flow_id: tuple, packet: GatewayIn) -> Dict[str, List[bytes]]:
         start_date = datetime_str_to_date_str(packet.start_datetime)
 
         prectot = self.__search_prec_for_date(flow_id, start_date)
@@ -70,7 +70,7 @@ class WeatherAggregator(BasicAggregator):
 
     def handle_message(self, flow_id, message: bytes) -> Dict[str, List[bytes]]:
         packet = GatewayInOrWeather.decode(message)
-        if isinstance(packet.data, StationAggregatorPacket):
+        if isinstance(packet.data, GatewayIn):
             return self.__handle_gateway_in(flow_id, packet.data)
         elif isinstance(packet.data, WeatherSideTableInfo):
             self.__handle_side_table_message(flow_id, packet.data)

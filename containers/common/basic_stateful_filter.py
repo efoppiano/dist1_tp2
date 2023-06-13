@@ -4,7 +4,7 @@ from abc import ABC
 from typing import Dict, List, Optional, Union
 
 from common.last_received import MultiLastReceivedManager
-from common.utils import save_state, load_state
+from common.utils import load_state
 from common.router import Router
 from common.basic_filter import BasicFilter
 from common.packets.eof import Eof
@@ -48,7 +48,6 @@ class BasicStatefulFilter(BasicFilter, ABC):
         if not super().on_message_callback(decoded):
             return False
 
-        self.__save_full_state()
         return True
 
     def handle_eof(self, flow_id, message: Eof) -> Dict[str, Union[List[bytes], Eof]]:
@@ -67,25 +66,3 @@ class BasicStatefulFilter(BasicFilter, ABC):
         self._eofs_received.pop(flow_id)
 
         return self.handle_eof(flow_id, message)
-
-    @staticmethod
-    def __load_full_state() -> Optional[dict]:
-        state = load_state()
-        if not state:
-            return None
-        return pickle.loads(state)
-
-    def __set_full_state(self, state: dict):
-        self.set_state(state["concrete_state"])
-        self._last_received.set_state(state["_last_received"])
-        self._last_seq_number = state["_last_seq_number"]
-        self._eofs_received = state["_eofs_received"]
-
-    def __save_full_state(self):
-        state = {
-            "concrete_state": self.get_state(),
-            "_last_received": self._last_received.get_state(),
-            "_last_seq_number": self._last_seq_number,
-            "_eofs_received": self._eofs_received
-        }
-        save_state(pickle.dumps(state))

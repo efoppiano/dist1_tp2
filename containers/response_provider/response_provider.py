@@ -48,7 +48,7 @@ class ResponseProvider:
     def __update_last_received(self, packet_type, packet: GenericPacket):
         sender_id = (packet_type, packet.replica_id)
 
-        current_id = packet.packet_id
+        current_id = packet.get_id()
         self._last_received.setdefault(sender_id, [None, None])
         last_chunk_id, last_eof_id = self._last_received[sender_id]
 
@@ -102,7 +102,7 @@ class ResponseProvider:
         response_packet = GenericResponsePacket(
             packet.client_id, packet.city_name,
             packet_type, packet.replica_id,
-            packet.packet_id, packet.data
+            packet.seq_number, packet.data
         )
         response_message = response_packet.encode()
 

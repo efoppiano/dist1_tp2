@@ -3,11 +3,12 @@ import logging
 import os
 import pickle
 from abc import ABC
-from typing import Dict, List, Union
+from typing import Dict, List
 
 from common.last_received import MultiLastReceivedManager
+from common.message_sender import MessageSender
 from common.router import MultiRouter
-from common.utils import save_state, load_state, min_hash
+from common.utils import save_state, load_state
 from common.packets.eof import Eof
 from common.packets.generic_packet import GenericPacket, GenericPacketBuilder
 from common.rabbit_middleware import Rabbit
@@ -26,7 +27,7 @@ class BasicAggregator(ABC):
 
         self._basic_agg_replica_id = replica_id
         self._last_received = MultiLastReceivedManager()
-        self._last_packet_id = 0
+        self._message_sender = MessageSender(self._rabbit)
         self._eofs_received = {}
 
         self.router = router
@@ -34,9 +35,9 @@ class BasicAggregator(ABC):
         self.__setup_state()
 
     def __setup_state(self):
-        state = self.__load_full_state()
+        state = load_state()
         if state is not None:
-            self.__set_full_state(state)
+            self.set_state(state)
 
     def __setup_middleware(self, side_table_routing_key: str):
         self._rabbit = Rabbit(RABBIT_HOST)
@@ -57,21 +58,7 @@ class BasicAggregator(ABC):
                 outgoing_messages[queue] += messages
         return outgoing_messages
 
-    def __send_messages(self, builder: GenericPacketBuilder, outgoing_messages: Dict[str, Union[List[bytes], Eof]]):
-        for (queue, messages_or_eof) in outgoing_messages.items():
-            if isinstance(messages_or_eof, Eof) or len(messages_or_eof) > 0:
-                encoded = builder.build(self.__get_next_seq_number(), messages_or_eof).encode()
-                if queue.startswith("publish_"):
-                    queue = queue[len("publish_"):]
-                    logging.debug(
-                        f"Sending {builder.get_id()}-{min_hash(messages_or_eof)} to {queue}")
-                    self._rabbit.send_to_route("publish", queue, encoded)
-                else:
-                    logging.debug(
-                        f"Sending {builder.get_id()}-{min_hash(messages_or_eof)} to {queue}")
-                    self._rabbit.produce(queue, encoded)
-
-    def __on_stream_message_without_duplicates(self, builder: GenericPacketBuilder, decoded: GenericPacket) -> bool:
+    def __on_stream_message_without_duplicates(self, decoded: GenericPacket) -> bool:
         flow_id = decoded.get_flow_id()
 
         if isinstance(decoded.data, Eof):
@@ -81,13 +68,10 @@ class BasicAggregator(ABC):
         else:
             raise Exception(f"Unknown message type: {type(decoded.data)}")
 
-        self.__send_messages(builder, outgoing_messages)
+        builder = GenericPacketBuilder(self._basic_agg_replica_id, decoded.client_id, decoded.city_name)
+        self._message_sender.send(builder, outgoing_messages)
 
         return True
-
-    def __get_next_seq_number(self) -> int:
-        self._last_packet_id = (self._last_packet_id + 1) % MAX_PACKET_ID
-        return self._last_packet_id
 
     def __on_stream_message_callback(self, msg: bytes) -> bool:
         decoded = GenericPacket.decode(msg)
@@ -95,11 +79,10 @@ class BasicAggregator(ABC):
         if not self._last_received.update(decoded):
             return True
 
-        builder = GenericPacketBuilder(self._basic_agg_replica_id, decoded.client_id, decoded.city_name)
-        if not self.__on_stream_message_without_duplicates(builder, decoded):
+        if not self.__on_stream_message_without_duplicates(decoded):
             return False
 
-        self.__save_full_state()
+        save_state(self.get_state())
         return True
 
     def handle_eof_message(self, flow_id, message: Eof) -> Dict[str, Eof]:
@@ -118,42 +101,24 @@ class BasicAggregator(ABC):
         pass
 
     def handle_eof(self, flow_id, message: Eof) -> Dict[str, Eof]:
-        eof_output_queue = self.router.publish()
+        eof_output_queues = self.router.publish()
         output = {}
-        for queue in eof_output_queue:
+        for queue in eof_output_queues:
             output[queue] = message
 
         return output
 
-    def start(self):
-        self._rabbit.start()
-
     @abc.abstractmethod
     def get_state(self) -> bytes:
-        pass
+        state = {
+            "message_sender": self._message_sender.get_state(),
+        }
+        return pickle.dumps(state)
 
     @abc.abstractmethod
-    def set_state(self, state: bytes):
-        pass
+    def set_state(self, state_bytes: bytes):
+        state = pickle.loads(state_bytes)
+        self._message_sender.set_state(state["message_sender"])
 
-    def __save_full_state(self):
-        state = {
-            "concrete_state": self.get_state(),
-            "_last_received": self._last_received.get_state(),
-            "_last_packet_id": self._last_packet_id,
-            "_eofs_received": self._eofs_received,
-        }
-        save_state(pickle.dumps(state))
-
-    @staticmethod
-    def __load_full_state() -> Union[dict, None]:
-        state = load_state()
-        if not state:
-            return None
-        return pickle.loads(state)
-
-    def __set_full_state(self, state: dict):
-        self.set_state(state["concrete_state"])
-        self._last_received.set_state(state["_last_received"])
-        self._last_packet_id = state["_last_packet_id"]
-        self._eofs_received = state["_eofs_received"]
+    def start(self):
+        self._rabbit.start()

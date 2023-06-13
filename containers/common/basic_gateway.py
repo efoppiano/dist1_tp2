@@ -2,43 +2,49 @@ import abc
 import logging
 import os
 import pickle
+import time
 from abc import ABC
-from typing import Dict, List, Union
+from typing import Dict, List, Literal
 
-from common.packets.client_packet import ClientPacket
-from common.router import MultiRouter
+from common.message_sender import MessageSender
+from common.packets.client_packet import ClientDataPacket, ClientPacket
+from common.readers import ClientIdResponsePacket
+from common.router import Router
 from common.utils import save_state, load_state, min_hash
 from common.packets.eof import Eof
 from common.packets.generic_packet import GenericPacketBuilder
 from common.rabbit_middleware import Rabbit
 
-CLIENT_QUEUE = os.environ["CLIENT_QUEUE"]
+INPUT_QUEUE = os.environ["INPUT_QUEUE"]
 EOF_ROUTING_KEY = os.environ["EOF_ROUTING_KEY"]
+
+NEXT = os.environ["NEXT"]
+NEXT_AMOUNT = int(os.environ["NEXT_AMOUNT"])
 
 RABBIT_HOST = os.environ.get("RABBIT_HOST", "rabbitmq")
 MAX_SEQ_NUMBER = 2 ** 10  # 2 packet ids would be enough, but we use more for traceability
 
 
 class BasicGateway(ABC):
-    def __init__(self, router: MultiRouter, replica_id: int):
+    def __init__(self, replica_id: int):
         self.__setup_middleware()
 
         self._basic_gateway_replica_id = replica_id
         self._last_chunk_received = None
         self._last_eof_received = None
-        self._last_seq_number = 0
-        self.router = router
+        self._message_sender = MessageSender(self._rabbit)
+        self.router = Router(NEXT, NEXT_AMOUNT)
 
         self.__setup_state()
 
     def __setup_state(self):
-        state = self.__load_full_state()
+        state = load_state()
         if state is not None:
-            self.__set_full_state(state)
+            self.set_state(state)
 
     def __setup_middleware(self):
         self._rabbit = Rabbit(RABBIT_HOST)
-        input_queue = CLIENT_QUEUE
+        input_queue = INPUT_QUEUE
         self._rabbit.consume(input_queue, self.__on_stream_message_callback)
         eof_routing_key = EOF_ROUTING_KEY
         logging.info(f"Routing packets to {input_queue} using routing key {eof_routing_key}")
@@ -53,21 +59,7 @@ class BasicGateway(ABC):
                 outgoing_messages[queue] += messages
         return outgoing_messages
 
-    def __send_messages(self, builder: GenericPacketBuilder, outgoing_messages: Dict[str, Union[List[bytes], Eof]]):
-        for (queue, messages_or_eof) in outgoing_messages.items():
-            if isinstance(messages_or_eof, Eof) or len(messages_or_eof) > 0:
-                encoded = builder.build(self.__get_next_seq_number(), messages_or_eof).encode()
-                if queue.startswith("publish_"):
-                    queue = queue[len("publish_"):]
-                    logging.debug(
-                        f"Sending {builder.get_id()}-{min_hash(messages_or_eof)} to {queue}")
-                    self._rabbit.send_to_route("publish", queue, encoded)
-                else:
-                    logging.debug(
-                        f"Sending {builder.get_id()}-{min_hash(messages_or_eof)} to {queue}")
-                    self._rabbit.produce(queue, encoded)
-
-    def __on_stream_message_without_duplicates(self, builder: GenericPacketBuilder, decoded: ClientPacket) -> bool:
+    def __on_stream_message_without_duplicates(self, decoded: ClientDataPacket) -> bool:
         flow_id = decoded.get_flow_id()
 
         if isinstance(decoded.data, Eof):
@@ -77,11 +69,12 @@ class BasicGateway(ABC):
         else:
             raise Exception(f"Unknown message type: {type(decoded.data)}")
 
-        self.__send_messages(builder, outgoing_messages)
+        builder = GenericPacketBuilder(self._basic_gateway_replica_id, decoded.client_id, decoded.city_name)
+        self._message_sender.send(builder, outgoing_messages)
 
         return True
 
-    def __update_last_received(self, packet: ClientPacket) -> bool:
+    def __update_last_received(self, packet: ClientDataPacket) -> bool:
         packet_id = packet.get_id()
 
         if packet.is_eof():
@@ -101,21 +94,27 @@ class BasicGateway(ABC):
 
         return True
 
-    def __get_next_seq_number(self) -> int:
-        self._last_seq_number = (self._last_seq_number + 1) % MAX_SEQ_NUMBER
-        return self._last_seq_number
+    def __generate_and_send_client_id(self):
+        new_client_id = f"{self._basic_gateway_replica_id}_{time.time_ns()}"
+        logging.info(f"New client id: {new_client_id}")
+
+        response = ClientIdResponsePacket(new_client_id).encode()
+
+        self._rabbit.produce("client_id_queue", response)
 
     def __on_stream_message_callback(self, msg: bytes) -> bool:
         decoded = ClientPacket.decode(msg)
-
-        if not self.__update_last_received(decoded):
+        if not isinstance(decoded.data, ClientDataPacket):
+            self.__generate_and_send_client_id()
             return True
 
-        builder = GenericPacketBuilder(self._basic_gateway_replica_id, decoded.client_id, decoded.city_name)
-        if not self.__on_stream_message_without_duplicates(builder, decoded):
+        if not self.__update_last_received(decoded.data):
+            return True
+
+        if not self.__on_stream_message_without_duplicates(decoded.data):
             return False
 
-        self.__save_full_state()
+        save_state(self.get_state())
         return True
 
     @abc.abstractmethod
@@ -124,41 +123,20 @@ class BasicGateway(ABC):
 
     def handle_eof(self, message: Eof) -> Dict[str, Eof]:
         eof_output_queue = self.router.publish()
-        output = {}
-        for queue in eof_output_queue:
-            output[queue] = message
 
-        return output
+        return {
+            eof_output_queue: message
+        }
 
     def start(self):
         self._rabbit.start()
 
-    @abc.abstractmethod
     def get_state(self) -> bytes:
-        pass
-
-    @abc.abstractmethod
-    def set_state(self, state: bytes):
-        pass
-
-    def __save_full_state(self):
         state = {
-            "concrete_state": self.get_state(),
-            "_last_eof_received": self._last_eof_received,
-            "_last_chunk_received": self._last_chunk_received,
-            "_last_seq_number": self._last_seq_number,
+            "message_sender": self._message_sender.get_state(),
         }
-        save_state(pickle.dumps(state))
+        return pickle.dumps(state)
 
-    @staticmethod
-    def __load_full_state() -> Union[dict, None]:
-        state = load_state()
-        if not state:
-            return None
-        return pickle.loads(state)
-
-    def __set_full_state(self, state: dict):
-        self.set_state(state["concrete_state"])
-        self._last_eof_received = state["_last_eof_received"]
-        self._last_chunk_received = state["_last_chunk_received"]
-        self._last_seq_number = state["_last_seq_number"]
+    def set_state(self, state: bytes):
+        state = pickle.loads(state)
+        self._message_sender.set_state(state["message_sender"])

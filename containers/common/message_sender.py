@@ -6,7 +6,7 @@ from common.packets.generic_packet import GenericPacketBuilder
 from common.rabbit_middleware import Rabbit
 from common.utils import min_hash
 
-MAX_SEQ_NUMBER = 2 ** 32 - 1  # 2 packet ids would be enough, but we use more for traceability
+MAX_SEQ_NUMBER = 2 ** 10 - 1  # 2 packet ids would be enough, but we use more for traceability
 
 
 class MessageSender:
@@ -31,3 +31,9 @@ class MessageSender:
                     logging.debug(
                         f"Sending {builder.get_id()}-{min_hash(messages_or_eof)} to {queue}")
                     self._rabbit.produce(queue, encoded)
+
+    def get_state(self) -> bytes:
+        return self._last_seq_number.to_bytes(4, "big")
+
+    def set_state(self, state: bytes):
+        self._last_seq_number = int.from_bytes(state, "big")

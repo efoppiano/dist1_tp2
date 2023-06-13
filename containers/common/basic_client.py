@@ -12,7 +12,7 @@ from common.packets.eof import Eof
 from common.packets.station_dist_mean import StationDistMean
 from common.packets.trips_count_by_year_joined import TripsCountByYearJoined
 from common.rabbit_middleware import Rabbit
-from common.readers import WeatherInfo, StationInfo, TripInfo, ClientIdPacket
+from common.readers import WeatherInfo, StationInfo, TripInfo, ClientIdResponsePacket
 from common.router import Router
 
 RABBIT_HOST = os.environ.get("RABBIT_HOST", "rabbitmq")
@@ -44,13 +44,12 @@ class BasicClient(ABC):
 
     def __request_session_id(self) -> str:
         queue_name = self.router.route(self.client_id)
-        packet = PacketFactory.build_id_request_packet(self.client_id)
+        packet = PacketFactory.build_id_request_packet()
         self._rabbit.produce(queue_name, packet)
 
         def on_client_id_packet(client_id_packet: bytes):
-            response = GenericResponsePacket.decode(client_id_packet)
-            client_id_packet = ClientIdPacket.decode(response.data[0])
-            session_id = client_id_packet.client_id
+            response = ClientIdResponsePacket.decode(client_id_packet)
+            session_id = response.client_id
 
             self.session_id = session_id
             logging.info(f"Assigned Session Id: {session_id}")

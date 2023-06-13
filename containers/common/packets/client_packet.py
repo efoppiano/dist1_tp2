@@ -1,12 +1,12 @@
 from dataclasses import dataclass
-from typing import Union, List
+from typing import Union, List, Literal
 
 from common.packets.basic_packet import BasicPacket
 from common.packets.eof import Eof
 
 
 @dataclass
-class ClientPacket(BasicPacket):
+class ClientDataPacket(BasicPacket):
     client_id: str
     city_name: str
     seq_number: int
@@ -23,3 +23,8 @@ class ClientPacket(BasicPacket):
 
     def get_flow_id(self) -> str:
         return f"{self.client_id}-{self.city_name}"
+
+
+@dataclass
+class ClientPacket(BasicPacket):
+    data: Union[ClientDataPacket, Literal["IdRequest"]]
