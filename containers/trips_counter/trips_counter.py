@@ -54,12 +54,14 @@ class TripsCounter(BasicStatefulFilter):
     def get_state(self) -> bytes:
         state = {
             "count_buffer": self._count_buffer,
+            "parent_state": super().get_state()
         }
         return pickle.dumps(state)
 
     def set_state(self, state: bytes):
         state = pickle.loads(state)
         self._count_buffer = state["count_buffer"]
+        super().set_state(state["parent_state"])
 
 
 def main():

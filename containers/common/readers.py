@@ -4,7 +4,7 @@ from typing import Iterator, Union, List
 
 from common.packets.basic_packet import BasicPacket
 
-CHUNK_SIZE = 1024
+CHUNK_SIZE = 10240
 
 
 @dataclass
@@ -116,6 +116,7 @@ class ClientEofPacket(BasicPacket):
     file_type: str  # weather, station, trip
     client_id: str
     city_name: str
+
 
 @dataclass
 class ClientIdPacket(BasicPacket):

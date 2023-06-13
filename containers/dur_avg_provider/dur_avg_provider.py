@@ -51,12 +51,14 @@ class DurAvgProvider(BasicStatefulFilter):
     def get_state(self) -> bytes:
         state = {
             "avg_buffer": self._avg_buffer,
+            "parent_state": super().get_state()
         }
         return pickle.dumps(state)
 
     def set_state(self, state: bytes):
         state = pickle.loads(state)
         self._avg_buffer = state["avg_buffer"]
+        super().set_state(state["parent_state"])
 
 
 def main():

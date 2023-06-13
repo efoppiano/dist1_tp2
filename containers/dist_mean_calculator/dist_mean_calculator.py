@@ -54,13 +54,15 @@ class DistMeanCalculator(BasicStatefulFilter):
 
     def get_state(self) -> bytes:
         state = {
-            "mean_buffer": self._mean_buffer
+            "mean_buffer": self._mean_buffer,
+            "parent_state": super().get_state()
         }
         return pickle.dumps(state)
 
     def set_state(self, state: bytes):
         state = pickle.loads(state)
         self._mean_buffer = state["mean_buffer"]
+        super().set_state(state["parent_state"])
 
 
 def main():

@@ -4,7 +4,7 @@ import time
 from typing import Dict, List, Union
 from common.basic_stateful_filter import BasicStatefulFilter
 from common.packets.eof import Eof
-from common.packets.gateway_in import GatewayIn
+from common.packets.weather_aggregator_trip import StationAggregatorPacket
 from common.packets.gateway_in_or_weather import GatewayInOrWeather
 from common.packets.gateway_out_or_station import GatewayOutOrStation
 from common.packets.station_side_table_info import StationSideTableInfo
@@ -93,7 +93,7 @@ class Gateway(BasicStatefulFilter):
             queue_name = self.router.route(packet[0].start_datetime)
             packets_to_send = []
             for t in packet:
-                gateway_in = GatewayIn(
+                gateway_in = StationAggregatorPacket(
                     t.start_datetime,
                     t.start_station_code, t.end_datetime,
                     t.end_station_code, t.duration_sec, t.is_member,

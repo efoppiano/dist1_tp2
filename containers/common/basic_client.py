@@ -47,10 +47,10 @@ class BasicClient(ABC):
         packet = PacketFactory.build_id_request_packet(self.client_id)
         self._rabbit.produce(queue_name, packet)
 
-        def on_client_id_packet(packet: bytes):
-            response = GenericResponsePacket.decode(packet)
-            packet = ClientIdPacket.decode(response.data[0])
-            session_id = packet.client_id
+        def on_client_id_packet(client_id_packet: bytes):
+            response = GenericResponsePacket.decode(client_id_packet)
+            client_id_packet = ClientIdPacket.decode(response.data[0])
+            session_id = client_id_packet.client_id
 
             self.session_id = session_id
             logging.info(f"Assigned Session Id: {session_id}")
@@ -92,14 +92,10 @@ class BasicClient(ABC):
             packet = PacketFactory.build_weather_packet(city, weather_info_list)
             self._rabbit.produce(queue, packet)
 
-        self._rabbit.produce(queue, PacketFactory.build_weather_eof(city))
-
     def __send_stations_data(self, queue: str, city: str):
         for station_info_list in self.get_stations(city):
             packet = PacketFactory.build_station_packet(city, station_info_list)
             self._rabbit.produce(queue, packet)
-
-        self._rabbit.produce(queue, PacketFactory.build_station_eof(city))
 
     def __send_trips_data(self, queue: str, city: str):
         for trip_info_list in self.get_trips(city):
@@ -141,13 +137,13 @@ class BasicClient(ABC):
             trips_count = TripsCountByYearJoined.decode(item)
             self.handle_trip_count_by_year_joined_packet(city_name, trips_count)
 
-    def __handle_eof(self, type: str, city_name: str):
-        self._eofs.setdefault(type, set())
-        self._eofs[type].add(city_name)
+    def __handle_eof(self, eof_type: str, city_name: str):
+        self._eofs.setdefault(eof_type, set())
+        self._eofs[eof_type].add(city_name)
 
     def __all_eofs_received(self) -> bool:
-        for type in EOF_TYPES:
-            if len(self._eofs.get(type, [])) != len(self._all_cities):
+        for eof_type in EOF_TYPES:
+            if len(self._eofs.get(eof_type, [])) != len(self._all_cities):
                 return False
 
         return True
