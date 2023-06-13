@@ -211,6 +211,7 @@ def add_client(name, cities, data_path):
     entrypoint: python3 /opt/app/client.py
     volumes:
       - {data_path}:/opt/app/.data/
+      - /var/run/docker.sock:/var/run/docker.sock
     environment:'''
 
   env = data["common_env"].copy()
