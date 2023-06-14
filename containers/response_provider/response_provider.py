@@ -8,7 +8,7 @@ from common.packets.generic_packet import GenericPacket
 from common.packets.eof import Eof
 from common.packets.client_response_packets import GenericResponsePacket
 from common.middleware.rabbit_middleware import Rabbit
-from common.utils import initialize_log, save_state, load_state, min_hash
+from common.utils import initialize_log, save_state, load_state, min_hash, log_duplicate, log_evict, trace
 
 SELF_QUEUE = f"sent_responses"
 DIST_MEAN_SRC = os.environ["DIST_MEAN_SRC"]
@@ -56,13 +56,13 @@ class ResponseProvider:
 
         if packet.is_eof():
             if current_id == last_eof_id:
-                logging.warning(
+                log_duplicate(
                     f"Received duplicate EOF {sender_id}-{current_id}-{min_hash(packet.data)} - ignoring")
                 return False
             self._last_received[sender_id][1] = current_id
         elif packet.is_chunk():
             if current_id == last_chunk_id:
-                logging.warning(
+                log_duplicate(
                     f"Received duplicate chunk {sender_id}-{current_id}-{min_hash(packet.data)} - ignoring")
                 return False
             self._last_received[sender_id][0] = current_id
@@ -87,9 +87,10 @@ class ResponseProvider:
 
         if time == 0:
             _time = self._evicting.get(client_id, 0)
-            logging.warning(f"Evicting client {client_id} after {_time} seconds")
+            log_evict(f"Evicting client {client_id} after {_time} seconds")
             self._rabbit.delete_queue(f"results_{client_id}")
         else:
+            log_evict(f"Evicting client {client_id} in {time} seconds")
             self._rabbit.call_later(time, lambda client_id=client_id: self.__evict_client(client_id))
         
         self._evicting[client_id] = time
@@ -99,12 +100,14 @@ class ResponseProvider:
         self._eofs_received.setdefault(flow_id, 0)
         self._eofs_received[flow_id] += 1
 
-        logging.info(
-            f"Received EOF {flow_id} - {self._eofs_received[flow_id]}/{self.input_queues[packet_type][1]}")
         
         if self._eofs_received[flow_id] < self.input_queues[packet_type][1]:
+            trace(
+                f"Received EOF {flow_id} - {self._eofs_received[flow_id]}/{self.input_queues[packet_type][1]}")
             self.__save_state()
             return False
+        logging.debug(
+            f"Received EOF {flow_id} - {self._eofs_received[flow_id]}/{self.input_queues[packet_type][1]}")
         
         self._eofs_received.pop(flow_id)
 
@@ -137,10 +140,10 @@ class ResponseProvider:
         response_message = response_packet.encode()
 
         try:
-            logging.info(f"Sending {response_packet}")
+            logging.info(f"Sending {response_packet.client_id}-{response_packet.city_name}-{packet_type}")
             self.__send_response(packet.client_id, response_message)
         except:
-            logging.warning(f"Failed to send {response_packet}")
+            logging.warning(f"Failed to send {response_packet.client_id}-{response_packet.city_name}-{packet_type}")
 
         self.__save_state()
         return True

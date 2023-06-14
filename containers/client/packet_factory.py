@@ -4,7 +4,7 @@ import logging
 from common.packets.client_packet import ClientDataPacket, ClientPacket
 from common.packets.eof import Eof
 from common.components.readers import WeatherInfo, StationInfo, TripInfo, ClientGatewayPacket
-from common.utils import min_hash
+from common.utils import min_hash, trace
 
 DIST_MEAN_REQUEST = b'dist_mean'
 TRIP_COUNT_REQUEST = b'trip_count'
@@ -63,7 +63,7 @@ class PacketFactory:
             seq_number=PacketFactory.next_seq_number(),
             data=[ClientGatewayPacket(trip_info).encode()]
         )
-        logging.debug(f"Built trip packet {city_name}-{data_packet.seq_number}: {min_hash(data_packet.data)}")
+        trace(f"Built trip packet {city_name}-{data_packet.seq_number}: {min_hash(data_packet.data)}")
         return ClientPacket(data=data_packet).encode()
 
     @staticmethod

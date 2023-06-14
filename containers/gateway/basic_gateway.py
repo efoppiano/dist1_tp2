@@ -11,7 +11,7 @@ from common.components.message_sender import MessageSender
 from common.packets.client_packet import ClientDataPacket, ClientPacket
 from common.components.readers import ClientIdResponsePacket
 from common.router import Router
-from common.utils import save_state, load_state, min_hash
+from common.utils import save_state, load_state, min_hash, log_duplicate
 from common.packets.eof import Eof
 from common.packets.generic_packet import GenericPacketBuilder
 from common.middleware.rabbit_middleware import Rabbit
@@ -89,13 +89,13 @@ class BasicGateway(ABC):
 
         if packet.is_eof():
             if packet_id == self._last_eof_received:
-                logging.warning(
+                log_duplicate(
                     f"Received duplicate EOF {packet_id}-{min_hash(packet.data)} - ignoring")
                 return False
             self._last_eof_received = packet_id
         elif packet.is_chunk():
             if packet_id == self._last_chunk_received:
-                logging.warning(
+                log_duplicate(
                     f"Received duplicate chunk {packet_id}-{min_hash(packet.data)} - ignoring")
                 return False
             self._last_chunk_received = packet_id

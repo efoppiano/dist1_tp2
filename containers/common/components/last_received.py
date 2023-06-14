@@ -1,8 +1,7 @@
-import logging
 import pickle
 
 from common.packets.generic_packet import GenericPacket
-from common.utils import min_hash
+from common.utils import min_hash, log_duplicate, trace
 
 
 class MultiLastReceivedManager:
@@ -18,18 +17,18 @@ class MultiLastReceivedManager:
 
         if packet.is_eof():
             if current_id == last_eof_id:
-                logging.warning(
+                log_duplicate(
                     f"Received duplicate EOF {replica_id}-{current_id}-{min_hash(packet.data)} - ignoring")
                 return False
             self._last_received[replica_id][1] = current_id
         elif packet.is_chunk():
             if current_id == last_chunk_id:
-                logging.warning(
+                log_duplicate(
                     f"Received duplicate chunk {replica_id}-{current_id}-{min_hash(packet.data)} - ignoring")
                 return False
             self._last_received[replica_id][0] = current_id
 
-        logging.debug(
+        trace(
             f"Received {replica_id}-{current_id}-{min_hash(packet.data)}")
 
         return True

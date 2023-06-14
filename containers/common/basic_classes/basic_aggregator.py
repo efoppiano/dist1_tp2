@@ -91,7 +91,7 @@ class BasicAggregator(ABC):
         self._eofs_received.setdefault(flow_id, 0)
         self._eofs_received[flow_id] += 1
 
-        logging.info(f"Received EOF for flow {flow_id} ({self._eofs_received[flow_id]}/{PREV_AMOUNT})")
+        logging.debug(f"Received EOF for flow {flow_id} ({self._eofs_received[flow_id]}/{PREV_AMOUNT})")
         if self._eofs_received[flow_id] < PREV_AMOUNT:
             return {}
 

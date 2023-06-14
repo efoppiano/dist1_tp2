@@ -1,11 +1,11 @@
 import time
-import logging
 from typing import Callable
 from common.router import Router
 from common.packets.eof import Eof
 from common.middleware.rabbit_middleware import Rabbit
 from common.components.message_sender import MessageSender
 from common.packets.generic_packet import GenericPacketBuilder
+from common.utils import log_evict
 
 
 HEALTHCHECK_LAPSE = 10
@@ -50,7 +50,7 @@ class ClientHealthChecker:
 
         self._message_sender.send(builder, outgoing_messages)
         del self._clients[client_id]
-        logging.warning(f"Evicting client {client_id} | Finished: {finished}")
+        log_evict(f"Evicting client {client_id} | Finished: {finished}")
 
     def check_clients(self):
         now = time.time()
