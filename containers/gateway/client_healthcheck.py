@@ -1,4 +1,6 @@
 import time
+import logging
+from typing import Callable
 from common.router import Router
 from common.packets.eof import Eof
 from common.middleware.rabbit_middleware import Rabbit
@@ -17,7 +19,7 @@ class ClientHealthChecker:
                  router: Router,
                  message_sender: MessageSender,
                  replica_id: int,
-                 save_state: function,
+                 save_state: Callable,
                  lapse: int = HEALTHCHECK_LAPSE,
                  client_timeout: int = CLIENT_TIMEOUT,
                  eviction_time: int = EVICTION_TIME
@@ -26,7 +28,10 @@ class ClientHealthChecker:
         self._rabbit = _rabbit
         self._output_queue = router.publish()
         self._message_sender = message_sender
-        self._replica_id = replica_id
+        
+        # TODO: Not sure if this could collide with the gateway, so I'm using a negative replica_id
+        self._replica_id = -replica_id
+
         # TODO: ClientHealthChecker could save state independently
         self._save_state = save_state
 
@@ -45,6 +50,7 @@ class ClientHealthChecker:
 
         self._message_sender.send(builder, outgoing_messages)
         del self._clients[client_id]
+        logging.warning(f"Evicting client {client_id}")
 
     def check_clients(self):
         now = time.time()
