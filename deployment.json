@@ -1,0 +1,93 @@
+{
+  "common_env": {
+    "PYTHONHASHSEED": 0,
+    "PYTHONUNBUFFERED": 1
+  },
+  "containers": {
+    "gateway": {
+      "amount": 2,
+      "next": "weather_aggregator",
+      "env": {
+        "WEATHER_SIDE_TABLE_QUEUE_NAME": "publish_weather",
+        "STATION_SIDE_TABLE_QUEUE_NAME": "publish_station"
+      }
+    },
+    "weather_aggregator": {
+      "amount": 2,
+      "next": "station_aggregator",
+      "env": {
+        "SIDE_TABLE_ROUTING_KEY": "weather"
+      }
+    },
+    "station_aggregator": {
+      "amount": 3,
+      "next": [
+        "prec_filter",
+        "year_filter",
+        "distance_calculator"
+      ],
+      "env": {
+        "PREC_FILTER_QUEUE": "prec_filter",
+        "YEAR_FILTER_QUEUE": "year_filter",
+        "DISTANCE_CALCULATOR_QUEUE": "distance_calculator",
+        "SIDE_TABLE_ROUTING_KEY": "station"
+      }
+    },
+    "prec_filter": {
+      "amount": 2,
+      "next": "dur_avg_provider",
+      "env": {
+        "PREC_LIMIT": 30
+      }
+    },
+    "dur_avg_provider": {
+      "amount": 1,
+      "next": "response_provider_dur_avg"
+    },
+    "year_filter": {
+      "amount": 2,
+      "next": "trips_counter"
+    },
+    "trips_counter": {
+      "amount": 2,
+      "next": "trip_count_provider"
+    },
+    "trip_count_provider": {
+      "amount": 1,
+      "next": "response_provider_trip_count",
+      "env": {
+        "MULT_THRESHOLD": 2
+      }
+    },
+    "distance_calculator": {
+      "amount": 2,
+      "next": "dist_mean_calculator"
+    },
+    "dist_mean_calculator": {
+      "amount": 2,
+      "next": "dist_mean_provider"
+    },
+    "dist_mean_provider": {
+      "amount": 1,
+      "next": "response_provider_dist_mean",
+      "env": {
+        "MEAN_THRESHOLD": "6.0"
+      }
+    }
+  },
+  "response_provider": {
+    "dist_mean": "dist_mean_provider",
+    "trip_count": "trip_count_provider",
+    "dur_avg": "dur_avg_provider"
+  },
+  "clients": {
+    "data": "./.data_3/",
+    "clients": {
+      "original": [
+        "montreal",
+        "washington",
+        "toronto"
+      ]
+    }
+  }
+}

@@ -3,21 +3,36 @@ import random
 from time import sleep
 
 import docker as docker
-import yaml
+import json
 
 
 class Killer:
     def __init__(self):
         self._client = docker.from_env()
-        self._containers_to_kill = self.__setup_containers_to_kill()
+        self._containers_to_kill = {}
+        self.__setup_containers_to_kill()
+        self.__remove_blacklisted_containers()
 
     def __setup_containers_to_kill(self):
-        with open("scripts/killer/containers.yaml", "r") as f:
-            return yaml.safe_load(f)
+        self._containers_to_kill = {}
+        with open("deployment.json", "r") as f:
+            deployment_data = json.load(f)
+
+        for name, params in deployment_data["containers"].items():
+            self._containers_to_kill[name] = params["amount"]
+
+        self._containers_to_kill["response_provider"] = -1
+
+    def __remove_blacklisted_containers(self):
+        with open("scripts/killer/blacklist.json", "r") as f:
+            blacklist_data = json.load(f)
+
+        for name in blacklist_data:
+            self._containers_to_kill.pop(name, None)
 
     def kill_container(self, name: str, replica_id: int) -> str:
         if replica_id == -1:
-            container = f"{name}"
+            container = f"tp2-{name}-1"
         else:
             container = f"tp2-{name}_{replica_id}-1"
         try:
@@ -29,7 +44,7 @@ class Killer:
 
     def start_container(self, name: str, replica_id: int) -> str:
         if replica_id == -1:
-            container = f"{name}"
+            container = f"tp2-{name}-1"
         else:
             container = f"tp2-{name}_{replica_id}-1"
         self._client.containers.get(container).start()

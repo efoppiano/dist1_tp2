@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
 import os
 import pickle
-from typing import Dict, List
+from typing import Dict, List, Union
 
 from common.basic_stateful_filter import BasicStatefulFilter
-from common.linker.linker import Linker
 from common.packets.eof import Eof
-from common.packets.eof_with_id import EofWithId
 from common.packets.trips_count_by_year_joined import TripsCountByYearJoined
 from common.packets.year_filter_in import YearFilterIn
 from common.utils import initialize_log
@@ -20,27 +18,26 @@ class TripsCounter(BasicStatefulFilter):
         self._count_buffer = {}
         super().__init__(replica_id)
 
-    def handle_eof(self, flow_id, message: Eof) -> Dict[str, List[bytes]]:
-        client_id = message.client_id
-        city_name = message.city_name
+    def handle_eof(self, flow_id, message: Eof) -> Dict[str, Union[List[bytes], Eof]]:
         output = {}
         self._count_buffer.setdefault(flow_id, {})
-        for start_station_name, data in self._count_buffer[flow_id].items():
-            if data[2016] == 0:
-                continue
-            queue_name = Linker().get_output_queue(self, hashing_key=start_station_name)
-            output.setdefault(queue_name, [])
-            output[queue_name].append(
-                TripsCountByYearJoined(
-                  start_station_name,
-                  data[2016],
-                  data[2017]
-                ).encode()
-            )
+        if not message.drop:
+            for start_station_name, data in self._count_buffer[flow_id].items():
+                if data[2016] == 0:
+                    continue
+                queue_name = self.router.route(start_station_name)
+                output.setdefault(queue_name, [])
+                output[queue_name].append(
+                    TripsCountByYearJoined(
+                        start_station_name,
+                        data[2016],
+                        data[2017]
+                    ).encode()
+                )
 
         self._count_buffer.pop(flow_id)
-        eof_output_queue = Linker().get_eof_in_queue(self)
-        output[eof_output_queue] = [EofWithId(client_id, city_name, self._replica_id).encode()]
+        eof_output_queue = self.router.publish()
+        output[eof_output_queue] = message
         return output
 
     def handle_message(self, flow_id, message: bytes) -> Dict[str, List[bytes]]:
@@ -57,12 +54,14 @@ class TripsCounter(BasicStatefulFilter):
     def get_state(self) -> bytes:
         state = {
             "count_buffer": self._count_buffer,
+            "parent_state": super().get_state()
         }
         return pickle.dumps(state)
 
     def set_state(self, state: bytes):
         state = pickle.loads(state)
         self._count_buffer = state["count_buffer"]
+        super().set_state(state["parent_state"])
 
 
 def main():

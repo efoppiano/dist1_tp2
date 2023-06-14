@@ -1,14 +1,11 @@
 #!/usr/bin/env python3
-import logging
 import os
 import pickle
-from typing import Dict, List
+from typing import Dict, List, Union
 
 from common.basic_stateful_filter import BasicStatefulFilter
-from common.linker.linker import Linker
 from common.packets.dur_avg_out import DurAvgOut
 from common.packets.eof import Eof
-from common.packets.eof_with_id import EofWithId
 from common.packets.prec_filter_in import PrecFilterIn
 from common.utils import initialize_log
 
@@ -18,25 +15,23 @@ REPLICA_ID = os.environ["REPLICA_ID"]
 class DurAvgProvider(BasicStatefulFilter):
     def __init__(self, replica_id: int):
         self._replica_id = replica_id
-        self._output_queue = Linker().get_output_queue(self)
         self._avg_buffer = {}
         super().__init__(replica_id)
+        self._output_queue = self.router.route()
 
-    def handle_eof(self, flow_id, message: Eof) -> Dict[str, List[bytes]]:
-        logging.info(f"Received EOF for city {message.city_name}")
-        client_id = message.client_id
-        city_name = message.city_name
-        eof_output_queue = Linker().get_eof_in_queue(self)
+    def handle_eof(self, flow_id, message: Eof) -> Dict[str, Union[List[bytes], Eof]]:
+        eof_output_queue = self.router.publish()
         self._avg_buffer.setdefault(flow_id, {})
         city_output = []
-        for start_date in self._avg_buffer[flow_id]:
-            avg = self._avg_buffer[flow_id][start_date]["avg"]
-            amount = self._avg_buffer[flow_id][start_date]["count"]
-            city_output.append(DurAvgOut(start_date, avg, amount).encode())
+        if not message.drop:
+            for start_date in self._avg_buffer[flow_id]:
+                avg = self._avg_buffer[flow_id][start_date]["avg"]
+                amount = self._avg_buffer[flow_id][start_date]["count"]
+                city_output.append(DurAvgOut(start_date, avg, amount).encode())
         self._avg_buffer.pop(flow_id)
         return {
             self._output_queue: city_output,
-            eof_output_queue: [EofWithId(client_id, city_name, self._replica_id).encode()],
+            eof_output_queue: message,
         }
 
     def handle_message(self, flow_id, message: bytes) -> Dict[str, List[bytes]]:
@@ -56,12 +51,14 @@ class DurAvgProvider(BasicStatefulFilter):
     def get_state(self) -> bytes:
         state = {
             "avg_buffer": self._avg_buffer,
+            "parent_state": super().get_state()
         }
         return pickle.dumps(state)
 
     def set_state(self, state: bytes):
         state = pickle.loads(state)
         self._avg_buffer = state["avg_buffer"]
+        super().set_state(state["parent_state"])
 
 
 def main():

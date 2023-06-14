@@ -5,27 +5,38 @@ import pickle
 from typing import Dict, List, Union, Tuple
 
 from common.basic_aggregator import BasicAggregator
-from common.linker.linker import Linker
 from common.packets.distance_calc_in import DistanceCalcIn
 from common.packets.eof import Eof
-from common.packets.eof_with_id import EofWithId
 from common.packets.gateway_out import GatewayOut
 from common.packets.gateway_out_or_station import GatewayOutOrStation
 from common.packets.prec_filter_in import PrecFilterIn
 from common.packets.station_side_table_info import StationSideTableInfo
 from common.packets.stop_packet import StopPacket
 from common.packets.year_filter_in import YearFilterIn
+from common.router import MultiRouter
 from common.utils import initialize_log
+
+PREC_FILTER_QUEUE = os.environ["PREC_FILTER_QUEUE"]
+NEXT_AMOUNT_PREC_FILTER = int(os.environ["NEXT_AMOUNT_PREC_FILTER"])
+YEAR_FILTER_QUEUE = os.environ["YEAR_FILTER_QUEUE"]
+NEXT_AMOUNT_YEAR_FILTER = int(os.environ["NEXT_AMOUNT_YEAR_FILTER"])
+DISTANCE_CALCULATOR_QUEUE = os.environ["DISTANCE_CALCULATOR_QUEUE"]
+NEXT_AMOUNT_DISTANCE_CALCULATOR = int(os.environ["NEXT_AMOUNT_DISTANCE_CALCULATOR"])
 
 SIDE_TABLE_ROUTING_KEY = os.environ["SIDE_TABLE_ROUTING_KEY"]
 REPLICA_ID = os.environ["REPLICA_ID"]
 
 
 class StationAggregator(BasicAggregator):
-    def __init__(self, replica_id: int, side_table_routing_key: str):
+    def __init__(self, router: MultiRouter, replica_id: int, side_table_routing_key: str):
         self._replica_id = replica_id
         self._stations = {}
-        super().__init__(replica_id, side_table_routing_key)
+
+        super().__init__(router, replica_id, side_table_routing_key)
+
+    def handle_eof(self, flow_id, message: Eof) -> Dict[str, Eof]:
+        self._stations.pop(flow_id, None)
+        return super().handle_eof(flow_id, message)
 
     def __handle_side_table_message(self, flow_id, packet: StationSideTableInfo):
         station_code, yearid = packet.station_code, packet.yearid
@@ -38,23 +49,8 @@ class StationAggregator(BasicAggregator):
             "longitude": packet.longitude,
         }
 
-    def handle_eof(self, flow_id, message: Eof) -> Dict[str, List[bytes]]:
-        client_id = message.client_id
-        city_name = message.city_name
-        logging.info(f"action: handle_eof | result: in_progress | city_name: {city_name}")
-
-        eof_year_filter_queue = Linker().get_eof_in_queue(self, "YearFilter")
-        eof_prec_filter_queue = Linker().get_eof_in_queue(self, "PrecFilter")
-        eof_distance_calc_queue = Linker().get_eof_in_queue(self, "DistanceCalculator")
-
-        return {
-            eof_year_filter_queue: [EofWithId(client_id, city_name, self._replica_id).encode()],
-            eof_prec_filter_queue: [EofWithId(client_id, city_name, self._replica_id).encode()],
-            eof_distance_calc_queue: [EofWithId(client_id, city_name, self._replica_id).encode()],
-        }
-
     def __search_station(self, flow_id, station_code: int, yearid: int) -> Union[dict, None]:
-        
+
         if flow_id not in self._stations:
             return None
         if f"{station_code}-{yearid}" not in self._stations[flow_id]:
@@ -109,9 +105,9 @@ class StationAggregator(BasicAggregator):
             logging.warning(f"Could not find stations for packet: {packet}")
             return {}
 
-        prec_filter_queue = Linker().get_output_queue(self, "PrecFilter", str(packet.start_station_code))
-        year_filter_queue = Linker().get_output_queue(self, "YearFilter", str(packet.start_station_code))
-        distance_calc_queue = Linker().get_output_queue(self, "DistanceCalculator", str(packet.start_station_code))
+        prec_filter_queue = self.router.route("prec_filter", str(packet.start_station_code))
+        year_filter_queue = self.router.route("year_filter", str(packet.start_station_code))
+        distance_calc_queue = self.router.route("distance_calculator", str(packet.start_station_code))
 
         output_packets_lists = self.__build_packet_lists(packet, stations)
 
@@ -139,17 +135,24 @@ class StationAggregator(BasicAggregator):
     def get_state(self) -> bytes:
         state = {
             "stations": self._stations,
+            "parent_state": super().get_state(),
         }
         return pickle.dumps(state)
 
     def set_state(self, state: bytes):
         state = pickle.loads(state)
         self._stations = state["stations"]
+        super().set_state(state["parent_state"])
 
 
 def main():
     initialize_log()
-    aggregator = StationAggregator(int(REPLICA_ID), SIDE_TABLE_ROUTING_KEY)
+    router = MultiRouter({
+        "prec_filter": (PREC_FILTER_QUEUE, NEXT_AMOUNT_PREC_FILTER),
+        "year_filter": (YEAR_FILTER_QUEUE, NEXT_AMOUNT_YEAR_FILTER),
+        "distance_calculator": (DISTANCE_CALCULATOR_QUEUE, NEXT_AMOUNT_DISTANCE_CALCULATOR),
+    })
+    aggregator = StationAggregator(router, int(REPLICA_ID), SIDE_TABLE_ROUTING_KEY)
     aggregator.start()
 
 

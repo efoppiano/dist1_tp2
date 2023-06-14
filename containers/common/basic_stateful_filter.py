@@ -1,98 +1,70 @@
-import abc
 import logging
 import os
 import pickle
 from abc import ABC
-from typing import Dict, List, Optional
+from typing import Dict, List, Union
 
-from common.utils import save_state, load_state, min_hash
+from common.last_received import MultiLastReceivedManager
+from common.router import Router
 from common.basic_filter import BasicFilter
 from common.packets.eof import Eof
 from common.packets.generic_packet import GenericPacket
-from common.packets.generic_packet import PacketIdentifier
 
 RABBIT_HOST = os.environ.get("RABBIT_HOST", "rabbitmq")
-MAX_PACKET_ID = 2 ** 10  # 2 packet ids would be enough, but we more for traceability
+PREV_AMOUNT = int(os.environ["PREV_AMOUNT"])
+NEXT = os.environ["NEXT"]
+NEXT_AMOUNT = os.environ.get("NEXT_AMOUNT")
+if NEXT_AMOUNT is not None:
+    NEXT_AMOUNT = int(NEXT_AMOUNT)
+MAX_SEQ_NUMBER = 2 ** 10  # 2 packet ids would be enough, but we use more for traceability
 
 
 class BasicStatefulFilter(BasicFilter, ABC):
     def __init__(self, replica_id: int):
-        super().__init__(replica_id)
-        self._last_received = {}
-        self._last_packet_id = 0
-        self._eofs_received = set()
+        self._last_received = MultiLastReceivedManager()
+        self._eofs_received = {}
 
-        state = self.__load_full_state()
-        if state is not None:
-            logging.info(f"Found previous state, setting it")
-            self.__set_full_state(state)
+        self.router = Router(NEXT, NEXT_AMOUNT)
+        super().__init__(replica_id)
 
     def get_state(self) -> bytes:
-        return b""
+        return pickle.dumps({
+            "last_received": self._last_received.get_state(),
+            "eofs_received": self._eofs_received,
+            "parent_state": super().get_state()
+        })
 
-    def set_state(self, state: bytes):
-        pass
-
-    def __update_last_received(self, packet: GenericPacket):
-
-        replica_id = packet.replica_id
-
-        if isinstance(packet.data, Eof):
-            flow_id = (packet.client_id, packet.city_name)
-            if flow_id in self._eofs_received:
-                logging.warning(f"Received duplicate EOF from flow_id {flow_id} - ignoring")
-                return False
-            self._eofs_received.add(flow_id)
-        else:
-            current_id = packet.packet_id
-            last_id = self._last_received.get(replica_id)
-            if current_id == last_id:
-                logging.warning(f"Received duplicate {replica_id}-{current_id}-{min_hash(packet.data)} - ignoring")
-                return False
-            logging.debug(f"Received {replica_id}-{current_id}-{min_hash(packet.data)}")
-            self._last_received[replica_id] = current_id
-
-        return True
+    def set_state(self, state_bytes: bytes):
+        state = pickle.loads(state_bytes)
+        self._last_received.set_state(state["last_received"])
+        self._eofs_received = state["eofs_received"]
+        super().set_state(state["parent_state"])
 
     def on_message_callback(self, msg: bytes) -> bool:
         decoded = GenericPacket.decode(msg)
 
-        if not self.__update_last_received(decoded):
+        if not self._last_received.update(decoded):
             return True
 
         if not super().on_message_callback(decoded):
             return False
 
-        self.__save_full_state()
         return True
 
-    def __next_packet_id(self, _id: PacketIdentifier) -> int:
-        self._last_packet_id = (self._last_packet_id + 1) % MAX_PACKET_ID
-        return self._last_packet_id
-
-    def send_messages(self, id: PacketIdentifier, outgoing_messages: Dict[str, List[bytes]]):
-        id.replica_id = self.basic_filter_replica_id
-        id.packet_id = self.__next_packet_id(id)
-        return super().send_messages(id, outgoing_messages)
-
-    @staticmethod
-    def __load_full_state() -> Optional[dict]:
-        state = load_state()
-        if not state:
-            return None
-        return pickle.loads(state)
-
-    def __set_full_state(self, state: dict):
-        self.set_state(state["concrete_state"])
-        self._last_received = state["_last_received"]
-        self._last_packet_id = state["_last_packet_id"]
-        self._eofs_received = state["_eofs_received"]
-
-    def __save_full_state(self):
-        state = {
-            "concrete_state": self.get_state(),
-            "_last_received": self._last_received,
-            "_last_packet_id": self._last_packet_id,
-            "_eofs_received": self._eofs_received
+    def handle_eof(self, flow_id, message: Eof) -> Dict[str, Union[List[bytes], Eof]]:
+        eof_output_queue = self.router.publish()
+        return {
+            eof_output_queue: message
         }
-        save_state(pickle.dumps(state))
+
+    def handle_eof_message(self, flow_id, message: Eof) -> Dict[str, Union[List[bytes], Eof]]:
+        self._eofs_received.setdefault(flow_id, 0)
+        self._eofs_received[flow_id] += 1
+
+        logging.info(f"Received EOF for flow {flow_id} ({self._eofs_received[flow_id]}/{PREV_AMOUNT})")
+        if self._eofs_received[flow_id] < PREV_AMOUNT:
+            return {}
+
+        self._eofs_received.pop(flow_id)
+
+        return self.handle_eof(flow_id, message)

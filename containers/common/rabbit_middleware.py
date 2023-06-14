@@ -79,7 +79,7 @@ class Rabbit(MessageQueue):
         self.declare_queue(queue)
         self._channel.basic_consume(queue=queue, on_message_callback=self.__callback_wrapper(callback), auto_ack=False)
 
-    def consume_one(self, queue: str, callback: Callable[[bytes], bool]):
+    def consume_one(self, queue: str, callback: Callable[[bytes], bool], cleanup: bool = True):
         if queue != self._consume_one_last_queue:
             if self._consume_one_last_queue is not None:
                 self._channel.cancel()
@@ -93,6 +93,9 @@ class Rabbit(MessageQueue):
             else:
                 self._channel.basic_nack(delivery_tag=method.delivery_tag)
 
+        if cleanup:
+            self._channel.cancel()
+
     def consume_until_empty(self, queue: str, callback: Callable[[bytes], bool]):
         '''
         Consumes messages from a queue until it is empty.
@@ -103,7 +106,9 @@ class Rabbit(MessageQueue):
             q = self._channel.queue_declare(queue=queue, passive=True)
             if q.method.message_count == 0:
                 break
-            self.consume_one(queue, callback)
+            self.consume_one(queue, callback, False)
+        
+        self._channel.cancel()
 
     def produce(self, queue: str, message: bytes):
         self.declare_queue(queue)

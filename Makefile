@@ -5,6 +5,7 @@ default: build
 all:
 
 docker-compose-up: docker-compose-down
+	python3 scripts/build.py
 	docker compose -f docker-compose-dev.yaml up -d --build
 .PHONY: docker-compose-up
 
@@ -13,8 +14,8 @@ docker-compose-stop:
 .PHONY: docker-compose-stop
 
 docker-compose-down: docker-compose-stop
-	sudo rm -rf .volumes
 	docker compose -f docker-compose-dev.yaml down --volumes --remove-orphans
+	sudo rm -rf .volumes
 .PHONY: docker-compose-down
 
 docker-compose-logs:

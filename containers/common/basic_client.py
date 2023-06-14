@@ -5,24 +5,30 @@ import threading
 from abc import ABC, abstractmethod
 from typing import List, Iterator
 
-from common.linker.linker import Linker
 from common.packet_factory import PacketFactory
 from common.packets.dur_avg_out import DurAvgOut
 from common.packets.client_response_packets import GenericResponsePacket
+from common.packets.eof import Eof
 from common.packets.station_dist_mean import StationDistMean
 from common.packets.trips_count_by_year_joined import TripsCountByYearJoined
 from common.rabbit_middleware import Rabbit
-from common.readers import WeatherInfo, StationInfo, TripInfo, ClientIdPacket
+from common.readers import WeatherInfo, StationInfo, TripInfo, ClientIdResponsePacket
+from common.router import Router
 
 RABBIT_HOST = os.environ.get("RABBIT_HOST", "rabbitmq")
+ID_REQ_QUEUE = os.environ["ID_REQ_QUEUE"]
+GATEWAY = os.environ["GATEWAY"]
+GATEWAY_AMOUNT = int(os.environ["GATEWAY_AMOUNT"])
 
-EOF_TYPES = ["dist_mean_eof","trip_count_eof","dur_avg_eof"]
+EOF_TYPES = ["dist_mean", "trip_count", "dur_avg"]
+
 
 class BasicClient(ABC):
     def __init__(self, config: dict):
         timestamp = datetime.datetime.now().strftime("%Y-%m%d-%H%M")
         self.client_id = f'{config["client_id"]}-{timestamp}'
-        self._client_id = None # Assigned by the server
+        self.session_id = None  # Assigned by the server
+        self.router = Router(GATEWAY, GATEWAY_AMOUNT)
 
         self._all_cities = config["cities"]
         self._eofs = {}
@@ -30,31 +36,28 @@ class BasicClient(ABC):
         self._rabbit = Rabbit(RABBIT_HOST)
         self.__set_up_signal_handler()
 
-        self.__request_client_id()
-        PacketFactory.set_ids(self._client_id)
+        PacketFactory.set_ids(self.__request_session_id())
 
     def __set_up_signal_handler(self):
         # TODO: Implement graceful shutdown
         pass
-    
-    def __request_client_id(self):
-        queue_name = Linker().get_output_queue(self, hashing_key=self.client_id)
-        packet = PacketFactory.build_id_request_packet(self.client_id)
-        self._rabbit.produce(queue_name,packet)
 
-        def on_client_id_packet(packet: bytes):
-            response = GenericResponsePacket.decode(packet)
-            packet = ClientIdPacket.decode(response.data[0])
-            client_id = packet.client_id
+    def __request_session_id(self) -> str:
+        queue_name = self.router.route(self.client_id)
+        packet = PacketFactory.build_id_request_packet()
+        self._rabbit.produce(queue_name, packet)
 
-            self._client_id = client_id
-            logging.info(f"Assigned Client Id: {client_id}")
+        def on_client_id_packet(client_id_packet: bytes):
+            response = ClientIdResponsePacket.decode(client_id_packet)
+            session_id = response.client_id
+
+            self.session_id = session_id
+            logging.info(f"Assigned Session Id: {session_id}")
             return True
 
-        # TODO: Do not hardcode the queue name
-        response_queue = "client_id_queue"
+        response_queue = ID_REQ_QUEUE
         self._rabbit.consume_one(response_queue, on_client_id_packet)
-
+        return self.session_id
 
     @staticmethod
     @abstractmethod
@@ -86,16 +89,12 @@ class BasicClient(ABC):
     def __send_weather_data(self, queue: str, city: str):
         for weather_info_list in self.get_weather(city):
             packet = PacketFactory.build_weather_packet(city, weather_info_list)
-            self._rabbit.produce(queue,packet)
-
-        self._rabbit.produce(queue, PacketFactory.build_weather_eof(city))
+            self._rabbit.produce(queue, packet)
 
     def __send_stations_data(self, queue: str, city: str):
         for station_info_list in self.get_stations(city):
             packet = PacketFactory.build_station_packet(city, station_info_list)
             self._rabbit.produce(queue, packet)
-
-        self._rabbit.produce(queue, PacketFactory.build_station_eof(city))
 
     def __send_trips_data(self, queue: str, city: str):
         for trip_info_list in self.get_trips(city):
@@ -105,7 +104,7 @@ class BasicClient(ABC):
 
     def __send_data_from_city(self, city: str):
         logging.info(f"action: client_send_data | result: in_progress | city: {city}")
-        queue_name = Linker().get_output_queue(self, hashing_key=city)
+        queue_name = self.router.route(hashing_key=city)
 
         try:
             self.__send_weather_data(queue_name, city)
@@ -122,56 +121,56 @@ class BasicClient(ABC):
         for city in self._all_cities:
             self.__send_data_from_city(city)
 
-    def __handle_dist_mean( self, city_name: str, data: List[bytes] ):
+    def __handle_dist_mean(self, city_name: str, data: List[bytes]):
         for item in data:
-          station_dist_mean = StationDistMean.decode(item)
-          self.handle_station_dist_mean_packet(city_name, station_dist_mean)
-    
-    def __handle_dur_avg( self, city_name: str, data: List[bytes] ):
+            station_dist_mean = StationDistMean.decode(item)
+            self.handle_station_dist_mean_packet(city_name, station_dist_mean)
+
+    def __handle_dur_avg(self, city_name: str, data: List[bytes]):
         for item in data:
-          dur_avg_out = DurAvgOut.decode(item)
-          self.handle_dur_avg_out_packet(city_name, dur_avg_out)
-    
-    def __handle_trip_count( self, city_name: str, data: List[bytes] ):
+            dur_avg_out = DurAvgOut.decode(item)
+            self.handle_dur_avg_out_packet(city_name, dur_avg_out)
+
+    def __handle_trip_count(self, city_name: str, data: List[bytes]):
         for item in data:
-          trips_count = TripsCountByYearJoined.decode(item)
-          self.handle_trip_count_by_year_joined_packet(city_name, trips_count)
-    
-    def __handle_eof( self, type: str, city_name: str ):
-        self._eofs.setdefault(type, set())
-        self._eofs[type].add(city_name)
+            trips_count = TripsCountByYearJoined.decode(item)
+            self.handle_trip_count_by_year_joined_packet(city_name, trips_count)
+
+    def __handle_eof(self, eof_type: str, city_name: str):
+        self._eofs.setdefault(eof_type, set())
+        self._eofs[eof_type].add(city_name)
 
     def __all_eofs_received(self) -> bool:
-        for type in EOF_TYPES:
-          if len(self._eofs.get(type, [])) != len(self._all_cities):
-            return False
+        for eof_type in EOF_TYPES:
+            if len(self._eofs.get(eof_type, [])) != len(self._all_cities):
+                return False
 
         return True
 
     def __handle_message(self, message: bytes) -> bool:
         packet = GenericResponsePacket.decode(message)
         city_name = packet.city_name
-        
-        if packet.type == "dist_mean":
-          self.__handle_dist_mean(city_name, packet.data)
+
+        if isinstance(packet.data, Eof):
+            self.__handle_eof(packet.type, city_name)
+        elif packet.type == "dist_mean":
+            self.__handle_dist_mean(city_name, packet.data)
         elif packet.type == "dur_avg":
-          self.__handle_dur_avg(city_name, packet.data)
+            self.__handle_dur_avg(city_name, packet.data)
         elif packet.type == "trip_count":
-          self.__handle_trip_count(city_name, packet.data)
-        elif packet.type in EOF_TYPES:
-          self.__handle_eof(packet.type, city_name)
+            self.__handle_trip_count(city_name, packet.data)
         else:
-          logging.warning(f"Unexpected message type: {packet.type}")
+            logging.warning(f"Unexpected message type: {packet.type}")
 
         if self.__all_eofs_received():
-          self._rabbit.stop()
+            self._rabbit.stop()
 
         return True
 
     def __get_responses(self):
-        
+
         # TODO: Do not hardcode the queue name
-        queue = f"results_{self._client_id}"
+        queue = f"results_{self.session_id}"
         self._rabbit.consume(queue, self.__handle_message)
 
         self._rabbit.start()

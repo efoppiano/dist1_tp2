@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
-import logging
 import os
 from typing import Dict, List
 
 from common.basic_stateful_filter import BasicStatefulFilter
-from common.linker.linker import Linker
 from common.packets.prec_filter_in import PrecFilterIn
 from common.utils import initialize_log
 
@@ -23,7 +21,7 @@ class PrecFilter(BasicStatefulFilter):
 
         output = {}
         if packet.prectot > self._prec_limit:
-            output_queue = Linker().get_output_queue(self, hashing_key=packet.start_date)
+            output_queue = self.router.route(packet.start_date)
             output[output_queue] = [message]
 
         return output

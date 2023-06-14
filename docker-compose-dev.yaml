@@ -1,6 +1,7 @@
 version: "3.9"
 name: tp2
 services:
+
   rabbitmq:
     build:
       context: ./containers/rabbitmq
@@ -13,6 +14,7 @@ services:
       timeout: 3s
       retries: 10
       start_period: 50s
+
   gateway_0:
     build:
       context: ./containers
@@ -21,14 +23,20 @@ services:
       rabbitmq:
         condition: service_healthy
     entrypoint: python3 /opt/app/gateway.py
+    volumes:
+      - .volumes/gateway_0:/volumes
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
+      - INPUT_QUEUE=gateway_0
+      - EOF_ROUTING_KEY=gateway
       - REPLICA_ID=0
+      - PREV_AMOUNT=1
+      - NEXT=weather_aggregator
+      - NEXT_AMOUNT=2
       - WEATHER_SIDE_TABLE_QUEUE_NAME=publish_weather
       - STATION_SIDE_TABLE_QUEUE_NAME=publish_station
-    volumes:
-      - .volumes/gateway_0:/volumes
+
   gateway_1:
     build:
       context: ./containers
@@ -37,58 +45,20 @@ services:
       rabbitmq:
         condition: service_healthy
     entrypoint: python3 /opt/app/gateway.py
-    environment:
-      - PYTHONHASHSEED=0
-      - PYTHONUNBUFFERED=1
-      - REPLICA_ID=1
-      - WEATHER_SIDE_TABLE_QUEUE_NAME=publish_weather
-      - STATION_SIDE_TABLE_QUEUE_NAME=publish_station
     volumes:
       - .volumes/gateway_1:/volumes
-  response_provider:
-    container_name: response_provider
-    build:
-      context: ./containers
-      dockerfile: response_provider/Dockerfile
-    entrypoint: python3 /opt/app/response_provider.py
-    environment:
-      - PYTHONUNBUFFERED=1
-      - PYTHONHASHSEED=1
-      - REPLICA_ID=0
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    volumes:
-      - .volumes/response_provider:/volumes
-  client0:
-    build:
-      context: ./containers
-      dockerfile: client/Dockerfile
-    entrypoint: python3 /opt/app/client.py
-    depends_on:
-      - gateway_0
-      - gateway_1
-    environment:
-      - PYTHONUNBUFFERED=1
-      - PYTHONHASHSEED=1
-      - DATA_FOLDER_PATH=/opt/app/.data
-      - CLIENT_ID=original
-      - CITIES=montreal,washington,toronto
-    volumes:
-      - ./.data_3/:/opt/app/.data/
-  synchronizer:
-    build:
-      context: ./containers
-      dockerfile: synchronizer/Dockerfile
-    entrypoint: python3 /opt/app/synchronizer.py
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
-    volumes:
-      - .volumes/synchronizer:/volumes
+      - INPUT_QUEUE=gateway_1
+      - EOF_ROUTING_KEY=gateway
+      - REPLICA_ID=1
+      - PREV_AMOUNT=1
+      - NEXT=weather_aggregator
+      - NEXT_AMOUNT=2
+      - WEATHER_SIDE_TABLE_QUEUE_NAME=publish_weather
+      - STATION_SIDE_TABLE_QUEUE_NAME=publish_station
+
   weather_aggregator_0:
     build:
       context: ./containers
@@ -97,14 +67,19 @@ services:
       rabbitmq:
         condition: service_healthy
     entrypoint: python3 /opt/app/weather_aggregator.py
+    volumes:
+      - .volumes/weather_aggregator_0:/volumes
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
-      - SIDE_TABLE_QUEUE_PREFIX=weather
-      - SIDE_TABLE_ROUTING_KEY=publish_weather
+      - INPUT_QUEUE=weather_aggregator_0
+      - EOF_ROUTING_KEY=weather_aggregator
       - REPLICA_ID=0
-    volumes:
-      - .volumes/weather_aggregator_0:/volumes
+      - PREV_AMOUNT=1
+      - NEXT=station_aggregator
+      - NEXT_AMOUNT=3
+      - SIDE_TABLE_ROUTING_KEY=weather
+
   weather_aggregator_1:
     build:
       context: ./containers
@@ -113,14 +88,19 @@ services:
       rabbitmq:
         condition: service_healthy
     entrypoint: python3 /opt/app/weather_aggregator.py
+    volumes:
+      - .volumes/weather_aggregator_1:/volumes
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
-      - SIDE_TABLE_QUEUE_PREFIX=weather
-      - SIDE_TABLE_ROUTING_KEY=publish_weather
+      - INPUT_QUEUE=weather_aggregator_1
+      - EOF_ROUTING_KEY=weather_aggregator
       - REPLICA_ID=1
-    volumes:
-      - .volumes/weather_aggregator_1:/volumes
+      - PREV_AMOUNT=1
+      - NEXT=station_aggregator
+      - NEXT_AMOUNT=3
+      - SIDE_TABLE_ROUTING_KEY=weather
+
   station_aggregator_0:
     build:
       context: ./containers
@@ -129,14 +109,23 @@ services:
       rabbitmq:
         condition: service_healthy
     entrypoint: python3 /opt/app/station_aggregator.py
+    volumes:
+      - .volumes/station_aggregator_0:/volumes
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
-      - SIDE_TABLE_QUEUE_PREFIX=station
-      - SIDE_TABLE_ROUTING_KEY=publish_station
+      - INPUT_QUEUE=station_aggregator_0
+      - EOF_ROUTING_KEY=station_aggregator
       - REPLICA_ID=0
-    volumes:
-      - .volumes/station_aggregator_0:/volumes
+      - PREV_AMOUNT=2
+      - NEXT_AMOUNT_PREC_FILTER=2
+      - NEXT_AMOUNT_YEAR_FILTER=2
+      - NEXT_AMOUNT_DISTANCE_CALCULATOR=2
+      - PREC_FILTER_QUEUE=prec_filter
+      - YEAR_FILTER_QUEUE=year_filter
+      - DISTANCE_CALCULATOR_QUEUE=distance_calculator
+      - SIDE_TABLE_ROUTING_KEY=station
+
   station_aggregator_1:
     build:
       context: ./containers
@@ -145,14 +134,23 @@ services:
       rabbitmq:
         condition: service_healthy
     entrypoint: python3 /opt/app/station_aggregator.py
+    volumes:
+      - .volumes/station_aggregator_1:/volumes
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
-      - SIDE_TABLE_QUEUE_PREFIX=station
-      - SIDE_TABLE_ROUTING_KEY=publish_station
+      - INPUT_QUEUE=station_aggregator_1
+      - EOF_ROUTING_KEY=station_aggregator
       - REPLICA_ID=1
-    volumes:
-      - .volumes/station_aggregator_1:/volumes
+      - PREV_AMOUNT=2
+      - NEXT_AMOUNT_PREC_FILTER=2
+      - NEXT_AMOUNT_YEAR_FILTER=2
+      - NEXT_AMOUNT_DISTANCE_CALCULATOR=2
+      - PREC_FILTER_QUEUE=prec_filter
+      - YEAR_FILTER_QUEUE=year_filter
+      - DISTANCE_CALCULATOR_QUEUE=distance_calculator
+      - SIDE_TABLE_ROUTING_KEY=station
+
   station_aggregator_2:
     build:
       context: ./containers
@@ -161,30 +159,23 @@ services:
       rabbitmq:
         condition: service_healthy
     entrypoint: python3 /opt/app/station_aggregator.py
-    environment:
-      - PYTHONHASHSEED=0
-      - PYTHONUNBUFFERED=1
-      - SIDE_TABLE_QUEUE_PREFIX=station
-      - SIDE_TABLE_ROUTING_KEY=publish_station
-      - REPLICA_ID=2
     volumes:
       - .volumes/station_aggregator_2:/volumes
-  station_aggregator_3:
-    build:
-      context: ./containers
-      dockerfile: station_aggregator/Dockerfile
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    entrypoint: python3 /opt/app/station_aggregator.py
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
-      - SIDE_TABLE_QUEUE_PREFIX=station
-      - SIDE_TABLE_ROUTING_KEY=publish_station
-      - REPLICA_ID=3
-    volumes:
-      - .volumes/station_aggregator_3:/volumes
+      - INPUT_QUEUE=station_aggregator_2
+      - EOF_ROUTING_KEY=station_aggregator
+      - REPLICA_ID=2
+      - PREV_AMOUNT=2
+      - NEXT_AMOUNT_PREC_FILTER=2
+      - NEXT_AMOUNT_YEAR_FILTER=2
+      - NEXT_AMOUNT_DISTANCE_CALCULATOR=2
+      - PREC_FILTER_QUEUE=prec_filter
+      - YEAR_FILTER_QUEUE=year_filter
+      - DISTANCE_CALCULATOR_QUEUE=distance_calculator
+      - SIDE_TABLE_ROUTING_KEY=station
+
   prec_filter_0:
     build:
       context: ./containers
@@ -193,13 +184,19 @@ services:
       rabbitmq:
         condition: service_healthy
     entrypoint: python3 /opt/app/prec_filter.py
+    volumes:
+      - .volumes/prec_filter_0:/volumes
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
-      - PREC_LIMIT=30
+      - INPUT_QUEUE=prec_filter_0
+      - EOF_ROUTING_KEY=prec_filter
       - REPLICA_ID=0
-    volumes:
-      - .volumes/prec_filter_0:/volumes
+      - PREV_AMOUNT=3
+      - NEXT=dur_avg_provider
+      - NEXT_AMOUNT=1
+      - PREC_LIMIT=30
+
   prec_filter_1:
     build:
       context: ./containers
@@ -208,13 +205,19 @@ services:
       rabbitmq:
         condition: service_healthy
     entrypoint: python3 /opt/app/prec_filter.py
+    volumes:
+      - .volumes/prec_filter_1:/volumes
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
-      - PREC_LIMIT=30
+      - INPUT_QUEUE=prec_filter_1
+      - EOF_ROUTING_KEY=prec_filter
       - REPLICA_ID=1
-    volumes:
-      - .volumes/prec_filter_1:/volumes
+      - PREV_AMOUNT=3
+      - NEXT=dur_avg_provider
+      - NEXT_AMOUNT=1
+      - PREC_LIMIT=30
+
   dur_avg_provider_0:
     build:
       context: ./containers
@@ -223,83 +226,17 @@ services:
       rabbitmq:
         condition: service_healthy
     entrypoint: python3 /opt/app/dur_avg_provider.py
-    environment:
-      - PYTHONHASHSEED=0
-      - PYTHONUNBUFFERED=1
-      - REPLICA_ID=0
     volumes:
       - .volumes/dur_avg_provider_0:/volumes
-  distance_calculator_0:
-    build:
-      context: ./containers
-      dockerfile: distance_calculator/Dockerfile
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    entrypoint: python3 /opt/app/distance_calculator.py
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
+      - INPUT_QUEUE=dur_avg_provider_0
+      - EOF_ROUTING_KEY=dur_avg_provider
       - REPLICA_ID=0
-    volumes:
-      - .volumes/distance_calculator_0:/volumes
-  distance_calculator_1:
-    build:
-      context: ./containers
-      dockerfile: distance_calculator/Dockerfile
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    entrypoint: python3 /opt/app/distance_calculator.py
-    environment:
-      - PYTHONHASHSEED=0
-      - PYTHONUNBUFFERED=1
-      - REPLICA_ID=1
-    volumes:
-      - .volumes/distance_calculator_1:/volumes
-  dist_mean_calculator_0:
-    build:
-      context: ./containers
-      dockerfile: dist_mean_calculator/Dockerfile
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    entrypoint: python3 /opt/app/dist_mean_calculator.py
-    environment:
-      - PYTHONHASHSEED=0
-      - PYTHONUNBUFFERED=1
-      - REPLICA_ID=0
-    volumes:
-      - .volumes/dist_mean_calculator_0:/volumes
-  dist_mean_calculator_1:
-    build:
-      context: ./containers
-      dockerfile: dist_mean_calculator/Dockerfile
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    entrypoint: python3 /opt/app/dist_mean_calculator.py
-    environment:
-      - PYTHONHASHSEED=0
-      - PYTHONUNBUFFERED=1
-      - REPLICA_ID=1
-    volumes:
-      - .volumes/dist_mean_calculator_1:/volumes
-  dist_mean_provider_0:
-    build:
-      context: ./containers
-      dockerfile: dist_mean_provider/Dockerfile
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    entrypoint: python3 /opt/app/dist_mean_provider.py
-    environment:
-      - PYTHONHASHSEED=0
-      - PYTHONUNBUFFERED=1
-      - MEAN_THRESHOLD=6.0
-      - REPLICA_ID=0
-    volumes:
-      - .volumes/dist_mean_provider_0:/volumes
+      - PREV_AMOUNT=2
+      - NEXT=response_provider_dur_avg
+
   year_filter_0:
     build:
       context: ./containers
@@ -308,12 +245,18 @@ services:
       rabbitmq:
         condition: service_healthy
     entrypoint: python3 /opt/app/year_filter.py
+    volumes:
+      - .volumes/year_filter_0:/volumes
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
+      - INPUT_QUEUE=year_filter_0
+      - EOF_ROUTING_KEY=year_filter
       - REPLICA_ID=0
-    volumes:
-      - .volumes/year_filter_0:/volumes
+      - PREV_AMOUNT=3
+      - NEXT=trips_counter
+      - NEXT_AMOUNT=2
+
   year_filter_1:
     build:
       context: ./containers
@@ -322,12 +265,18 @@ services:
       rabbitmq:
         condition: service_healthy
     entrypoint: python3 /opt/app/year_filter.py
+    volumes:
+      - .volumes/year_filter_1:/volumes
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
+      - INPUT_QUEUE=year_filter_1
+      - EOF_ROUTING_KEY=year_filter
       - REPLICA_ID=1
-    volumes:
-      - .volumes/year_filter_1:/volumes
+      - PREV_AMOUNT=3
+      - NEXT=trips_counter
+      - NEXT_AMOUNT=2
+
   trips_counter_0:
     build:
       context: ./containers
@@ -336,12 +285,18 @@ services:
       rabbitmq:
         condition: service_healthy
     entrypoint: python3 /opt/app/trips_counter.py
+    volumes:
+      - .volumes/trips_counter_0:/volumes
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
+      - INPUT_QUEUE=trips_counter_0
+      - EOF_ROUTING_KEY=trips_counter
       - REPLICA_ID=0
-    volumes:
-      - .volumes/trips_counter_0:/volumes
+      - PREV_AMOUNT=2
+      - NEXT=trip_count_provider
+      - NEXT_AMOUNT=1
+
   trips_counter_1:
     build:
       context: ./containers
@@ -350,12 +305,18 @@ services:
       rabbitmq:
         condition: service_healthy
     entrypoint: python3 /opt/app/trips_counter.py
+    volumes:
+      - .volumes/trips_counter_1:/volumes
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
+      - INPUT_QUEUE=trips_counter_1
+      - EOF_ROUTING_KEY=trips_counter
       - REPLICA_ID=1
-    volumes:
-      - .volumes/trips_counter_1:/volumes
+      - PREV_AMOUNT=2
+      - NEXT=trip_count_provider
+      - NEXT_AMOUNT=1
+
   trip_count_provider_0:
     build:
       context: ./containers
@@ -364,10 +325,154 @@ services:
       rabbitmq:
         condition: service_healthy
     entrypoint: python3 /opt/app/trip_count_provider.py
+    volumes:
+      - .volumes/trip_count_provider_0:/volumes
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
-      - MULT_THRESHOLD=2
+      - INPUT_QUEUE=trip_count_provider_0
+      - EOF_ROUTING_KEY=trip_count_provider
       - REPLICA_ID=0
+      - PREV_AMOUNT=2
+      - NEXT=response_provider_trip_count
+      - MULT_THRESHOLD=2
+
+  distance_calculator_0:
+    build:
+      context: ./containers
+      dockerfile: distance_calculator/Dockerfile
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    entrypoint: python3 /opt/app/distance_calculator.py
     volumes:
-      - .volumes/trip_count_provider_0:/volumes
+      - .volumes/distance_calculator_0:/volumes
+    environment:
+      - PYTHONHASHSEED=0
+      - PYTHONUNBUFFERED=1
+      - INPUT_QUEUE=distance_calculator_0
+      - EOF_ROUTING_KEY=distance_calculator
+      - REPLICA_ID=0
+      - PREV_AMOUNT=3
+      - NEXT=dist_mean_calculator
+      - NEXT_AMOUNT=2
+
+  distance_calculator_1:
+    build:
+      context: ./containers
+      dockerfile: distance_calculator/Dockerfile
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    entrypoint: python3 /opt/app/distance_calculator.py
+    volumes:
+      - .volumes/distance_calculator_1:/volumes
+    environment:
+      - PYTHONHASHSEED=0
+      - PYTHONUNBUFFERED=1
+      - INPUT_QUEUE=distance_calculator_1
+      - EOF_ROUTING_KEY=distance_calculator
+      - REPLICA_ID=1
+      - PREV_AMOUNT=3
+      - NEXT=dist_mean_calculator
+      - NEXT_AMOUNT=2
+
+  dist_mean_calculator_0:
+    build:
+      context: ./containers
+      dockerfile: dist_mean_calculator/Dockerfile
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    entrypoint: python3 /opt/app/dist_mean_calculator.py
+    volumes:
+      - .volumes/dist_mean_calculator_0:/volumes
+    environment:
+      - PYTHONHASHSEED=0
+      - PYTHONUNBUFFERED=1
+      - INPUT_QUEUE=dist_mean_calculator_0
+      - EOF_ROUTING_KEY=dist_mean_calculator
+      - REPLICA_ID=0
+      - PREV_AMOUNT=2
+      - NEXT=dist_mean_provider
+      - NEXT_AMOUNT=1
+
+  dist_mean_calculator_1:
+    build:
+      context: ./containers
+      dockerfile: dist_mean_calculator/Dockerfile
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    entrypoint: python3 /opt/app/dist_mean_calculator.py
+    volumes:
+      - .volumes/dist_mean_calculator_1:/volumes
+    environment:
+      - PYTHONHASHSEED=0
+      - PYTHONUNBUFFERED=1
+      - INPUT_QUEUE=dist_mean_calculator_1
+      - EOF_ROUTING_KEY=dist_mean_calculator
+      - REPLICA_ID=1
+      - PREV_AMOUNT=2
+      - NEXT=dist_mean_provider
+      - NEXT_AMOUNT=1
+
+  dist_mean_provider_0:
+    build:
+      context: ./containers
+      dockerfile: dist_mean_provider/Dockerfile
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    entrypoint: python3 /opt/app/dist_mean_provider.py
+    volumes:
+      - .volumes/dist_mean_provider_0:/volumes
+    environment:
+      - PYTHONHASHSEED=0
+      - PYTHONUNBUFFERED=1
+      - INPUT_QUEUE=dist_mean_provider_0
+      - EOF_ROUTING_KEY=dist_mean_provider
+      - REPLICA_ID=0
+      - PREV_AMOUNT=2
+      - NEXT=response_provider_dist_mean
+      - MEAN_THRESHOLD=6.0
+
+  response_provider:
+    build:
+      context: ./containers
+      dockerfile: response_provider/Dockerfile
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    entrypoint: python3 /opt/app/response_provider.py
+    volumes:
+      - .volumes/response_provider:/volumes
+    environment:
+      - PYTHONHASHSEED=0
+      - PYTHONUNBUFFERED=1
+      - DIST_MEAN_SRC=response_provider_dist_mean
+      - DIST_MEAN_AMOUNT=1
+      - TRIP_COUNT_SRC=response_provider_trip_count
+      - TRIP_COUNT_AMOUNT=1
+      - DUR_AVG_SRC=response_provider_dur_avg
+      - DUR_AVG_AMOUNT=1
+
+  client_original:
+    build:
+      context: ./containers
+      dockerfile: client/Dockerfile
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    entrypoint: python3 /opt/app/client.py
+    volumes:
+      - ./.data_3/:/opt/app/.data/
+    environment:
+      - PYTHONHASHSEED=0
+      - PYTHONUNBUFFERED=1
+      - DATA_FOLDER_PATH=/opt/app/.data
+      - CLIENT_ID=original
+      - CITIES=montreal,washington,toronto
+      - ID_REQ_QUEUE=client_id_queue
+      - GATEWAY=gateway
+      - GATEWAY_AMOUNT=2
