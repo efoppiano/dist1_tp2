@@ -48,6 +48,7 @@ containers_health_checkers = {}
 for i in range(HEALTH_CHECKER_AMOUNT):
   containers = _health_check_containers[i::HEALTH_CHECKER_AMOUNT][:]
   next_n = (i + 1) % HEALTH_CHECKER_AMOUNT
+  
 
   for container_name in containers:
     containers_health_checkers[container_name] = f"health_checker_{i}"
@@ -177,7 +178,7 @@ add_response_provider()
 def add_health_checker(n, containers):
   global output
   name = "health_checker"
-  next_n = (n + 1) % HEALTH_CHECKER_AMOUNT
+  prev_n = (n - 1) % HEALTH_CHECKER_AMOUNT
 
   output += f'''
 
@@ -196,7 +197,7 @@ def add_health_checker(n, containers):
 
   env = data["common_env"].copy()
   env["CONTAINERS"] = ",".join(containers)
-  env["HEALTH_CHECKER"] = f"health_checker_{next_n}"
+  env["HEALTH_CHECKER"] = f"health_checker_{prev_n}"
   env["CONTAINER_ID"] = f"health_checker_{n}"
 
   for key, value in env.items():
