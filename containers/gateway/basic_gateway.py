@@ -15,6 +15,7 @@ from common.utils import save_state, load_state, min_hash
 from common.packets.eof import Eof
 from common.packets.generic_packet import GenericPacketBuilder
 from common.middleware.rabbit_middleware import Rabbit
+from client_healthcheck import ClientHealthChecker
 
 INPUT_QUEUE = os.environ["INPUT_QUEUE"]
 EOF_ROUTING_KEY = os.environ["EOF_ROUTING_KEY"]
@@ -33,9 +34,13 @@ class BasicGateway(ABC):
         self._basic_gateway_replica_id = replica_id
         self._last_chunk_received = None
         self._last_eof_received = None
-        self._message_sender = MessageSender(self._rabbit)
+        
         self.router = Router(NEXT, NEXT_AMOUNT)
         self.heartbeater = HeartBeater(self._rabbit)
+        self._message_sender = MessageSender(self._rabbit)
+        self.health_checker = ClientHealthChecker(
+            self._rabbit, self.router, self._message_sender,
+            self._basic_gateway_replica_id, self.save_state)
 
         self.__setup_state()
 
@@ -63,10 +68,13 @@ class BasicGateway(ABC):
 
     def __on_stream_message_without_duplicates(self, decoded: ClientDataPacket) -> bool:
         flow_id = decoded.get_flow_id()
+        is_eof = decoded.is_eof()
 
-        if isinstance(decoded.data, Eof):
+        self.health_checker.ping(decoded.client_id, decoded.city_name, is_eof)
+
+        if is_eof:
             outgoing_messages = self.handle_eof(decoded.data)
-        elif isinstance(decoded.data, list):
+        elif decoded.is_chunk():
             outgoing_messages = self.__handle_chunk(flow_id, decoded.data)
         else:
             raise Exception(f"Unknown message type: {type(decoded.data)}")
@@ -116,7 +124,7 @@ class BasicGateway(ABC):
         if not self.__on_stream_message_without_duplicates(decoded.data):
             return False
 
-        save_state(self.get_state())
+        self.save_state()
         return True
 
     @abc.abstractmethod
@@ -132,6 +140,7 @@ class BasicGateway(ABC):
 
     def start(self):
         self.heartbeater.start()
+        self.health_checker.start()
         self._rabbit.start()
 
     def get_state(self) -> bytes:
@@ -139,11 +148,16 @@ class BasicGateway(ABC):
             "message_sender": self._message_sender.get_state(),
             "last_chunk_received": self._last_chunk_received,
             "last_eof_received": self._last_eof_received,
+            "health_checker": self.health_checker.get_state(),
         }
         return pickle.dumps(state)
 
     def set_state(self, state: bytes):
         state = pickle.loads(state)
         self._message_sender.set_state(state["message_sender"])
+        self.health_checker.set_state(state["health_checker"])
         self._last_chunk_received = state["last_chunk_received"]
         self._last_eof_received = state["last_eof_received"]
+
+    def save_state(self):
+        save_state(self.get_state())
