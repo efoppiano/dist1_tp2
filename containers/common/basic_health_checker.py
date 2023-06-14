@@ -29,7 +29,7 @@ class BasicHealthChecker(ABC):
         self._rabbit = Rabbit(RABBIT_HOST)
         self._heartbeater = HeartBeater(self._rabbit)
 
-        self._rabbit.declare_queue(CONTAINER_ID)
+        self._rabbit.declare_queue(CONTAINER_ID, durable=False)
         self._rabbit.route(CONTAINER_ID, HEARTBEAT_EXCHANGE, CONTAINER_ID, self.on_message_callback)
 
     def on_message_callback(self, msg: bytes) -> bool:

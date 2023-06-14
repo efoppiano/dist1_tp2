@@ -7,6 +7,7 @@ import json
 
 RESTAR_CONTAINERS = False
 
+
 class Killer:
     def __init__(self):
         self._client = docker.from_env()
@@ -62,10 +63,12 @@ class Killer:
             containers_to_kill = random.sample(containers_with_id, amount_to_kill)
 
             for (container_to_kill, replica_to_kill) in containers_to_kill:
-                container = self.kill_container(container_to_kill, replica_to_kill)
-                print(f"Killed {container}")
+                # FIXME: Do not hardcode this
+                if f"{container_to_kill}_{replica_to_kill}" != "health_checker_0":
+                    container = self.kill_container(container_to_kill, replica_to_kill)
+                    print(f"Killed {container}")
 
-            time_to_sleep = random.random() * 15
+            time_to_sleep = random.random() * 30
             print(f"Sleeping for {time_to_sleep} seconds")
             sleep(time_to_sleep)
 
