@@ -27,6 +27,7 @@ class ClientHealthChecker:
         self._output_queue = router.publish()
         self._message_sender = message_sender
         self._replica_id = replica_id
+        # TODO: ClientHealthChecker could save state independently
         self._save_state = save_state
 
         self._lapse = lapse
@@ -34,6 +35,7 @@ class ClientHealthChecker:
         self._eviction_time = eviction_time
 
         self._clients = {} # [client_id]: (last_city, last_time, finished)
+        self._evicting = set() # [client_id]
 
     def evict(self, client_id: str, last_city: str = None, finished: bool = False):
         builder = GenericPacketBuilder(self._replica_id, client_id, last_city)
@@ -46,12 +48,19 @@ class ClientHealthChecker:
 
     def check_clients(self):
         now = time.time()
-        for client_id, (last_city, last_time, finished) in self._clients.items():
+
+        for client_id, (_, last_time, _) in self._clients.items():
             if now - last_time > self._client_timeout:
-                self.evict(client_id, last_city, finished)
+                self._evicting.add(client_id)
+        self._save_state()
+
+        while len(self._evicting) > 0:
+            client_id = self._evicting.pop()
+            last_city, _, finished = self._clients[client_id]
+            self.evict(client_id, last_city, finished)
+        self._save_state()
 
         self._rabbit.call_later(self._lapse, self.check_clients)
-        self._save_state()
 
     def start(self):
         self._rabbit.call_later(self._lapse, self.check_clients)
@@ -60,10 +69,20 @@ class ClientHealthChecker:
         self._clients[client_id] = (city, time.time(), finished)
 
     def get_clients(self):
-        return self._clients.keys()
+        clients = set(self._clients.keys())
+        
+        for client_id in self._evicting:
+            if client_id in clients:
+                clients.remove(client_id)
+        
+        return clients
 
     def get_state(self) -> dict:
-        return self._clients
+        return {
+            "clients": self._clients,
+            "evicting": self._evicting
+        }
     
     def set_state(self, state: dict):
-        self._clients = state
+        self._clients = state["clients"]
+        self._evicting = state["evicting"]
