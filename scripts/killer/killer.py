@@ -44,7 +44,7 @@ class Killer:
 
     def start_container(self, name: str, replica_id: int) -> str:
         if replica_id == -1:
-            container = f"{name}"
+            container = f"tp2-{name}-1"
         else:
             container = f"tp2-{name}_{replica_id}-1"
         self._client.containers.get(container).start()
