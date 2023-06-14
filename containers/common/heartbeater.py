@@ -7,8 +7,10 @@ CONTAINER_ID = os.environ["CONTAINER_ID"]
 HEALTHCHECKER = os.environ["HEALTH_CHECKER"]
 LAPSE = int(os.environ.get("HEARTBEAT_LAPSE", 1))
 
+
 class HeartBeater:
-    def __init__(self, _rabbit, container_id: str = CONTAINER_ID, healthchecker: str= HEALTHCHECKER, lapse: int= LAPSE ) -> None:
+    def __init__(self, _rabbit, container_id: str = CONTAINER_ID, healthchecker: str = HEALTHCHECKER,
+                 lapse: int = LAPSE) -> None:
         self._rabbit = _rabbit
         self._container_id = container_id
         self._healthchecker = healthchecker
@@ -18,7 +20,6 @@ class HeartBeater:
         self._rabbit.call_later(self._lapse, self._send_heartbeat)
 
     def _send_heartbeat(self):
-
         packet = HealthCheck(
             self._container_id,
             time.time_ns()

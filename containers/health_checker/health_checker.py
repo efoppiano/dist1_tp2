@@ -1,10 +1,13 @@
 import os
 import logging
 import subprocess
+import time
+
 from common.utils import initialize_log
 from common.basic_health_checker import BasicHealthChecker
 
 CONTAINERS = os.environ["CONTAINERS"]
+
 
 # ! FIXME: REMOVE THIS - ONLY FOR DEBUGGING
 def is_alive(container_name):
@@ -26,32 +29,26 @@ def is_alive(container_name):
     return True
 
 
-
-
 class HealthChecker(BasicHealthChecker):
-
-    def __init__(self, containers):
-        self.containers = containers
-
     def on_check_fail(self, container_name: str):
-
+        logging.info(f"Container {container_name} is down - restarting...")
         if is_alive(container_name):
             logging.critical("Container %s is already alive", container_name)
 
         container_name = f"tp2-{container_name}-1"
+        start = time.time()
         result = subprocess.run(
             ["docker", "start", container_name],
             stdout=subprocess.PIPE, check=False
         )
-        if result.returncode != 0:
-            logging.error("Error starting container %s", container_name)
-            return False
+        end = time.time()
+        logging.info("Container %s restarted in %s seconds", container_name, end - start)
 
         return True
 
 
 def main():
-    initialize_log()
+    initialize_log(logging.DEBUG)
     containers = CONTAINERS.split(",")
     health_checker = HealthChecker(containers)
     health_checker.start()

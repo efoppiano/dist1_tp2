@@ -23,7 +23,6 @@ class ResponseProvider:
     def __init__(self):
         self._last_received = {}
         self._eofs_received = {}
-        self._heartbeater = HeartBeater(self._rabbit)
 
         self.input_queues = {
             "dist_mean": (DIST_MEAN_SRC, DIST_MEAN_AMOUNT),
@@ -32,6 +31,7 @@ class ResponseProvider:
         }
 
         self._rabbit = Rabbit("rabbitmq")
+        self._heartbeater = HeartBeater(self._rabbit)
         self.__set_up_signal_handler()
         self.__load_state()
         self.__load_last_sent()

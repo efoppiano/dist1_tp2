@@ -1,3 +1,4 @@
+import logging
 import os
 import time
 from abc import ABC, abstractmethod
@@ -14,8 +15,9 @@ CONTAINERS = os.environ["CONTAINERS"].split(",")
 RABBIT_HOST = os.environ.get("RABBIT_HOST", "rabbitmq")
 HEALTH_CHECK_INTERVAL_SEC = os.environ.get("HEALTH_CHECK_INTERVAL_SEC", 1)
 
-S_TO_NS = 10**9
+S_TO_NS = 10 ** 9
 START_TIME = time.time_ns()
+
 
 class BasicHealthChecker(ABC):
     def __init__(self, ids_to_monitor: List[str] = CONTAINERS):
@@ -30,6 +32,8 @@ class BasicHealthChecker(ABC):
 
     def __on_message_callback(self, msg: bytes) -> bool:
         packet = HealthCheck.decode(msg)
+        difference = (time.time_ns() - packet.timestamp) / S_TO_NS
+        logging.debug(f"Received health check from {packet.id} with {difference} seconds of difference from now")
         if packet.id in self._ids_to_monitor:
             self._last_seen[packet.id] = packet.timestamp
 
@@ -41,8 +45,11 @@ class BasicHealthChecker(ABC):
 
     def __check_health(self):
         for (id_to_monitor, last_seen) in self._last_seen.items():
-            if last_seen + S_TO_NS * HEALTH_CHECK_INTERVAL_SEC * 2 < time.time_ns():
+            if last_seen + S_TO_NS * HEALTH_CHECK_INTERVAL_SEC * 5 < time.time_ns():
+                difference = (time.time_ns() - last_seen) / S_TO_NS
+                logging.info(f"Container {id_to_monitor} is not responding to health checks for {difference} seconds")
                 self.on_check_fail(id_to_monitor)
+                self._last_seen[id_to_monitor] = time.time_ns()
 
         self._rabbit.call_later(HEALTH_CHECK_INTERVAL_SEC, self.__check_health)
 
