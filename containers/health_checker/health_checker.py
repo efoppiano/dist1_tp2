@@ -56,9 +56,9 @@ class HealthChecker:
 
 
 def main():
-    '''Main function'''
+    """Main function"""
     initialize_log()
-    # slip CONTAINERS by comma
+    # split CONTAINERS by comma
     containers = CONTAINERS.split(",")
     health_checker = HealthChecker(containers)
     health_checker.start()
