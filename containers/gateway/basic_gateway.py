@@ -8,8 +8,9 @@ from typing import Dict, List
 
 from common.components.heartbeater import HeartBeater
 from common.components.message_sender import MessageSender
-from common.packets.client_packet import ClientDataPacket, ClientPacket
 from common.components.readers import ClientIdResponsePacket
+from common.packets.client_packet import ClientDataPacket, ClientPacket
+from common.rate_checker import RateChecker
 from common.router import Router
 from common.utils import save_state, load_state, min_hash
 from common.packets.eof import Eof
@@ -36,6 +37,7 @@ class BasicGateway(ABC):
         self._message_sender = MessageSender(self._rabbit)
         self.router = Router(NEXT, NEXT_AMOUNT)
         self.heartbeater = HeartBeater(self._rabbit)
+        self._rate_checker = RateChecker()
 
         self.__setup_state()
 
@@ -46,11 +48,11 @@ class BasicGateway(ABC):
 
     def __setup_middleware(self):
         self._rabbit = Rabbit(RABBIT_HOST)
-        input_queue = INPUT_QUEUE
-        self._rabbit.consume(input_queue, self.__on_stream_message_callback)
+        self._input_queue = INPUT_QUEUE
+        self._rabbit.consume(self._input_queue, self.__on_stream_message_callback)
         eof_routing_key = EOF_ROUTING_KEY
-        logging.info(f"Routing packets to {input_queue} using routing key {eof_routing_key}")
-        self._rabbit.route(input_queue, "publish", eof_routing_key)
+        logging.info(f"Routing packets to {self._input_queue} using routing key {eof_routing_key}")
+        self._rabbit.route(self._input_queue, "publish", eof_routing_key)
 
     def __handle_chunk(self, flow_id, chunk: List[bytes]) -> Dict[str, List[bytes]]:
         outgoing_messages = {}
@@ -130,8 +132,19 @@ class BasicGateway(ABC):
             eof_output_queue: message
         }
 
+    def __log_rates(self):
+        rates = self._rate_checker.get_rates(self._input_queue)
+        if rates is None:
+            logging.info("action: check_rate | result: no data")
+        else:
+            logging.info(
+                f"action: check_rate | result: success | pub/s: {rates.publish_per_second} | ack/s: {rates.ack_per_second}")
+
+        self._rabbit.call_later(5, self.__log_rates)
+
     def start(self):
         self.heartbeater.start()
+        self._rabbit.call_later(5, self.__log_rates)
         self._rabbit.start()
 
     def get_state(self) -> bytes:
