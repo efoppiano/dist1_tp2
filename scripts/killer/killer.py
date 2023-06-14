@@ -5,6 +5,7 @@ from time import sleep
 import docker as docker
 import json
 
+RESTAR_CONTAINERS = False
 
 class Killer:
     def __init__(self):
@@ -22,6 +23,8 @@ class Killer:
             self._containers_to_kill[name] = params["amount"]
 
         self._containers_to_kill["response_provider"] = -1
+
+        self._containers_to_kill["health_checker"] = deployment_data["health_chekers"]
 
     def __remove_blacklisted_containers(self):
         with open("scripts/killer/blacklist.json", "r") as f:
@@ -72,9 +75,10 @@ class Killer:
 
             sleep(2)
 
-            for (container_to_kill, replica_to_kill) in containers_to_kill:
-                container = self.start_container(container_to_kill, replica_to_kill)
-                print(f"Started {container}")
+            if RESTAR_CONTAINERS:
+                for (container_to_kill, replica_to_kill) in containers_to_kill:
+                    container = self.start_container(container_to_kill, replica_to_kill)
+                    print(f"Started {container}")
 
             time_to_sleep = random.random() * 15
             print(f"Sleeping for {time_to_sleep} seconds")

@@ -42,7 +42,7 @@ for name, container_name in data["containers"].items():
     _health_check_containers.append(f"{name}_{i}")
 _health_check_containers.append("response_provider")
 
-HEALTH_CHECKER_AMOUNT = 2
+HEALTH_CHECKER_AMOUNT = data["health_chekers"]
 health_check_containers = []
 containers_health_checkers = {}
 for i in range(HEALTH_CHECKER_AMOUNT):
