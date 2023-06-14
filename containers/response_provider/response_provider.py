@@ -23,6 +23,7 @@ class ResponseProvider:
     def __init__(self):
         self._last_received = {}
         self._eofs_received = {}
+        self._evicting = {}
 
         self.input_queues = {
             "dist_mean": (DIST_MEAN_SRC, DIST_MEAN_AMOUNT),
@@ -80,6 +81,41 @@ class ResponseProvider:
 
         self._rabbit.send_to_route("results", destination, message)
 
+    def __evict_client(self, client_id: str, time: int = 0):
+        if client_id in self._evicting and not time == 0:
+            return
+        
+        self._evicting[client_id] = time
+
+        if time == 0:
+            self._rabbit.delete_queue(f"results_{client_id}")
+        else:
+            self._rabbit.call_later(time, lambda client_id=client_id: self.__evict_client(client_id))
+
+    def __handle_eof(self, packet: GenericPacket, eof: Eof, packet_type: str) -> bool:
+        flow_id = (packet.client_id, packet.city_name, packet_type)
+        self._eofs_received.setdefault(flow_id, 0)
+        self._eofs_received[flow_id] += 1
+
+        logging.info(
+            f"Received EOF {flow_id} - {self._eofs_received[flow_id]}/{self.input_queues[packet_type][1]}")
+        
+        if self._eofs_received[flow_id] < self.input_queues[packet_type][1]:
+            self.__save_state()
+            return False
+        
+        self._eofs_received.pop(flow_id)
+
+        if eof.drop:
+            self.__evict_client(packet.client_id)
+            self.__save_state()
+            return False
+        elif eof.eviction_time is not None:
+            self.__evict_client(packet.client_id, eof.eviction_time)
+            return True
+
+        return True
+
     def __handle_message(self, message: bytes, packet_type: str) -> bool:
 
         packet = GenericPacket.decode(message)
@@ -88,17 +124,8 @@ class ResponseProvider:
             return True
 
         if isinstance(packet.data, Eof):
-            flow_id = (packet.client_id, packet.city_name, packet_type)
-            self._eofs_received.setdefault(flow_id, 0)
-            self._eofs_received[flow_id] += 1
-
-            logging.info(
-                f"Received EOF {flow_id} - {self._eofs_received[flow_id]}/{self.input_queues[packet_type][1]}")
-            if self._eofs_received[flow_id] < self.input_queues[packet_type][1]:
-                self.__save_state()
+            if not self.__handle_eof(packet, packet.data, packet_type):
                 return True
-
-            self._eofs_received.pop(flow_id)
 
         response_packet = GenericResponsePacket(
             packet.client_id, packet.city_name,
@@ -122,7 +149,8 @@ class ResponseProvider:
     def __save_state(self):
         state = {
             "_last_received": self._last_received,
-            "_eofs_received": self._eofs_received
+            "_eofs_received": self._eofs_received,
+            "_evicting": self._evicting,
         }
         save_state(pickle.dumps(state))
 
@@ -135,6 +163,7 @@ class ResponseProvider:
         if state is not None:
             self._last_received = state["_last_received"]
             self._eofs_received = state["_eofs_received"]
+            self._evicting = state["_evicting"]
 
     def __load_last_sent(self):
         self._rabbit.consume_until_empty(SELF_QUEUE, self.__handle_last_sent)
