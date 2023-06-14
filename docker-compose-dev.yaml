@@ -32,6 +32,7 @@ services:
       - EOF_ROUTING_KEY=gateway
       - REPLICA_ID=0
       - HEALTH_CHECKER=health_checker_0
+      - CONTAINER_ID=gateway_0
       - PREV_AMOUNT=1
       - NEXT=weather_aggregator
       - NEXT_AMOUNT=2
@@ -55,6 +56,7 @@ services:
       - EOF_ROUTING_KEY=gateway
       - REPLICA_ID=1
       - HEALTH_CHECKER=health_checker_1
+      - CONTAINER_ID=gateway_1
       - PREV_AMOUNT=1
       - NEXT=weather_aggregator
       - NEXT_AMOUNT=2
@@ -78,6 +80,7 @@ services:
       - EOF_ROUTING_KEY=weather_aggregator
       - REPLICA_ID=0
       - HEALTH_CHECKER=health_checker_0
+      - CONTAINER_ID=weather_aggregator_0
       - PREV_AMOUNT=1
       - NEXT=station_aggregator
       - NEXT_AMOUNT=3
@@ -100,6 +103,7 @@ services:
       - EOF_ROUTING_KEY=weather_aggregator
       - REPLICA_ID=1
       - HEALTH_CHECKER=health_checker_1
+      - CONTAINER_ID=weather_aggregator_1
       - PREV_AMOUNT=1
       - NEXT=station_aggregator
       - NEXT_AMOUNT=3
@@ -122,6 +126,7 @@ services:
       - EOF_ROUTING_KEY=station_aggregator
       - REPLICA_ID=0
       - HEALTH_CHECKER=health_checker_0
+      - CONTAINER_ID=station_aggregator_0
       - PREV_AMOUNT=2
       - NEXT_AMOUNT_PREC_FILTER=2
       - NEXT_AMOUNT_YEAR_FILTER=2
@@ -148,6 +153,7 @@ services:
       - EOF_ROUTING_KEY=station_aggregator
       - REPLICA_ID=1
       - HEALTH_CHECKER=health_checker_1
+      - CONTAINER_ID=station_aggregator_1
       - PREV_AMOUNT=2
       - NEXT_AMOUNT_PREC_FILTER=2
       - NEXT_AMOUNT_YEAR_FILTER=2
@@ -174,6 +180,7 @@ services:
       - EOF_ROUTING_KEY=station_aggregator
       - REPLICA_ID=2
       - HEALTH_CHECKER=health_checker_0
+      - CONTAINER_ID=station_aggregator_2
       - PREV_AMOUNT=2
       - NEXT_AMOUNT_PREC_FILTER=2
       - NEXT_AMOUNT_YEAR_FILTER=2
@@ -200,6 +207,7 @@ services:
       - EOF_ROUTING_KEY=prec_filter
       - REPLICA_ID=0
       - HEALTH_CHECKER=health_checker_1
+      - CONTAINER_ID=prec_filter_0
       - PREV_AMOUNT=3
       - NEXT=dur_avg_provider
       - NEXT_AMOUNT=1
@@ -222,6 +230,7 @@ services:
       - EOF_ROUTING_KEY=prec_filter
       - REPLICA_ID=1
       - HEALTH_CHECKER=health_checker_0
+      - CONTAINER_ID=prec_filter_1
       - PREV_AMOUNT=3
       - NEXT=dur_avg_provider
       - NEXT_AMOUNT=1
@@ -244,6 +253,7 @@ services:
       - EOF_ROUTING_KEY=dur_avg_provider
       - REPLICA_ID=0
       - HEALTH_CHECKER=health_checker_1
+      - CONTAINER_ID=dur_avg_provider_0
       - PREV_AMOUNT=2
       - NEXT=response_provider_dur_avg
 
@@ -264,6 +274,7 @@ services:
       - EOF_ROUTING_KEY=year_filter
       - REPLICA_ID=0
       - HEALTH_CHECKER=health_checker_0
+      - CONTAINER_ID=year_filter_0
       - PREV_AMOUNT=3
       - NEXT=trips_counter
       - NEXT_AMOUNT=2
@@ -285,6 +296,7 @@ services:
       - EOF_ROUTING_KEY=year_filter
       - REPLICA_ID=1
       - HEALTH_CHECKER=health_checker_1
+      - CONTAINER_ID=year_filter_1
       - PREV_AMOUNT=3
       - NEXT=trips_counter
       - NEXT_AMOUNT=2
@@ -306,6 +318,7 @@ services:
       - EOF_ROUTING_KEY=trips_counter
       - REPLICA_ID=0
       - HEALTH_CHECKER=health_checker_0
+      - CONTAINER_ID=trips_counter_0
       - PREV_AMOUNT=2
       - NEXT=trip_count_provider
       - NEXT_AMOUNT=1
@@ -327,6 +340,7 @@ services:
       - EOF_ROUTING_KEY=trips_counter
       - REPLICA_ID=1
       - HEALTH_CHECKER=health_checker_1
+      - CONTAINER_ID=trips_counter_1
       - PREV_AMOUNT=2
       - NEXT=trip_count_provider
       - NEXT_AMOUNT=1
@@ -348,6 +362,7 @@ services:
       - EOF_ROUTING_KEY=trip_count_provider
       - REPLICA_ID=0
       - HEALTH_CHECKER=health_checker_0
+      - CONTAINER_ID=trip_count_provider_0
       - PREV_AMOUNT=2
       - NEXT=response_provider_trip_count
       - MULT_THRESHOLD=2
@@ -369,6 +384,7 @@ services:
       - EOF_ROUTING_KEY=distance_calculator
       - REPLICA_ID=0
       - HEALTH_CHECKER=health_checker_1
+      - CONTAINER_ID=distance_calculator_0
       - PREV_AMOUNT=3
       - NEXT=dist_mean_calculator
       - NEXT_AMOUNT=2
@@ -390,6 +406,7 @@ services:
       - EOF_ROUTING_KEY=distance_calculator
       - REPLICA_ID=1
       - HEALTH_CHECKER=health_checker_0
+      - CONTAINER_ID=distance_calculator_1
       - PREV_AMOUNT=3
       - NEXT=dist_mean_calculator
       - NEXT_AMOUNT=2
@@ -411,6 +428,7 @@ services:
       - EOF_ROUTING_KEY=dist_mean_calculator
       - REPLICA_ID=0
       - HEALTH_CHECKER=health_checker_1
+      - CONTAINER_ID=dist_mean_calculator_0
       - PREV_AMOUNT=2
       - NEXT=dist_mean_provider
       - NEXT_AMOUNT=1
@@ -432,6 +450,7 @@ services:
       - EOF_ROUTING_KEY=dist_mean_calculator
       - REPLICA_ID=1
       - HEALTH_CHECKER=health_checker_0
+      - CONTAINER_ID=dist_mean_calculator_1
       - PREV_AMOUNT=2
       - NEXT=dist_mean_provider
       - NEXT_AMOUNT=1
@@ -453,6 +472,7 @@ services:
       - EOF_ROUTING_KEY=dist_mean_provider
       - REPLICA_ID=0
       - HEALTH_CHECKER=health_checker_1
+      - CONTAINER_ID=dist_mean_provider_0
       - PREV_AMOUNT=2
       - NEXT=response_provider_dist_mean
       - MEAN_THRESHOLD=6.0
@@ -471,6 +491,7 @@ services:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
       - HEALTH_CHECKER=health_checker_0
+      - CONTAINER_ID=response_provider
       - DIST_MEAN_SRC=response_provider_dist_mean
       - DIST_MEAN_AMOUNT=1
       - TRIP_COUNT_SRC=response_provider_trip_count
@@ -494,6 +515,7 @@ services:
       - PYTHONUNBUFFERED=1
       - CONTAINERS=gateway_0,weather_aggregator_0,station_aggregator_0,station_aggregator_2,prec_filter_1,year_filter_0,trips_counter_0,trip_count_provider_0,distance_calculator_1,dist_mean_calculator_1,response_provider,health_checker_1
       - HEALTH_CHECKER=health_checker_1
+      - CONTAINER_ID=health_checker_0
 
   health_checker_1:
     build:
@@ -511,6 +533,7 @@ services:
       - PYTHONUNBUFFERED=1
       - CONTAINERS=gateway_1,weather_aggregator_1,station_aggregator_1,prec_filter_0,dur_avg_provider_0,year_filter_1,trips_counter_1,distance_calculator_0,dist_mean_calculator_0,dist_mean_provider_0,health_checker_0
       - HEALTH_CHECKER=health_checker_0
+      - CONTAINER_ID=health_checker_1
 
   client_original:
     build:

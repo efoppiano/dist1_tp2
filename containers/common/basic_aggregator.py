@@ -5,6 +5,7 @@ import pickle
 from abc import ABC
 from typing import Dict, List
 
+from common.heartbeater import HeartBeater
 from common.last_received import MultiLastReceivedManager
 from common.message_sender import MessageSender
 from common.router import MultiRouter
@@ -29,6 +30,7 @@ class BasicAggregator(ABC):
         self._last_received = MultiLastReceivedManager()
         self._message_sender = MessageSender(self._rabbit)
         self._eofs_received = {}
+        self.heartbeater = HeartBeater(self._rabbit)
 
         self.router = router
 
@@ -126,4 +128,5 @@ class BasicAggregator(ABC):
         self._last_received.set_state(state["last_received"])
 
     def start(self):
+        self.heartbeater.start()
         self._rabbit.start()

@@ -2,8 +2,8 @@ import logging
 import os
 import signal
 import pickle
-import threading
 
+from common.heartbeater import HeartBeater
 from common.packets.generic_packet import GenericPacket
 from common.packets.eof import Eof
 from common.packets.client_response_packets import GenericResponsePacket
@@ -23,6 +23,7 @@ class ResponseProvider:
     def __init__(self):
         self._last_received = {}
         self._eofs_received = {}
+        self._heartbeater = HeartBeater(self._rabbit)
 
         self.input_queues = {
             "dist_mean": (DIST_MEAN_SRC, DIST_MEAN_AMOUNT),
@@ -148,7 +149,7 @@ class ResponseProvider:
 
         return True
 
-    def __start(self):
+    def start(self):
 
         dist_mean_queue = self.input_queues["dist_mean"][0]
         trip_count_queue = self.input_queues["trip_count"][0]
@@ -165,12 +166,9 @@ class ResponseProvider:
         # Returns True every time, as this is already saved to disk if reading at runtime
         self._rabbit.consume(SELF_QUEUE, lambda _message: True)
 
-        self._rabbit.start()
+        self._heartbeater.start()
 
-    def start(self):
-        thread = threading.Thread(target=self.__start)
-        thread.start()
-        thread.join()
+        self._rabbit.start()
 
 
 def main():

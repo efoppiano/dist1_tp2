@@ -4,8 +4,9 @@ import os
 import pickle
 import time
 from abc import ABC
-from typing import Dict, List, Literal
+from typing import Dict, List
 
+from common.heartbeater import HeartBeater
 from common.message_sender import MessageSender
 from common.packets.client_packet import ClientDataPacket, ClientPacket
 from common.readers import ClientIdResponsePacket
@@ -34,6 +35,7 @@ class BasicGateway(ABC):
         self._last_eof_received = None
         self._message_sender = MessageSender(self._rabbit)
         self.router = Router(NEXT, NEXT_AMOUNT)
+        self.heartbeater = HeartBeater(self._rabbit)
 
         self.__setup_state()
 
@@ -129,6 +131,7 @@ class BasicGateway(ABC):
         }
 
     def start(self):
+        self.heartbeater.start()
         self._rabbit.start()
 
     def get_state(self) -> bytes:

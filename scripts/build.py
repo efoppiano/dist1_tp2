@@ -100,6 +100,7 @@ def add_container(name, container, n):
   env["EOF_ROUTING_KEY"] = name
   env["REPLICA_ID"] = n
   env["HEALTH_CHECKER"] = containers_health_checkers[f"{name}_{n}"]
+  env["CONTAINER_ID"] = f"{name}_{n}"
 
   if "prev_amount" in container:
     env["PREV_AMOUNT"] = container["prev_amount"]
@@ -156,6 +157,7 @@ def add_response_provider():
 
   env = data["common_env"].copy()
   env["HEALTH_CHECKER"] = containers_health_checkers[name]
+  env["CONTAINER_ID"]="response_provider"
 
   for src_type, provider in data["response_provider"].items():
     provider_amount = data["containers"][provider]["amount"]
@@ -195,6 +197,7 @@ def add_health_checker(n, containers):
   env = data["common_env"].copy()
   env["CONTAINERS"] = ",".join(containers)
   env["HEALTH_CHECKER"] = f"health_checker_{next_n}"
+  env["CONTAINER_ID"] = f"health_checker_{n}"
 
   for key, value in env.items():
     output += f'''

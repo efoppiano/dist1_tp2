@@ -5,6 +5,7 @@ import pickle
 from abc import ABC
 from typing import List, Dict, Union
 
+from common.heartbeater import HeartBeater
 from common.message_sender import MessageSender
 from common.packets.eof import Eof
 from common.packets.generic_packet import GenericPacket, GenericPacketBuilder
@@ -24,6 +25,7 @@ class BasicFilter(ABC):
 
         self.basic_filter_replica_id = replica_id
         self._message_sender = MessageSender(self._rabbit)
+        self.heartbeater = HeartBeater(self._rabbit)
 
         state = load_state()
         if state is not None:
@@ -86,4 +88,5 @@ class BasicFilter(ABC):
         return pickle.dumps(state)
 
     def start(self):
+        self.heartbeater.start()
         self._rabbit.start()
