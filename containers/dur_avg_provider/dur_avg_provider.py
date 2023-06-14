@@ -3,7 +3,7 @@ import os
 import pickle
 from typing import Dict, List, Union
 
-from common.basic_stateful_filter import BasicStatefulFilter
+from common.basic_classes.basic_stateful_filter import BasicStatefulFilter
 from common.packets.dur_avg_out import DurAvgOut
 from common.packets.eof import Eof
 from common.packets.prec_filter_in import PrecFilterIn

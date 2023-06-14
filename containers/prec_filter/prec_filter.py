@@ -2,7 +2,7 @@
 import os
 from typing import Dict, List
 
-from common.basic_stateful_filter import BasicStatefulFilter
+from common.basic_classes.basic_stateful_filter import BasicStatefulFilter
 from common.packets.prec_filter_in import PrecFilterIn
 from common.utils import initialize_log
 

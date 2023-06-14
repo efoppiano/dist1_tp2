@@ -3,7 +3,7 @@ import os
 from typing import Dict, List
 from haversine import haversine
 
-from common.basic_stateful_filter import BasicStatefulFilter
+from common.basic_classes.basic_stateful_filter import BasicStatefulFilter
 from common.packets.dist_info import DistInfo
 from common.packets.distance_calc_in import DistanceCalcIn
 from common.utils import initialize_log

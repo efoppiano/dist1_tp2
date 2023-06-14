@@ -4,7 +4,7 @@ import unittest
 os.environ["PREC_LIMIT"] = "None"
 os.environ["REPLICA_ID"] = "None"
 
-from common.basic_stateful_filter import BasicStatefulFilter
+from common.basic_classes.basic_stateful_filter import BasicStatefulFilter
 from common.packets.prec_filter_in import PrecFilterIn
 from prec_filter.prec_filter import PrecFilter
 

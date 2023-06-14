@@ -4,7 +4,7 @@ import subprocess
 import time
 
 from common.utils import initialize_log
-from common.basic_health_checker import BasicHealthChecker
+from common.basic_classes.basic_health_checker import BasicHealthChecker
 
 CONTAINERS = os.environ["CONTAINERS"]
 

@@ -6,7 +6,7 @@ from typing import Dict, List, Union
 
 from common.last_received import MultiLastReceivedManager
 from common.router import Router
-from common.basic_filter import BasicFilter
+from common.basic_classes.basic_filter import BasicFilter
 from common.packets.eof import Eof
 from common.packets.generic_packet import GenericPacket
 

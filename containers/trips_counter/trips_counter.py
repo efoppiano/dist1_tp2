@@ -3,7 +3,7 @@ import os
 import pickle
 from typing import Dict, List, Union
 
-from common.basic_stateful_filter import BasicStatefulFilter
+from common.basic_classes.basic_stateful_filter import BasicStatefulFilter
 from common.packets.eof import Eof
 from common.packets.trips_count_by_year_joined import TripsCountByYearJoined
 from common.packets.year_filter_in import YearFilterIn
