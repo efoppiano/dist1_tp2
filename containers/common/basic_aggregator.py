@@ -113,6 +113,7 @@ class BasicAggregator(ABC):
     def get_state(self) -> bytes:
         state = {
             "message_sender": self._message_sender.get_state(),
+            "last_received": self._last_received.get_state(),
             "eofs_received": self._eofs_received,
         }
         return pickle.dumps(state)
@@ -122,6 +123,7 @@ class BasicAggregator(ABC):
         state = pickle.loads(state_bytes)
         self._message_sender.set_state(state["message_sender"])
         self._eofs_received = state["eofs_received"]
+        self._last_received.set_state(state["last_received"])
 
     def start(self):
         self._rabbit.start()

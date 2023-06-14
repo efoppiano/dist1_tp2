@@ -52,8 +52,6 @@ class BasicFilter(ABC):
         else:
             decoded = msg
 
-        builder = GenericPacketBuilder(self.basic_filter_replica_id, decoded.client_id, decoded.city_name)
-
         flow_id = decoded.get_flow_id()
 
         if isinstance(decoded.data, Eof):
@@ -63,6 +61,7 @@ class BasicFilter(ABC):
         else:
             raise ValueError(f"Unknown packet type: {type(decoded.data)}")
 
+        builder = GenericPacketBuilder(self.basic_filter_replica_id, decoded.client_id, decoded.city_name)
         self._message_sender.send(builder, outgoing_messages)
         save_state(self.get_state())
 

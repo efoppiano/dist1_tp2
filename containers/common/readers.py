@@ -4,7 +4,7 @@ from typing import Iterator, Union, List
 
 from common.packets.basic_packet import BasicPacket
 
-CHUNK_SIZE = 10240
+CHUNK_SIZE = 1024
 
 
 @dataclass

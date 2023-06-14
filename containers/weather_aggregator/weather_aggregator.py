@@ -87,12 +87,14 @@ class WeatherAggregator(BasicAggregator):
     def get_state(self) -> bytes:
         state = {
             "weather": self._weather,
+            "parent_state": super().get_state()
         }
         return pickle.dumps(state)
 
     def set_state(self, state: bytes):
         state = pickle.loads(state)
         self._weather = state["weather"]
+        super().set_state(state["parent_state"])
 
 
 def main():

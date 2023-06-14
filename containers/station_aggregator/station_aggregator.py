@@ -135,12 +135,14 @@ class StationAggregator(BasicAggregator):
     def get_state(self) -> bytes:
         state = {
             "stations": self._stations,
+            "parent_state": super().get_state(),
         }
         return pickle.dumps(state)
 
     def set_state(self, state: bytes):
         state = pickle.loads(state)
         self._stations = state["stations"]
+        super().set_state(state["parent_state"])
 
 
 def main():
