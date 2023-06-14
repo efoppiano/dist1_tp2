@@ -123,9 +123,9 @@ class Rabbit(MessageQueue):
     def call_later(self, seconds: float, callback: Callable[[], None]):
         self.connection.call_later(seconds, callback)
 
-    def declare_queue(self, queue: str):
+    def declare_queue(self, queue: str, durable: bool = True):
         if queue not in self._declared_queues:
-            self._channel.queue_declare(queue=queue, durable=True)
+            self._channel.queue_declare(queue=queue, durable=durable)
             self._declared_queues.append(queue)
 
     def __declare_exchange(self, exchange: str, exchange_type: str):
