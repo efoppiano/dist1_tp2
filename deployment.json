@@ -89,5 +89,6 @@
         "toronto"
       ]
     }
-  }
+  },
+  "health_chekers": 5
 }

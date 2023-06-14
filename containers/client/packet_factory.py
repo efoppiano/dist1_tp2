@@ -3,7 +3,7 @@ import logging
 
 from common.packets.client_packet import ClientDataPacket, ClientPacket
 from common.packets.eof import Eof
-from common.readers import WeatherInfo, StationInfo, TripInfo, ClientGatewayPacket
+from common.components.readers import WeatherInfo, StationInfo, TripInfo, ClientGatewayPacket
 from common.utils import min_hash
 
 DIST_MEAN_REQUEST = b'dist_mean'

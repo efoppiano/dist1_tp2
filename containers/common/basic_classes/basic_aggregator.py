@@ -5,13 +5,14 @@ import pickle
 from abc import ABC
 from typing import Dict, List
 
-from common.last_received import MultiLastReceivedManager
-from common.message_sender import MessageSender
+from common.components.heartbeater import HeartBeater
+from common.components.last_received import MultiLastReceivedManager
+from common.components.message_sender import MessageSender
 from common.router import MultiRouter
 from common.utils import save_state, load_state
 from common.packets.eof import Eof
 from common.packets.generic_packet import GenericPacket, GenericPacketBuilder
-from common.rabbit_middleware import Rabbit
+from common.middleware.rabbit_middleware import Rabbit
 
 INPUT_QUEUE = os.environ["INPUT_QUEUE"]
 PREV_AMOUNT = int(os.environ["PREV_AMOUNT"])
@@ -29,6 +30,7 @@ class BasicAggregator(ABC):
         self._last_received = MultiLastReceivedManager()
         self._message_sender = MessageSender(self._rabbit)
         self._eofs_received = {}
+        self.heartbeater = HeartBeater(self._rabbit)
 
         self.router = router
 
@@ -126,4 +128,5 @@ class BasicAggregator(ABC):
         self._last_received.set_state(state["last_received"])
 
     def start(self):
+        self.heartbeater.start()
         self._rabbit.start()

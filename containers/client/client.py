@@ -3,11 +3,11 @@ import os
 import time
 from typing import Iterator, List
 
-from common.basic_client import BasicClient
+from basic_client import BasicClient
 from common.packets.dur_avg_out import DurAvgOut
 from common.packets.station_dist_mean import StationDistMean
 from common.packets.trips_count_by_year_joined import TripsCountByYearJoined
-from common.readers import TripInfo, StationInfo, WeatherInfo, WeatherReader, StationReader, TripReader
+from common.components.readers import TripInfo, StationInfo, WeatherInfo, WeatherReader, StationReader, TripReader
 from common.utils import initialize_log, json_serialize
 
 CLIENT_ID = os.environ["CLIENT_ID"]

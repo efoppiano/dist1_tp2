@@ -3,7 +3,7 @@ import logging
 import os
 from typing import Dict, List
 
-from common.basic_stateful_filter import BasicStatefulFilter
+from common.basic_classes.basic_stateful_filter import BasicStatefulFilter
 from common.packets.year_filter_in import YearFilterIn
 from common.utils import initialize_log
 

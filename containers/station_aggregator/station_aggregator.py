@@ -4,7 +4,7 @@ import os
 import pickle
 from typing import Dict, List, Union, Tuple
 
-from common.basic_aggregator import BasicAggregator
+from common.basic_classes.basic_aggregator import BasicAggregator
 from common.packets.distance_calc_in import DistanceCalcIn
 from common.packets.eof import Eof
 from common.packets.gateway_out import GatewayOut

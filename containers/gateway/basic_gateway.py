@@ -4,16 +4,17 @@ import os
 import pickle
 import time
 from abc import ABC
-from typing import Dict, List, Literal
+from typing import Dict, List
 
-from common.message_sender import MessageSender
+from common.components.heartbeater import HeartBeater
+from common.components.message_sender import MessageSender
 from common.packets.client_packet import ClientDataPacket, ClientPacket
-from common.readers import ClientIdResponsePacket
+from common.components.readers import ClientIdResponsePacket
 from common.router import Router
 from common.utils import save_state, load_state, min_hash
 from common.packets.eof import Eof
 from common.packets.generic_packet import GenericPacketBuilder
-from common.rabbit_middleware import Rabbit
+from common.middleware.rabbit_middleware import Rabbit
 
 INPUT_QUEUE = os.environ["INPUT_QUEUE"]
 EOF_ROUTING_KEY = os.environ["EOF_ROUTING_KEY"]
@@ -34,6 +35,7 @@ class BasicGateway(ABC):
         self._last_eof_received = None
         self._message_sender = MessageSender(self._rabbit)
         self.router = Router(NEXT, NEXT_AMOUNT)
+        self.heartbeater = HeartBeater(self._rabbit)
 
         self.__setup_state()
 
@@ -129,6 +131,7 @@ class BasicGateway(ABC):
         }
 
     def start(self):
+        self.heartbeater.start()
         self._rabbit.start()
 
     def get_state(self) -> bytes:

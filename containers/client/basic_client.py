@@ -5,14 +5,14 @@ import threading
 from abc import ABC, abstractmethod
 from typing import List, Iterator
 
-from common.packet_factory import PacketFactory
+from packet_factory import PacketFactory
 from common.packets.dur_avg_out import DurAvgOut
 from common.packets.client_response_packets import GenericResponsePacket
 from common.packets.eof import Eof
 from common.packets.station_dist_mean import StationDistMean
 from common.packets.trips_count_by_year_joined import TripsCountByYearJoined
-from common.rabbit_middleware import Rabbit
-from common.readers import WeatherInfo, StationInfo, TripInfo, ClientIdResponsePacket
+from common.middleware.rabbit_middleware import Rabbit
+from common.components.readers import WeatherInfo, StationInfo, TripInfo, ClientIdResponsePacket
 from common.router import Router
 
 RABBIT_HOST = os.environ.get("RABBIT_HOST", "rabbitmq")

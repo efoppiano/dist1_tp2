@@ -5,7 +5,7 @@ import pickle
 from datetime import timedelta
 from typing import List, Dict, Union
 
-from common.basic_aggregator import BasicAggregator
+from common.basic_classes.basic_aggregator import BasicAggregator
 from common.packets.eof import Eof
 from common.packets.gateway_in import GatewayIn
 from common.packets.gateway_in_or_weather import GatewayInOrWeather

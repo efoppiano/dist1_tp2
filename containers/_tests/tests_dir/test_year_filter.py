@@ -6,7 +6,7 @@ from year_filter.year_filter import YearFilter
 
 os.environ["REPLICA_ID"] = "None"
 
-from common.basic_stateful_filter import BasicStatefulFilter
+from common.basic_classes.basic_stateful_filter import BasicStatefulFilter
 
 
 class TestYearFilter(unittest.TestCase):
