@@ -39,8 +39,14 @@ def initialize_log(logging_level=logging.INFO):
 
     logging.basicConfig(level=logging_level, format='%(asctime)s - %(levelname)s - %(message)s',
                         datefmt='%H:%M:%S')
+    
+def trace(message, *args, **kws):
+    logging.log(logging.TRACE, message, *args, **kws)
 
-
+def success(message, *args, **kws):
+    logging.log(logging.SUCCESS, message, *args, **kws)
+    
+ 
 def build_queue_name(queue: str, id: Union[int, None] = None) -> str:
     if id is None:
         return queue

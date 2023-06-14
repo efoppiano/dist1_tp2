@@ -5,6 +5,7 @@ from abc import ABC, abstractmethod
 
 from typing import List
 
+from common.utils import trace
 from common.components.heartbeater import HeartBeater
 from common.packets.health_check import HealthCheck
 from common.middleware.rabbit_middleware import Rabbit
@@ -35,7 +36,7 @@ class BasicHealthChecker(ABC):
     def on_message_callback(self, msg: bytes) -> bool:
         packet = HealthCheck.decode(msg)
         difference = (time.time_ns() - packet.timestamp) / S_TO_NS
-        logging.debug(f"Received health check from {packet.id} with {difference} seconds of difference from now")
+        trace(f"Received health check from {packet.id} with {difference} seconds of difference from now")
         if packet.id in self._ids_to_monitor:
             self._last_seen[packet.id] = packet.timestamp
 
@@ -55,7 +56,7 @@ class BasicHealthChecker(ABC):
                 self._last_seen[id_to_monitor] = time.time_ns()
         
         end_time = time.time()
-        logging.info(f"Health check took {end_time - start_time} seconds - after {end_time - self._last_check} seconds")
+        logging.debug(f"Health check took {end_time - start_time} seconds - after {end_time - self._last_check} seconds")
         self._last_check = end_time
 
         self._rabbit.call_later(HEALTH_CHECK_INTERVAL_SEC, self.__check_health)

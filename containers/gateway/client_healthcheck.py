@@ -45,12 +45,12 @@ class ClientHealthChecker:
     def evict(self, client_id: str, last_city: str = None, finished: bool = False):
         builder = GenericPacketBuilder(self._replica_id, client_id, last_city)
 
-        eof = Eof(finished, self._eviction_time)
+        eof = Eof(not finished, self._eviction_time)
         outgoing_messages = { self._output_queue: eof }
 
         self._message_sender.send(builder, outgoing_messages)
         del self._clients[client_id]
-        logging.warning(f"Evicting client {client_id}")
+        logging.warning(f"Evicting client {client_id} | Finished: {finished}")
 
     def check_clients(self):
         now = time.time()

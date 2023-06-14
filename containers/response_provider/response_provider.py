@@ -84,13 +84,15 @@ class ResponseProvider:
     def __evict_client(self, client_id: str, time: int = 0):
         if client_id in self._evicting and not time == 0:
             return
-        
-        self._evicting[client_id] = time
 
         if time == 0:
+            _time = self._evicting.get(client_id, 0)
+            logging.warning(f"Evicting client {client_id} after {_time} seconds")
             self._rabbit.delete_queue(f"results_{client_id}")
         else:
             self._rabbit.call_later(time, lambda client_id=client_id: self.__evict_client(client_id))
+        
+        self._evicting[client_id] = time
 
     def __handle_eof(self, packet: GenericPacket, eof: Eof, packet_type: str) -> bool:
         flow_id = (packet.client_id, packet.city_name, packet_type)
