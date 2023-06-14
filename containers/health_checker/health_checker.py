@@ -44,6 +44,10 @@ class HealthChecker(BasicHealthChecker):
         
         logging.info("Container %s started", container_name)
         return True
+    
+    def on_message_callback(self, msg: bytes) -> bool:
+        logging.info("Received message: %s", msg)
+        return super().on_message_callback(msg)
 
 
 def main():

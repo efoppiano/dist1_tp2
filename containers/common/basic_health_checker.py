@@ -26,9 +26,9 @@ class BasicHealthChecker(ABC):
         self._heartbeater = HeartBeater(self._rabbit)
 
         self._rabbit.declare_queue(CONTAINER_ID)
-        self._rabbit.route(CONTAINER_ID, HEARTBEAT_EXCHANGE, CONTAINER_ID, self.__on_message_callback)
+        self._rabbit.route(CONTAINER_ID, HEARTBEAT_EXCHANGE, CONTAINER_ID, self.on_message_callback)
 
-    def __on_message_callback(self, msg: bytes) -> bool:
+    def on_message_callback(self, msg: bytes) -> bool:
         packet = HealthCheck.decode(msg)
         if packet.id in self._ids_to_monitor:
             self._last_seen[packet.id] = packet.timestamp
