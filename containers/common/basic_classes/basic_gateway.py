@@ -14,7 +14,7 @@ from common.router import Router
 from common.utils import save_state, load_state, min_hash
 from common.packets.eof import Eof
 from common.packets.generic_packet import GenericPacketBuilder
-from common.rabbit_middleware import Rabbit
+from common.middleware.rabbit_middleware import Rabbit
 
 INPUT_QUEUE = os.environ["INPUT_QUEUE"]
 EOF_ROUTING_KEY = os.environ["EOF_ROUTING_KEY"]

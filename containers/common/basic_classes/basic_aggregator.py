@@ -12,7 +12,7 @@ from common.router import MultiRouter
 from common.utils import save_state, load_state
 from common.packets.eof import Eof
 from common.packets.generic_packet import GenericPacket, GenericPacketBuilder
-from common.rabbit_middleware import Rabbit
+from common.middleware.rabbit_middleware import Rabbit
 
 INPUT_QUEUE = os.environ["INPUT_QUEUE"]
 PREV_AMOUNT = int(os.environ["PREV_AMOUNT"])

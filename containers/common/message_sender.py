@@ -3,7 +3,7 @@ from typing import Dict, Union, List
 
 from common.packets.eof import Eof
 from common.packets.generic_packet import GenericPacketBuilder
-from common.rabbit_middleware import Rabbit
+from common.middleware.rabbit_middleware import Rabbit
 from common.utils import min_hash
 
 MAX_SEQ_NUMBER = 2 ** 10 - 1  # 2 packet ids would be enough, but we use more for traceability

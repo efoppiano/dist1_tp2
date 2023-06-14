@@ -7,7 +7,7 @@ from common.heartbeater import HeartBeater
 from common.packets.generic_packet import GenericPacket
 from common.packets.eof import Eof
 from common.packets.client_response_packets import GenericResponsePacket
-from common.rabbit_middleware import Rabbit
+from common.middleware.rabbit_middleware import Rabbit
 from common.utils import initialize_log, save_state, load_state, min_hash
 
 SELF_QUEUE = f"sent_responses"

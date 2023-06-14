@@ -7,7 +7,7 @@ from typing import List
 
 from common.heartbeater import HeartBeater
 from common.packets.health_check import HealthCheck
-from common.rabbit_middleware import Rabbit
+from common.middleware.rabbit_middleware import Rabbit
 
 HEARTBEAT_EXCHANGE = os.environ.get("HEARTBEAT_EXCHANGE", "healthcheck")
 CONTAINER_ID = os.environ["CONTAINER_ID"]

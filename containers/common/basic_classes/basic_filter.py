@@ -9,7 +9,7 @@ from common.heartbeater import HeartBeater
 from common.message_sender import MessageSender
 from common.packets.eof import Eof
 from common.packets.generic_packet import GenericPacket, GenericPacketBuilder
-from common.rabbit_middleware import Rabbit
+from common.middleware.rabbit_middleware import Rabbit
 from common.utils import load_state, save_state
 
 RABBIT_HOST = os.environ.get("RABBIT_HOST", "rabbitmq")

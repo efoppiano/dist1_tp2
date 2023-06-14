@@ -4,7 +4,7 @@ from typing import Callable, Union
 
 import pika
 
-from common.message_queue import MessageQueue
+from common.middleware.message_queue import MessageQueue
 
 
 class Rabbit(MessageQueue):
