@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import logging
 import os
 import pickle
 from datetime import timedelta
@@ -53,7 +52,7 @@ class WeatherAggregator(BasicAggregator):
 
         prectot = self.__search_prec_for_date(flow_id, start_date)
         if prectot is None:
-            logging.warning(f"Could not find weather for city {flow_id} and date {start_date}.")
+            log_missing(f"Could not find weather for city {flow_id} and date {start_date}.")
             return {}
 
         output_packet = GatewayOutOrStation(

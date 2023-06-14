@@ -5,7 +5,7 @@ from datetime import datetime, date
 from typing import Union
 
 
-def initialize_log(logging_level=0):
+def initialize_log(logging_level=logging.INFO):
     """
     Python custom logging initialization
 
@@ -20,6 +20,10 @@ def initialize_log(logging_level=0):
 
     logging.addLevelName(
         logging.DEBUG, "\033[0;35m%s\033[1;0m" % logging.getLevelName(logging.DEBUG))
+    
+    logging.MISSING = 15
+    logging.addLevelName(
+        logging.MISSING, "\033[0;33mMISSING\033[1;0m")
 
     logging.addLevelName(
         logging.INFO, "\033[0;34m%s\033[1;0m" % logging.getLevelName(logging.INFO))
@@ -37,10 +41,10 @@ def initialize_log(logging_level=0):
         logging.SUCCESS, "\033[1;32mSUCCESS\033[1;0m")
 
     logging.addLevelName(
-        logging.WARNING, "\033[1;33m%s\033[1;0m" % logging.getLevelName(logging.WARNING))
+        logging.WARNING, "\033[1;93m%s\033[1;0m" % logging.getLevelName(logging.WARNING))
 
     logging.addLevelName(
-        logging.ERROR, "\033[1;31m%s\033[1;0m" % logging.getLevelName(logging.ERROR))
+        logging.ERROR, "\033[1;91m%s\033[1;0m" % logging.getLevelName(logging.ERROR))
 
     logging.addLevelName(
         logging.CRITICAL, "\033[1;41m%s\033[1;0m" % logging.getLevelName(logging.CRITICAL))
@@ -52,6 +56,8 @@ def initialize_log(logging_level=0):
 def trace(message, *args, **kws):
     logging.log(logging.TRACE, message, *args, **kws)
 
+def log_missing(message, *args, **kws):
+    logging.log(logging.MISSING, message, *args, **kws)
 
 def log_duplicate(message, *args, **kws):
     logging.log(logging.DUPLICATE, message, *args, **kws)
