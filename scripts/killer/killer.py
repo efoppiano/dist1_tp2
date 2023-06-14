@@ -5,17 +5,13 @@ from time import sleep
 import docker as docker
 import json
 
-RESTAR_CONTAINERS = False
-
-
 class Killer:
     def __init__(self):
         self._client = docker.from_env()
         self._containers_to_kill = {}
+        self._blacklist = set()
         self.__setup_containers_to_kill()
         self.__remove_blacklisted_containers()
-        print("Containers to kill: ")
-        print(self._containers_to_kill)
 
     def __setup_containers_to_kill(self):
         self._containers_to_kill = {}
@@ -35,15 +31,19 @@ class Killer:
 
         for name in blacklist_data:
             self._containers_to_kill.pop(name, None)
-            print(f"Removed {name} from containers to kill")
+            self._blacklist.add(name)
 
     def kill_container(self, name: str, replica_id: int) -> str:
+        if name in self._blacklist:
+            return
+
         if replica_id == -1:
             container = f"tp2-{name}-1"
         else:
             container = f"tp2-{name}_{replica_id}-1"
         try:
             self._client.containers.get(container).kill(signal="SIGKILL")
+            print(f"Killed {container}")
         except Exception as e:
             print(f"Failed to kill {container}: {e}")
             pass
@@ -66,8 +66,7 @@ class Killer:
             containers_to_kill = random.sample(containers_with_id, amount_to_kill)
 
             for (container_to_kill, replica_to_kill) in containers_to_kill:
-                container = self.kill_container(container_to_kill, replica_to_kill)
-                print(f"Killed {container}")
+                self.kill_container(container_to_kill, replica_to_kill)
 
             time_to_sleep = random.random() * 30
             print(f"Sleeping for {time_to_sleep} seconds")
