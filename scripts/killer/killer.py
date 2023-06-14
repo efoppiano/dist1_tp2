@@ -5,6 +5,7 @@ from time import sleep
 import docker as docker
 import json
 
+RESTAR_CONTAINERS = False
 
 class Killer:
     def __init__(self):
@@ -22,6 +23,8 @@ class Killer:
             self._containers_to_kill[name] = params["amount"]
 
         self._containers_to_kill["response_provider"] = -1
+
+        self._containers_to_kill["health_checker"] = deployment_data["health_chekers"]
 
     def __remove_blacklisted_containers(self):
         with open("scripts/killer/blacklist.json", "r") as f:
