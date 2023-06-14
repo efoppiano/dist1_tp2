@@ -31,7 +31,6 @@ def is_alive(container_name):
 
 class HealthChecker(BasicHealthChecker):
     def on_check_fail(self, container_name: str):
-        logging.info(f"Container {container_name} is down - restarting...")
         if is_alive(container_name):
             logging.critical("Container %s is already alive", container_name)
 
@@ -47,7 +46,6 @@ class HealthChecker(BasicHealthChecker):
         return True
     
     def on_message_callback(self, msg: bytes) -> bool:
-        logging.info("Received message: %s", msg)
         return super().on_message_callback(msg)
 
 

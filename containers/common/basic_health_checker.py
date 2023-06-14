@@ -13,7 +13,8 @@ HEARTBEAT_EXCHANGE = os.environ.get("HEARTBEAT_EXCHANGE", "healthcheck")
 CONTAINER_ID = os.environ["CONTAINER_ID"]
 CONTAINERS = os.environ["CONTAINERS"].split(",")
 RABBIT_HOST = os.environ.get("RABBIT_HOST", "rabbitmq")
-HEALTH_CHECK_INTERVAL_SEC = os.environ.get("HEALTH_CHECK_INTERVAL_SEC", 1)
+HEALTH_CHECK_INTERVAL_SEC = os.environ.get("HEALTH_CHECK_INTERVAL_SEC", 2)
+GRACE_INTERVALS = os.environ.get("GRACE_INTERVALS", 5)
 
 S_TO_NS = 10 ** 9
 START_TIME = time.time_ns()
@@ -23,6 +24,7 @@ class BasicHealthChecker(ABC):
     def __init__(self, ids_to_monitor: List[str] = CONTAINERS):
         self._ids_to_monitor = ids_to_monitor
         self._last_seen = {id_to_monitor: START_TIME for id_to_monitor in ids_to_monitor}
+        self._last_check = time.time()
 
         self._rabbit = Rabbit(RABBIT_HOST)
         self._heartbeater = HeartBeater(self._rabbit)
@@ -44,12 +46,17 @@ class BasicHealthChecker(ABC):
         pass
 
     def __check_health(self):
+        start_time = time.time()
         for (id_to_monitor, last_seen) in self._last_seen.items():
-            if last_seen + S_TO_NS * HEALTH_CHECK_INTERVAL_SEC * 5 < time.time_ns():
+            if last_seen + S_TO_NS * HEALTH_CHECK_INTERVAL_SEC * GRACE_INTERVALS < time.time_ns():
                 difference = (time.time_ns() - last_seen) / S_TO_NS
-                logging.info(f"Container {id_to_monitor} is not responding to health checks for {difference} seconds")
+                logging.warning(f"Container {id_to_monitor} is unheard for {difference} seconds")
                 self.on_check_fail(id_to_monitor)
                 self._last_seen[id_to_monitor] = time.time_ns()
+        
+        end_time = time.time()
+        logging.info(f"Health check took {end_time - start_time} seconds - after {end_time - self._last_check} seconds")
+        self._last_check = end_time
 
         self._rabbit.call_later(HEALTH_CHECK_INTERVAL_SEC, self.__check_health)
 
