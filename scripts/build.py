@@ -165,6 +165,7 @@ def add_health_checker(n, containers):
     entrypoint: python3 /opt/app/{name}.py
     volumes:
       - .volumes/{name}_{n}:/volumes
+      - /var/run/docker.sock:/var/run/docker.sock
     environment:'''
 
   env = data["common_env"].copy()
@@ -211,7 +212,6 @@ def add_client(name, cities, data_path):
     entrypoint: python3 /opt/app/client.py
     volumes:
       - {data_path}:/opt/app/.data/
-      - /var/run/docker.sock:/var/run/docker.sock
     environment:'''
 
   env = data["common_env"].copy()

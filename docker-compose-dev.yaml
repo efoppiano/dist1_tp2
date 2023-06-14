@@ -467,6 +467,7 @@ services:
     entrypoint: python3 /opt/app/health_checker.py
     volumes:
       - .volumes/health_checker_0:/volumes
+      - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
@@ -482,6 +483,7 @@ services:
     entrypoint: python3 /opt/app/health_checker.py
     volumes:
       - .volumes/health_checker_1:/volumes
+      - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1

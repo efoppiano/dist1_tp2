@@ -49,10 +49,7 @@ class HealthChecker:
     '''Starts the health checker'''
     for container in self.containers:
       if not is_alive(container):
-        logging.info("Container %s is not alive, starting it", container)
         start_container(container)
-      else:
-        logging.info("Container %s is alive", container)
 
     time.sleep(5)
 
