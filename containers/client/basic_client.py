@@ -5,7 +5,7 @@ import threading
 from abc import ABC, abstractmethod
 from typing import List, Iterator
 
-from common.packet_factory import PacketFactory
+from packet_factory import PacketFactory
 from common.packets.dur_avg_out import DurAvgOut
 from common.packets.client_response_packets import GenericResponsePacket
 from common.packets.eof import Eof

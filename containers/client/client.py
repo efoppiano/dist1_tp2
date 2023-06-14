@@ -3,7 +3,7 @@ import os
 import time
 from typing import Iterator, List
 
-from common.basic_classes.basic_client import BasicClient
+from basic_client import BasicClient
 from common.packets.dur_avg_out import DurAvgOut
 from common.packets.station_dist_mean import StationDistMean
 from common.packets.trips_count_by_year_joined import TripsCountByYearJoined

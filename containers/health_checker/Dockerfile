@@ -3,7 +3,7 @@ RUN pip3 install pika
 RUN apk update
 RUN apk add docker
 
-COPY health_checker/health_checker.py /opt/app/health_checker.py
+COPY health_checker/*.py /opt/app/
 COPY common /opt/app/common
 
 ENTRYPOINT ["/bin/bash"]
