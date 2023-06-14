@@ -3,7 +3,7 @@ import os
 import signal
 import pickle
 
-from common.heartbeater import HeartBeater
+from common.components.heartbeater import HeartBeater
 from common.packets.generic_packet import GenericPacket
 from common.packets.eof import Eof
 from common.packets.client_response_packets import GenericResponsePacket

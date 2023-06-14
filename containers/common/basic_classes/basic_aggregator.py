@@ -5,9 +5,9 @@ import pickle
 from abc import ABC
 from typing import Dict, List
 
-from common.heartbeater import HeartBeater
-from common.last_received import MultiLastReceivedManager
-from common.message_sender import MessageSender
+from common.components.heartbeater import HeartBeater
+from common.components.last_received import MultiLastReceivedManager
+from common.components.message_sender import MessageSender
 from common.router import MultiRouter
 from common.utils import save_state, load_state
 from common.packets.eof import Eof

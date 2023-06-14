@@ -4,7 +4,7 @@ import pickle
 from abc import ABC
 from typing import Dict, List, Union
 
-from common.last_received import MultiLastReceivedManager
+from common.components.last_received import MultiLastReceivedManager
 from common.router import Router
 from common.basic_classes.basic_filter import BasicFilter
 from common.packets.eof import Eof

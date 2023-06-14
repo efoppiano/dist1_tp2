@@ -5,8 +5,8 @@ import pickle
 from abc import ABC
 from typing import List, Dict, Union
 
-from common.heartbeater import HeartBeater
-from common.message_sender import MessageSender
+from common.components.heartbeater import HeartBeater
+from common.components.message_sender import MessageSender
 from common.packets.eof import Eof
 from common.packets.generic_packet import GenericPacket, GenericPacketBuilder
 from common.middleware.rabbit_middleware import Rabbit

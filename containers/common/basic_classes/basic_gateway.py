@@ -6,10 +6,10 @@ import time
 from abc import ABC
 from typing import Dict, List
 
-from common.heartbeater import HeartBeater
-from common.message_sender import MessageSender
+from common.components.heartbeater import HeartBeater
+from common.components.message_sender import MessageSender
 from common.packets.client_packet import ClientDataPacket, ClientPacket
-from common.readers import ClientIdResponsePacket
+from common.components.readers import ClientIdResponsePacket
 from common.router import Router
 from common.utils import save_state, load_state, min_hash
 from common.packets.eof import Eof

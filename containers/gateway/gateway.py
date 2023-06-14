@@ -7,7 +7,7 @@ from common.packets.gateway_out_or_station import GatewayOutOrStation
 from common.packets.station_side_table_info import StationSideTableInfo
 from common.packets.gateway_in import GatewayIn
 from common.packets.weather_side_table_info import WeatherSideTableInfo
-from common.readers import ClientGatewayPacket, StationInfo, WeatherInfo, TripInfo
+from common.components.readers import ClientGatewayPacket, StationInfo, WeatherInfo, TripInfo
 from common.utils import initialize_log
 
 REPLICA_ID = os.environ["REPLICA_ID"]

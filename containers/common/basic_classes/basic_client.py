@@ -12,7 +12,7 @@ from common.packets.eof import Eof
 from common.packets.station_dist_mean import StationDistMean
 from common.packets.trips_count_by_year_joined import TripsCountByYearJoined
 from common.middleware.rabbit_middleware import Rabbit
-from common.readers import WeatherInfo, StationInfo, TripInfo, ClientIdResponsePacket
+from common.components.readers import WeatherInfo, StationInfo, TripInfo, ClientIdResponsePacket
 from common.router import Router
 
 RABBIT_HOST = os.environ.get("RABBIT_HOST", "rabbitmq")

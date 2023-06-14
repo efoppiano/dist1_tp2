@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 
 from typing import List
 
-from common.heartbeater import HeartBeater
+from common.components.heartbeater import HeartBeater
 from common.packets.health_check import HealthCheck
 from common.middleware.rabbit_middleware import Rabbit
 
