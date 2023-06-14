@@ -13,14 +13,27 @@ def initialize_log(logging_level=logging.INFO):
     compose logs the date when the log has arrived
     """
     logging.getLogger("pika").setLevel(logging.WARNING)
+
+    logging.TRACE = 5
     logging.addLevelName(
-        logging.DEBUG, "\033[1;32m%s\033[1;0m" % logging.getLevelName(logging.DEBUG))
+        logging.TRACE, "\033[1;36m%s\033[1;0m" % logging.getLevelName(logging.DEBUG))
+    
+    logging.addLevelName(
+        logging.DEBUG, "\033[1;35m%s\033[1;0m" % logging.getLevelName(logging.DEBUG))
+    
     logging.addLevelName(
         logging.INFO, "\033[1;34m%s\033[1;0m" % logging.getLevelName(logging.INFO))
+    
+    logging.SUCCESS = 25
+    logging.addLevelName(
+        logging.SUCCESS, "\033[1;32m%s\033[1;0m" % logging.getLevelName(logging.SUCCESS))
+    
     logging.addLevelName(
         logging.WARNING, "\033[1;33m%s\033[1;0m" % logging.getLevelName(logging.WARNING))
+    
     logging.addLevelName(
         logging.ERROR, "\033[1;31m%s\033[1;0m" % logging.getLevelName(logging.ERROR))
+    
     logging.addLevelName(
         logging.CRITICAL, "\033[1;41m%s\033[1;0m" % logging.getLevelName(logging.CRITICAL))
 
