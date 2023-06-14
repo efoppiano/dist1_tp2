@@ -26,12 +26,7 @@ def is_alive(container_name):
     return True
 
 
-
-
 class HealthChecker(BasicHealthChecker):
-
-    def __init__(self, containers):
-        self.containers = containers
 
     def on_check_fail(self, container_name: str):
 
@@ -46,7 +41,8 @@ class HealthChecker(BasicHealthChecker):
         if result.returncode != 0:
             logging.error("Error starting container %s", container_name)
             return False
-
+        
+        logging.info("Container %s started", container_name)
         return True
 
 
