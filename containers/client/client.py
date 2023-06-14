@@ -1,7 +1,7 @@
 import logging
 import os
 import time
-from typing import Iterator, List, Optional
+from typing import List, Optional
 
 from basic_client import BasicClient
 from common.packets.dur_avg_out import DurAvgOut
@@ -33,15 +33,12 @@ class Client(BasicClient):
             self._trip_readers[city] = TripReader(self._data_folder_path, city)
 
     def get_weather(self, city: str) -> Optional[List[WeatherInfo]]:
-        logging.info(f"action: client_get_weather | city: {city}")
         return self._weather_readers[city].next_data()
 
     def get_stations(self, city: str) -> Optional[List[StationInfo]]:
-        logging.info(f"action: client_get_stations | city: {city}")
         return self._station_readers[city].next_data()
 
     def get_trips(self, city: str) -> Optional[List[TripInfo]]:
-        logging.info(f"action: client_get_trips | city: {city}")
         return self._trip_readers[city].next_data()
 
     def save_results(self, city, type, key, results):

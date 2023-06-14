@@ -145,10 +145,10 @@ class BasicGateway(ABC):
 
         if rates.ack_per_second - rates.publish_per_second >= 0.0:
             # Increase rate
-            new_rate = math.ceil((2 * (rates.publish_per_second + 10)) / users_amount)
+            new_rate = math.ceil((2 * (rates.publish_per_second + 1)) / users_amount)
         else:
             # Decrease rate
-            new_rate = math.ceil((rates.ack_per_second + 10) / users_amount)
+            new_rate = math.ceil((rates.ack_per_second + 1) / users_amount)
 
         logging.info(f"action: change_rate | new_rate: {new_rate}")
 
