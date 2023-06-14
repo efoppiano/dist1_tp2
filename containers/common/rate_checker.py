@@ -13,8 +13,8 @@ RABBIT_HTTP_PORT = os.environ.get("RABBIT_HTTP_PORT", 15672)
 
 @dataclass
 class Rates:
-    publish_per_second: int
-    ack_per_second: int
+    publish_per_second: float
+    ack_per_second: float
 
 
 class RateChecker:

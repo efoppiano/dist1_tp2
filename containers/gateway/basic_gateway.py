@@ -1,5 +1,6 @@
 import abc
 import logging
+import math
 import os
 import pickle
 import time
@@ -9,8 +10,9 @@ from typing import Dict, List
 from common.components.heartbeater import HeartBeater
 from common.components.message_sender import MessageSender
 from common.components.readers import ClientIdResponsePacket
+from common.packets.client_control_packet import ClientControlPacket, RateLimitChangeRequest
 from common.packets.client_packet import ClientDataPacket, ClientPacket
-from common.rate_checker import RateChecker
+from common.rate_checker import RateChecker, Rates
 from common.router import Router
 from common.utils import save_state, load_state, min_hash
 from common.packets.eof import Eof
@@ -38,6 +40,7 @@ class BasicGateway(ABC):
         self.router = Router(NEXT, NEXT_AMOUNT)
         self.heartbeater = HeartBeater(self._rabbit)
         self._rate_checker = RateChecker()
+        self._alive_clients = set()
 
         self.__setup_state()
 
@@ -101,6 +104,7 @@ class BasicGateway(ABC):
     def __generate_and_send_client_id(self):
         new_client_id = f"{self._basic_gateway_replica_id}_{time.time_ns()}"
         logging.info(f"New client id: {new_client_id}")
+        self._alive_clients.add(new_client_id)
 
         response = ClientIdResponsePacket(new_client_id).encode()
 
@@ -132,6 +136,32 @@ class BasicGateway(ABC):
             eof_output_queue: message
         }
 
+    def __change_rates_if_needed(self, rates: Rates):
+        users_amount = len(self._alive_clients)
+        logging.info(f"rates: {rates} | users_amount: {users_amount}")
+        logging.info(f"Difference: {rates.ack_per_second - rates.publish_per_second}")
+        if users_amount == 0:
+            return
+
+        if rates.ack_per_second - rates.publish_per_second >= 0.0:
+            # Increase rate
+            new_rate = math.ceil((2 * (rates.publish_per_second + 10)) / users_amount)
+        else:
+            # Decrease rate
+            new_rate = math.ceil((rates.ack_per_second + 10) / users_amount)
+
+        logging.info(f"action: change_rate | new_rate: {new_rate}")
+
+        if new_rate == 0:
+            logging.info("Rate not changed because it would be 0")
+            return
+
+        for user in self._alive_clients:
+            client_control_queue = f"control_{user}"
+            packet = RateLimitChangeRequest(new_rate)
+
+            self._rabbit.produce(client_control_queue, ClientControlPacket(packet).encode())
+
     def __log_rates(self):
         rates = self._rate_checker.get_rates(self._input_queue)
         if rates is None:
@@ -139,7 +169,9 @@ class BasicGateway(ABC):
         else:
             logging.info(
                 f"action: check_rate | result: success | pub/s: {rates.publish_per_second} | ack/s: {rates.ack_per_second}")
+            self.__change_rates_if_needed(rates)
 
+        # TODO: do not hardcode this
         self._rabbit.call_later(5, self.__log_rates)
 
     def start(self):
