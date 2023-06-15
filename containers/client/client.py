@@ -79,7 +79,7 @@ class Client(BasicClient):
 
 
 def main():
-    initialize_log()
+    initialize_log(15)
     logging.info(f"action: client_run | result: start")
     time.sleep(5)
     start_time = time.time()
