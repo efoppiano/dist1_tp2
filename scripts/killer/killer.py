@@ -5,6 +5,7 @@ from time import sleep
 import docker as docker
 import json
 
+
 class Killer:
     def __init__(self):
         self._client = docker.from_env()
@@ -33,7 +34,7 @@ class Killer:
             self._containers_to_kill.pop(name, None)
             self._blacklist.add(name)
 
-    def kill_container(self, name: str, replica_id: int) -> str:
+    def kill_container(self, name: str, replica_id: int):
         if name in self._blacklist:
             return
 
@@ -47,7 +48,6 @@ class Killer:
         except Exception as e:
             print(f"Failed to kill {container}: {e}")
             pass
-        return container
 
     def run_kill_loop(self):
         containers_to_kill = list(self._containers_to_kill.keys())

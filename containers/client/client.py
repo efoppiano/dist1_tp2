@@ -1,14 +1,14 @@
 import logging
 import os
 import time
-from typing import List, Optional
+from typing import List, Iterator
 
 from basic_client import BasicClient
 from common.packets.dur_avg_out import DurAvgOut
 from common.packets.station_dist_mean import StationDistMean
 from common.packets.trips_count_by_year_joined import TripsCountByYearJoined
 from common.components.readers import TripInfo, StationInfo, WeatherInfo, WeatherReader, StationReader, TripReader
-from common.utils import initialize_log, json_serialize
+from common.utils import initialize_log, json_serialize, log_duplicate, success
 
 CLIENT_ID = os.environ["CLIENT_ID"]
 CITIES = os.environ["CITIES"].split(",")
@@ -20,30 +20,26 @@ class Client(BasicClient):
         super().__init__(config)
         self._data_folder_path = config["data_folder_path"]
         self.results = {}
-        self.__setup_readers()
 
-    def __setup_readers(self):
-        self._weather_readers = {}
-        self._station_readers = {}
-        self._trip_readers = {}
+    def get_weather(self, city: str) -> Iterator[List[WeatherInfo]]:
+        reader = WeatherReader(self._data_folder_path, city)
+        yield from reader.next_data()
 
-        for city in CITIES:
-            self._weather_readers[city] = WeatherReader(self._data_folder_path, city)
-            self._station_readers[city] = StationReader(self._data_folder_path, city)
-            self._trip_readers[city] = TripReader(self._data_folder_path, city)
+    def get_stations(self, city: str) -> Iterator[List[StationInfo]]:
+        reader = StationReader(self._data_folder_path, city)
+        yield from reader.next_data()
 
-    def get_weather(self, city: str) -> Optional[List[WeatherInfo]]:
-        return self._weather_readers[city].next_data()
-
-    def get_stations(self, city: str) -> Optional[List[StationInfo]]:
-        return self._station_readers[city].next_data()
-
-    def get_trips(self, city: str) -> Optional[List[TripInfo]]:
-        return self._trip_readers[city].next_data()
+    def get_trips(self, city: str) -> Iterator[List[TripInfo]]:
+        reader = TripReader(self._data_folder_path, city)
+        yield from reader.next_data()
 
     def save_results(self, city, type, key, results):
         self.results.setdefault(city, {})
         self.results[city].setdefault(type, {})
+
+        if key in self.results[city][type]:
+            log_duplicate(f"city: {city} | type: {type} | key: {key}")
+
         self.results[city][type][key] = results
 
     def dump_results(self):
@@ -83,7 +79,7 @@ class Client(BasicClient):
 
 
 def main():
-    initialize_log()
+    initialize_log(15)
     logging.info(f"action: client_run | result: start")
     time.sleep(5)
     start_time = time.time()
@@ -95,7 +91,7 @@ def main():
     client.run()
     end_time = time.time()
     client.dump_results()
-    logging.info(f"action: client_run | result: success | duration: {end_time - start_time} sec")
+    success(f"action: client_run | duration: {end_time - start_time} sec")
 
 
 if __name__ == "__main__":

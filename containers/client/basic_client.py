@@ -17,6 +17,7 @@ from common.packets.trips_count_by_year_joined import TripsCountByYearJoined
 from common.middleware.rabbit_middleware import Rabbit
 from common.components.readers import WeatherInfo, StationInfo, TripInfo, ClientIdResponsePacket
 from common.router import Router
+from common.utils import trace
 
 RABBIT_HOST = os.environ.get("RABBIT_HOST", "rabbitmq")
 ID_REQ_QUEUE = os.environ["ID_REQ_QUEUE"]
@@ -183,13 +184,14 @@ class BasicClient(ABC):
 
     def __check_control_queue(self):
         queue = f"control_{self.session_id}"
-        self._rabbit.consume_until_empty(queue, self.__handle_control_message)
+        # TODO: Do not hardcode this timeout
+        self._rabbit.consume_one(queue, self.__handle_control_message, timeout=0.1, create=False)
 
     def __handle_control_message(self, message: bytes) -> bool:
         client_control_packet = ClientControlPacket.decode(message)
         if isinstance(client_control_packet.data, RateLimitChangeRequest):
             self._send_rate = client_control_packet.data.new_rate
-            logging.info(f"Rate limit changed to {self._send_rate}")
+            trace(f"Rate limit changed to {self._send_rate}")
         else:
             raise NotImplementedError(f"Unknown control packet type: {type(client_control_packet)}")
 
@@ -198,9 +200,10 @@ class BasicClient(ABC):
     def __get_responses(self):
 
         # TODO: Do not hardcode the queue name
-        queue = f"results_{self.session_id}"
-        self._rabbit.consume(queue, self.__handle_message)
-
+        results_queue = f"results_{self.session_id}"
+        control_queue = f"control_{self.session_id}"
+        self._rabbit.consume(results_queue, self.__handle_message, create=False)
+        self._rabbit.consume(control_queue, self.__handle_control_message, create=False)
         self._rabbit.start()
 
     def __run(self):

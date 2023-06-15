@@ -18,7 +18,7 @@ class HealthChecker(BasicHealthChecker):
             stdout=subprocess.PIPE, check=False
         )
         end = time.time()
-        logging.info("Container %s restarted in %s seconds", container_name, end - start)
+        logging.debug("Container %s restarted in %s seconds", container_name, end - start)
 
         return True
     

@@ -13,14 +13,43 @@ def initialize_log(logging_level=logging.INFO):
     compose logs the date when the log has arrived
     """
     logging.getLogger("pika").setLevel(logging.WARNING)
+
+    logging.TRACE = 5
     logging.addLevelName(
-        logging.DEBUG, "\033[1;32m%s\033[1;0m" % logging.getLevelName(logging.DEBUG))
+        logging.TRACE, "\033[0;36mTRACE\033[1;0m")
+
     logging.addLevelName(
-        logging.INFO, "\033[1;34m%s\033[1;0m" % logging.getLevelName(logging.INFO))
+        logging.DEBUG, "\033[0;35m%s\033[1;0m" % logging.getLevelName(logging.DEBUG))
+    
+    logging.MISSING = 14
     logging.addLevelName(
-        logging.WARNING, "\033[1;33m%s\033[1;0m" % logging.getLevelName(logging.WARNING))
+        logging.MISSING, "\033[0;33mMISSING\033[1;0m")
+    
+    logging.MSG = 16
     logging.addLevelName(
-        logging.ERROR, "\033[1;31m%s\033[1;0m" % logging.getLevelName(logging.ERROR))
+        logging.MSG, "\033[0;32mMSG\033[1;0m")
+
+    logging.addLevelName(
+        logging.INFO, "\033[0;34m%s\033[1;0m" % logging.getLevelName(logging.INFO))
+
+    logging.DUPLICATE = 22
+    logging.addLevelName(
+        logging.DUPLICATE, "\033[1;95mDUPL\033[1;0m")
+
+    logging.EVICT = 24
+    logging.addLevelName(
+        logging.EVICT, "\033[1;96mEVICT\033[1;0m")
+
+    logging.SUCCESS = 28
+    logging.addLevelName(
+        logging.SUCCESS, "\033[1;92mSUCCESS\033[1;0m")
+
+    logging.addLevelName(
+        logging.WARNING, "\033[1;93m%s\033[1;0m" % logging.getLevelName(logging.WARNING))
+
+    logging.addLevelName(
+        logging.ERROR, "\033[1;91m%s\033[1;0m" % logging.getLevelName(logging.ERROR))
+
     logging.addLevelName(
         logging.CRITICAL, "\033[1;41m%s\033[1;0m" % logging.getLevelName(logging.CRITICAL))
 
@@ -28,6 +57,37 @@ def initialize_log(logging_level=logging.INFO):
                         datefmt='%H:%M:%S')
 
 
+def trace(message, *args, **kws):
+    logging.log(logging.TRACE, message, *args, **kws)
+
+def log_missing(message, *args, **kws):
+    logging.log(logging.MISSING, message, *args, **kws)
+
+def log_msg(message, *args, **kws):
+    logging.log(logging.MSG, message, *args, **kws)
+
+def log_duplicate(message, *args, **kws):
+    logging.log(logging.DUPLICATE, message, *args, **kws)
+
+def log_evict(message, *args, **kws):
+    logging.log(logging.EVICT, message, *args, **kws)
+
+
+def success(message, *args, **kws):
+    logging.log(logging.SUCCESS, message, *args, **kws)
+
+def min_hash(obj, n=4, min_log_level = logging.DEBUG):
+
+    # This function is specific for debbuging purposes
+    if logging.getLogger().getEffectiveLevel() > min_log_level:
+        return "###"
+
+    try:
+        return str(hash(obj))[-n:]
+    except:
+        return "###"
+    
+ 
 def build_queue_name(queue: str, id: Union[int, None] = None) -> str:
     if id is None:
         return queue
@@ -95,27 +155,3 @@ def json_serialize(obj):
         return json.dumps(obj, default=lambda o: o.__dict__, sort_keys=True, indent=4)
     except TypeError:
         return json.dumps(obj, default=lambda o: str(o), sort_keys=True, indent=4)
-
-
-def min_hash(obj, n=4):
-    _hex = None
-    try:
-        if hasattr(obj, '__iter__'):
-            _obj = tuple(obj)
-        else:
-            _obj = obj
-        hex_num = hex(hash(_obj) % (16 ** (n)))
-        _hex = hex_num[2:].upper()
-    except:
-        _hex = "#"
-
-    _type = None
-    try:
-        if hasattr(obj, '__iter__'):
-            _type = type(obj[0]).__name__
-        else:
-            _type = type(obj).__name__
-    except:
-        _type = "#"
-
-    return f"{_type}{_hex}"
