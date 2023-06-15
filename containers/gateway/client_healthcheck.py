@@ -42,15 +42,15 @@ class ClientHealthChecker:
         self._clients = {} # [client_id]: (last_city, last_time, finished)
         self._evicting = set() # [client_id]
 
-    def evict(self, client_id: str, last_city: str = None, finished: bool = False):
+    def evict(self, client_id: str, last_city: str = None, drop: bool = False):
         builder = GenericPacketBuilder(self._replica_id, client_id, last_city)
 
-        eof = Eof(not finished, self._eviction_time)
+        eof = Eof(drop, self._eviction_time)
         outgoing_messages = { self._output_queue: eof }
 
         self._message_sender.send(builder, outgoing_messages)
         del self._clients[client_id]
-        log_evict(f"Evicting client {client_id} | Finished: {finished}")
+        log_evict(f"Evicting client {client_id} | Drop: {drop}")
 
     def check_clients(self):
         now = time.time()
@@ -63,7 +63,7 @@ class ClientHealthChecker:
         while len(self._evicting) > 0:
             client_id = self._evicting.pop()
             last_city, _, finished = self._clients[client_id]
-            self.evict(client_id, last_city, finished)
+            self.evict(client_id, last_city, drop = not finished)
         self._save_state()
 
         self._rabbit.call_later(self._lapse, self.check_clients)
@@ -82,6 +82,9 @@ class ClientHealthChecker:
                 clients.remove(client_id)
         
         return clients
+    
+    def is_client(self, client_id: str):
+        return client_id in self.get_clients()
 
     def get_state(self) -> dict:
         return {

@@ -111,11 +111,17 @@ class BasicGateway(ABC):
         response = ClientIdResponsePacket(new_client_id).encode()
 
         self._rabbit.produce("client_id_queue", response)
+        self.health_checker.ping(new_client_id, None, False)
 
     def __on_stream_message_callback(self, msg: bytes) -> bool:
         decoded = ClientPacket.decode(msg)
         if not isinstance(decoded.data, ClientDataPacket):
             self.__generate_and_send_client_id()
+            return True
+        
+        if not self.health_checker.is_client(decoded.client_id):
+            # TODO: Send error message to client
+            self.health_checker.evict(decoded.client_id)
             return True
 
         if not self.__update_last_received(decoded.data):
