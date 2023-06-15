@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import logging
 import os
 import pickle
 from typing import Dict, List, Union, Tuple
@@ -14,7 +13,7 @@ from common.packets.station_side_table_info import StationSideTableInfo
 from common.packets.stop_packet import StopPacket
 from common.packets.year_filter_in import YearFilterIn
 from common.router import MultiRouter
-from common.utils import initialize_log
+from common.utils import initialize_log, log_missing
 
 PREC_FILTER_QUEUE = os.environ["PREC_FILTER_QUEUE"]
 NEXT_AMOUNT_PREC_FILTER = int(os.environ["NEXT_AMOUNT_PREC_FILTER"])
@@ -102,7 +101,7 @@ class StationAggregator(BasicAggregator):
     def __handle_gateway_out(self, flow_id, packet: GatewayOut) -> Dict[str, List[bytes]]:
         stations = self.__search_stations(flow_id, packet)
         if not stations:
-            logging.warning(f"Could not find stations for packet: {packet}")
+            log_missing(f"Could not find stations for packet: {packet}")
             return {}
 
         prec_filter_queue = self.router.route("prec_filter", str(packet.start_station_code))

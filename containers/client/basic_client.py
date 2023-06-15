@@ -14,6 +14,7 @@ from common.packets.trips_count_by_year_joined import TripsCountByYearJoined
 from common.middleware.rabbit_middleware import Rabbit
 from common.components.readers import WeatherInfo, StationInfo, TripInfo, ClientIdResponsePacket
 from common.router import Router
+from common.utils import success
 
 RABBIT_HOST = os.environ.get("RABBIT_HOST", "rabbitmq")
 ID_REQ_QUEUE = os.environ["ID_REQ_QUEUE"]
@@ -104,18 +105,16 @@ class BasicClient(ABC):
 
     def __send_data_from_city(self, city: str):
         logging.info(f"action: client_send_data | result: in_progress | city: {city}")
-        queue_name = self.router.route(hashing_key=city)
+        queue_name = self.router.route(hashing_key=self.client_id)
 
         try:
             self.__send_weather_data(queue_name, city)
             self.__send_stations_data(queue_name, city)
             self.__send_trips_data(queue_name, city)
-            logging.info(f"action: client_send_data | result: success | city: {city}")
+            success(f"action: client_send_data | result: success | city: {city}")
         except Exception as e:
             logging.error(f"action: client_send_data | result: error | city: {city} | error: {e}")
             raise e
-        finally:
-            logging.info(f"action: client_send_data | result: finished | city: {city}")
 
     def __send_cities_data(self):
         for city in self._all_cities:

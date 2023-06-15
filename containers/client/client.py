@@ -8,7 +8,7 @@ from common.packets.dur_avg_out import DurAvgOut
 from common.packets.station_dist_mean import StationDistMean
 from common.packets.trips_count_by_year_joined import TripsCountByYearJoined
 from common.components.readers import TripInfo, StationInfo, WeatherInfo, WeatherReader, StationReader, TripReader
-from common.utils import initialize_log, json_serialize
+from common.utils import initialize_log, json_serialize, log_duplicate, success
 
 CLIENT_ID = os.environ["CLIENT_ID"]
 CITIES = os.environ["CITIES"].split(",")
@@ -36,6 +36,10 @@ class Client(BasicClient):
     def save_results(self, city, type, key, results):
         self.results.setdefault(city, {})
         self.results[city].setdefault(type, {})
+
+        if key in self.results[city][type]:
+            log_duplicate(f"city: {city} | type: {type} | key: {key}")
+
         self.results[city][type][key] = results
 
     def dump_results(self):
@@ -75,7 +79,7 @@ class Client(BasicClient):
 
 
 def main():
-    initialize_log()
+    initialize_log(15)
     logging.info(f"action: client_run | result: start")
     time.sleep(5)
     start_time = time.time()
@@ -87,7 +91,7 @@ def main():
     client.run()
     end_time = time.time()
     client.dump_results()
-    logging.info(f"action: client_run | result: success | duration: {end_time - start_time} sec")
+    success(f"action: client_run | duration: {end_time - start_time} sec")
 
 
 if __name__ == "__main__":

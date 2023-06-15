@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import logging
 import os
 import pickle
 from datetime import timedelta
@@ -14,7 +13,7 @@ from common.packets.gateway_out_or_station import GatewayOutOrStation
 from common.packets.stop_packet import StopPacket
 from common.packets.weather_side_table_info import WeatherSideTableInfo
 from common.router import MultiRouter
-from common.utils import initialize_log, parse_date, datetime_str_to_date_str
+from common.utils import initialize_log, parse_date, datetime_str_to_date_str, log_missing
 
 NEXT = os.environ["NEXT"]
 NEXT_AMOUNT = int(os.environ["NEXT_AMOUNT"])
@@ -53,7 +52,7 @@ class WeatherAggregator(BasicAggregator):
 
         prectot = self.__search_prec_for_date(flow_id, start_date)
         if prectot is None:
-            logging.warning(f"Could not find weather for city {flow_id} and date {start_date}.")
+            log_missing(f"Could not find weather for city {flow_id} and date {start_date}.")
             return {}
 
         output_packet = GatewayOutOrStation(

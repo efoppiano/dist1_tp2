@@ -4,18 +4,25 @@ from typing import Dict, Union, List
 from common.packets.eof import Eof
 from common.packets.generic_packet import GenericPacketBuilder
 from common.middleware.rabbit_middleware import Rabbit
-from common.utils import min_hash
+from common.utils import min_hash, log_msg
 
-MAX_SEQ_NUMBER = 2 ** 10 - 1  # 2 packet ids would be enough, but we use more for traceability
-
-
+MAX_SEQ_NUMBER = 2 ** 9  # 2 packet ids would be enough, but we use more for traceability
 class MessageSender:
     def __init__(self, middleware: Rabbit):
         self._last_seq_number = 0
         self._rabbit = middleware
 
+        self._times_maxed_seq = 0
+
     def __get_next_seq_number(self) -> int:
-        self._last_seq_number = (self._last_seq_number + 1) % MAX_SEQ_NUMBER
+        self._last_seq_number = (self._last_seq_number + 1)
+
+        if self._last_seq_number > MAX_SEQ_NUMBER:
+            self._last_seq_number = 0
+            self._times_maxed_seq += 1
+            log_msg("Generated %d packets [%d]", MAX_SEQ_NUMBER, self._times_maxed_seq)
+            
+
         return self._last_seq_number
 
     def send(self, builder: GenericPacketBuilder, outgoing_messages: Dict[str, Union[List[bytes], Eof]]):

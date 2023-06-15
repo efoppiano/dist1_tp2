@@ -82,7 +82,7 @@ class Gateway(BasicGateway):
 
 
 def main():
-    initialize_log()
+    initialize_log(15)
     gateway = Gateway(int(REPLICA_ID), WEATHER_SIDE_TABLE_QUEUE_NAME,
                       STATION_SIDE_TABLE_QUEUE_NAME)
     gateway.start()

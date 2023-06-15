@@ -128,6 +128,12 @@ class Rabbit(MessageQueue):
             self._channel.queue_declare(queue=queue, durable=durable)
             self._declared_queues.append(queue)
 
+    def delete_queue(self, queue: str):
+        try:
+            self._channel.queue_delete(queue=queue)
+        except:
+            logging.warning("Unable to delete queue: %s", queue)
+
     def __declare_exchange(self, exchange: str, exchange_type: str):
         if exchange not in self._declared_exchanges:
             self._channel.exchange_declare(exchange=exchange, exchange_type=exchange_type)
