@@ -85,7 +85,7 @@ class ResponseProvider:
         if client_id in self._evicting and not time == 0:
             return
 
-        if time == 0:
+        if time < 1:
             _time = self._evicting.get(client_id, 0)
             log_evict(f"Evicting client {client_id} after {_time} seconds")
             self._rabbit.delete_queue(f"results_{client_id}")

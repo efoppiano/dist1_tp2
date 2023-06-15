@@ -1,5 +1,6 @@
 import logging
 import os
+import random
 import datetime
 import threading
 import time
@@ -17,7 +18,7 @@ from common.packets.trips_count_by_year_joined import TripsCountByYearJoined
 from common.middleware.rabbit_middleware import Rabbit
 from common.components.readers import WeatherInfo, StationInfo, TripInfo, ClientIdResponsePacket
 from common.router import Router
-from common.utils import trace
+from common.utils import log_msg, success
 
 RABBIT_HOST = os.environ.get("RABBIT_HOST", "rabbitmq")
 ID_REQ_QUEUE = os.environ["ID_REQ_QUEUE"]
@@ -32,7 +33,7 @@ EOF_TYPES = ["dist_mean", "trip_count", "dur_avg"]
 INITIAL_SEND_RATE = int(os.environ.get("INITIAL_SEND_RATE", 10))
 INVOKER_WAIT_TIME = int(os.environ.get("INVOKER_WAIT_TIME", 5))
 CONTROL_TIMEOUT = float(os.environ.get("CONTROL_TIMEOUT", 0.1))
-
+LOG_RATE_CHANCE = 0.3
 
 
 class BasicClient(ABC):
@@ -40,6 +41,7 @@ class BasicClient(ABC):
         timestamp = datetime.datetime.now().strftime("%Y-%m%d-%H%M")
         self.client_id = f'{config["client_id"]}-{timestamp}'
         self.session_id = None  # Assigned by the server
+        self.finished = False
         self.router = Router(GATEWAY, GATEWAY_AMOUNT)
 
         self._all_cities = config["cities"]
@@ -66,7 +68,7 @@ class BasicClient(ABC):
             session_id = response.client_id
 
             self.session_id = session_id
-            logging.info(f"Assigned Session Id: {session_id}")
+            success(f"Assigned Session Id: {session_id}")
             return True
 
         response_queue = ID_REQ_QUEUE
@@ -195,11 +197,13 @@ class BasicClient(ABC):
         client_control_packet = ClientControlPacket.decode(message)
         if isinstance(client_control_packet.data, RateLimitChangeRequest):
             self._send_rate = client_control_packet.data.new_rate
-            trace(f"Rate limit changed to {self._send_rate}")
+            if random.random() < LOG_RATE_CHANCE:
+                log_msg(f"Rate limit changed to {self._send_rate}")
         elif client_control_packet.data == "SessionExpired":
-            self._rabbit.close()
-            logging.critical("Session expired "+str(self.session_id))
-            raise ConnectionAbortedError("SessionExpired")
+            if not self.finished:
+                self._rabbit.close()
+                logging.critical("Session expired "+str(self.session_id))
+                raise ConnectionAbortedError("SessionExpired")
         else:
             raise NotImplementedError(f"Unknown control packet type: {type(client_control_packet)}")
 
@@ -216,6 +220,7 @@ class BasicClient(ABC):
 
     def __run(self):
         self.__send_cities_data()
+        self.finished = True
         self.__get_responses()
 
     def run(self):
