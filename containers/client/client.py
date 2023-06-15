@@ -1,7 +1,7 @@
 import logging
 import os
 import time
-from typing import Iterator, List
+from typing import List, Iterator
 
 from basic_client import BasicClient
 from common.packets.dur_avg_out import DurAvgOut

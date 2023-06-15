@@ -21,7 +21,6 @@ class PacketFactory:
     @staticmethod
     def set_ids(client_id: str):
         PacketFactory.client_id = client_id
-        PacketFactory.replica_id = 0
 
     @staticmethod
     def next_seq_number():

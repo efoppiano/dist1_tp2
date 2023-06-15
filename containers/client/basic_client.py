@@ -1,10 +1,14 @@
 import logging
 import os
+import random
 import datetime
 import threading
+import time
 from abc import ABC, abstractmethod
 from typing import List, Iterator
 
+from common.components.invoker import Invoker
+from common.packets.client_control_packet import ClientControlPacket, RateLimitChangeRequest
 from packet_factory import PacketFactory
 from common.packets.dur_avg_out import DurAvgOut
 from common.packets.client_response_packets import GenericResponsePacket
@@ -14,14 +18,22 @@ from common.packets.trips_count_by_year_joined import TripsCountByYearJoined
 from common.middleware.rabbit_middleware import Rabbit
 from common.components.readers import WeatherInfo, StationInfo, TripInfo, ClientIdResponsePacket
 from common.router import Router
-from common.utils import success
+from common.utils import log_msg, success
 
 RABBIT_HOST = os.environ.get("RABBIT_HOST", "rabbitmq")
 ID_REQ_QUEUE = os.environ["ID_REQ_QUEUE"]
+CLIENT_ID = os.environ["CLIENT_ID"]
+
 GATEWAY = os.environ["GATEWAY"]
 GATEWAY_AMOUNT = int(os.environ["GATEWAY_AMOUNT"])
-
+CONTROL_QUEUE_PREFIX = os.environ.get("CONTROL_QUEUE_PREFIX", "control_")
+RESULTS_QUEUE_PREFIX = os.environ.get("RESULTS_QUEUE_PREFIX", "results_")
 EOF_TYPES = ["dist_mean", "trip_count", "dur_avg"]
+
+INITIAL_SEND_RATE = int(os.environ.get("INITIAL_SEND_RATE", 10))
+INVOKER_WAIT_TIME = int(os.environ.get("INVOKER_WAIT_TIME", 5))
+CONTROL_TIMEOUT = float(os.environ.get("CONTROL_TIMEOUT", 0.1))
+LOG_RATE_CHANCE = 0.3
 
 
 class BasicClient(ABC):
@@ -29,10 +41,13 @@ class BasicClient(ABC):
         timestamp = datetime.datetime.now().strftime("%Y-%m%d-%H%M")
         self.client_id = f'{config["client_id"]}-{timestamp}'
         self.session_id = None  # Assigned by the server
+        self.finished = False
         self.router = Router(GATEWAY, GATEWAY_AMOUNT)
 
         self._all_cities = config["cities"]
         self._eofs = {}
+        self._send_rate = INITIAL_SEND_RATE
+        self._invoker = Invoker(INVOKER_WAIT_TIME, self.__check_control_queue)
 
         self._rabbit = Rabbit(RABBIT_HOST)
         self.__set_up_signal_handler()
@@ -53,7 +68,7 @@ class BasicClient(ABC):
             session_id = response.client_id
 
             self.session_id = session_id
-            logging.info(f"Assigned Session Id: {session_id}")
+            success(f"Assigned Session Id: {session_id}")
             return True
 
         response_queue = ID_REQ_QUEUE
@@ -91,30 +106,38 @@ class BasicClient(ABC):
         for weather_info_list in self.get_weather(city):
             packet = PacketFactory.build_weather_packet(city, weather_info_list)
             self._rabbit.produce(queue, packet)
+            self._invoker.check()
+            time.sleep(1 / self._send_rate)
 
     def __send_stations_data(self, queue: str, city: str):
         for station_info_list in self.get_stations(city):
             packet = PacketFactory.build_station_packet(city, station_info_list)
             self._rabbit.produce(queue, packet)
+            self._invoker.check()
+            time.sleep(1 / self._send_rate)
 
     def __send_trips_data(self, queue: str, city: str):
         for trip_info_list in self.get_trips(city):
             self._rabbit.produce(queue, PacketFactory.build_trip_packet(city, trip_info_list))
+            self._invoker.check()
+            time.sleep(1 / self._send_rate)
 
         self._rabbit.produce(queue, PacketFactory.build_trip_eof(city))
 
     def __send_data_from_city(self, city: str):
         logging.info(f"action: client_send_data | result: in_progress | city: {city}")
-        queue_name = self.router.route(hashing_key=self.client_id)
+        queue_name = self.router.route(hashing_key=CLIENT_ID)
 
         try:
             self.__send_weather_data(queue_name, city)
             self.__send_stations_data(queue_name, city)
             self.__send_trips_data(queue_name, city)
-            success(f"action: client_send_data | result: success | city: {city}")
+            logging.info(f"action: client_send_data | result: success | city: {city}")
         except Exception as e:
             logging.error(f"action: client_send_data | result: error | city: {city} | error: {e}")
             raise e
+        finally:
+            logging.info(f"action: client_send_data | result: finished | city: {city}")
 
     def __send_cities_data(self):
         for city in self._all_cities:
@@ -166,16 +189,38 @@ class BasicClient(ABC):
 
         return True
 
+    def __check_control_queue(self):
+        queue = CONTROL_QUEUE_PREFIX+str(self.session_id)
+        self._rabbit.consume_one(queue, self.__handle_control_message, timeout=CONTROL_TIMEOUT, create=False)
+
+    def __handle_control_message(self, message: bytes) -> bool:
+        client_control_packet = ClientControlPacket.decode(message)
+        if isinstance(client_control_packet.data, RateLimitChangeRequest):
+            self._send_rate = client_control_packet.data.new_rate
+            if random.random() < LOG_RATE_CHANCE:
+                log_msg(f"Rate limit changed to {self._send_rate}")
+        elif client_control_packet.data == "SessionExpired":
+            if not self.finished:
+                self._rabbit.close()
+                logging.critical("Session expired "+str(self.session_id))
+                raise ConnectionAbortedError("SessionExpired")
+        else:
+            raise NotImplementedError(f"Unknown control packet type: {type(client_control_packet)}")
+
+        return True
+
     def __get_responses(self):
 
-        # TODO: Do not hardcode the queue name
-        queue = f"results_{self.session_id}"
-        self._rabbit.consume(queue, self.__handle_message)
+        results_queue = RESULTS_QUEUE_PREFIX+str(self.session_id)
+        self._rabbit.consume(results_queue, self.__handle_message, create=False)
+
+        # control_queue not needed, since we are no longer sending packets
 
         self._rabbit.start()
 
     def __run(self):
         self.__send_cities_data()
+        self.finished = True
         self.__get_responses()
 
     def run(self):

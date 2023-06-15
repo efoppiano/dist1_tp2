@@ -85,14 +85,15 @@ class ResponseProvider:
         if client_id in self._evicting and not time == 0:
             return
 
-        if time == 0:
+        if time < 1:
             _time = self._evicting.get(client_id, 0)
             log_evict(f"Evicting client {client_id} after {_time} seconds")
             self._rabbit.delete_queue(f"results_{client_id}")
+            self._rabbit.delete_queue(f"control_{client_id}")
         else:
             log_evict(f"Evicting client {client_id} in {time} seconds")
             self._rabbit.call_later(time, lambda client_id=client_id: self.__evict_client(client_id))
-        
+
         self._evicting[client_id] = time
 
     def __handle_eof(self, packet: GenericPacket, eof: Eof, packet_type: str) -> bool:
@@ -100,7 +101,6 @@ class ResponseProvider:
         self._eofs_received.setdefault(flow_id, 0)
         self._eofs_received[flow_id] += 1
 
-        
         if self._eofs_received[flow_id] < self.input_queues[packet_type][1]:
             trace(
                 f"Received EOF {flow_id} - {self._eofs_received[flow_id]}/{self.input_queues[packet_type][1]}")
@@ -108,7 +108,7 @@ class ResponseProvider:
             return False
         logging.debug(
             f"Received EOF {flow_id} - {self._eofs_received[flow_id]}/{self.input_queues[packet_type][1]}")
-        
+
         self._eofs_received.pop(flow_id)
 
         if eof.drop:

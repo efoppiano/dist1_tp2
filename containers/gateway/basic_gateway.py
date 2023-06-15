@@ -1,5 +1,6 @@
 import abc
 import logging
+import math
 import os
 import pickle
 import time
@@ -8,10 +9,12 @@ from typing import Dict, List
 
 from common.components.heartbeater import HeartBeater
 from common.components.message_sender import MessageSender
-from common.packets.client_packet import ClientDataPacket, ClientPacket
 from common.components.readers import ClientIdResponsePacket
+from common.packets.client_control_packet import ClientControlPacket, RateLimitChangeRequest
+from common.packets.client_packet import ClientDataPacket, ClientPacket
+from common.rate_checker import RateChecker, Rates
 from common.router import Router
-from common.utils import save_state, load_state, min_hash, log_duplicate
+from common.utils import save_state, load_state, min_hash, log_duplicate, trace
 from common.packets.eof import Eof
 from common.packets.generic_packet import GenericPacketBuilder
 from common.middleware.rabbit_middleware import Rabbit
@@ -26,6 +29,7 @@ NEXT_AMOUNT = int(os.environ["NEXT_AMOUNT"])
 RABBIT_HOST = os.environ.get("RABBIT_HOST", "rabbitmq")
 MAX_SEQ_NUMBER = 2 ** 10  # 2 packet ids would be enough, but we use more for traceability
 
+RATE_CHECK_INTERVAL = 5
 
 class BasicGateway(ABC):
     def __init__(self, replica_id: int):
@@ -34,9 +38,10 @@ class BasicGateway(ABC):
         self._basic_gateway_replica_id = replica_id
         self._last_chunk_received = None
         self._last_eof_received = None
-        
+
         self.router = Router(NEXT, NEXT_AMOUNT)
         self.heartbeater = HeartBeater(self._rabbit)
+        self._rate_checker = RateChecker()
         self._message_sender = MessageSender(self._rabbit)
         self.health_checker = ClientHealthChecker(
             self._rabbit, self.router, self._message_sender,
@@ -51,11 +56,11 @@ class BasicGateway(ABC):
 
     def __setup_middleware(self):
         self._rabbit = Rabbit(RABBIT_HOST)
-        input_queue = INPUT_QUEUE
-        self._rabbit.consume(input_queue, self.__on_stream_message_callback)
+        self._input_queue = INPUT_QUEUE
+        self._rabbit.consume(self._input_queue, self.__on_stream_message_callback)
         eof_routing_key = EOF_ROUTING_KEY
-        logging.info(f"Routing packets to {input_queue} using routing key {eof_routing_key}")
-        self._rabbit.route(input_queue, "publish", eof_routing_key)
+        logging.info(f"Routing packets to {self._input_queue} using routing key {eof_routing_key}")
+        self._rabbit.route(self._input_queue, "publish", eof_routing_key)
 
     def __handle_chunk(self, flow_id, chunk: List[bytes]) -> Dict[str, List[bytes]]:
         outgoing_messages = {}
@@ -100,13 +105,18 @@ class BasicGateway(ABC):
                 return False
             self._last_chunk_received = packet_id
 
-        logging.debug(f"Received {packet_id}-{min_hash(packet.data)}")
+        trace(f"Received {packet_id}-{min_hash(packet.data)}")
 
         return True
 
     def __generate_and_send_client_id(self):
         new_client_id = f"{self._basic_gateway_replica_id}_{time.time_ns()}"
         logging.info(f"New client id: {new_client_id}")
+
+        control_queue = f"control_{new_client_id}"
+        results_queue = f"results_{new_client_id}"
+        self._rabbit.declare_queue(control_queue)
+        self._rabbit.declare_queue(results_queue)
 
         response = ClientIdResponsePacket(new_client_id).encode()
 
@@ -118,10 +128,11 @@ class BasicGateway(ABC):
         if not isinstance(decoded.data, ClientDataPacket):
             self.__generate_and_send_client_id()
             return True
-        
-        if not self.health_checker.is_client(decoded.client_id):
-            # TODO: Send error message to client
-            self.health_checker.evict(decoded.client_id)
+
+        if not self.health_checker.is_client(decoded.data.client_id):
+            # Got data from a client already marked as dead, it should realize its
+            # session is expired from the control message or the closing of its queues
+            logging.debug(f"Received data from dead client {decoded.data.client_id}")
             return True
 
         if not self.__update_last_received(decoded.data):
@@ -144,8 +155,48 @@ class BasicGateway(ABC):
             eof_output_queue: message
         }
 
+    def __change_rates_if_needed(self, rates: Rates):
+        users_amount = len(self.health_checker.get_clients())
+        trace("rates: %d ack/s %d pub*s | users_amount: %d | difference %d",
+                     rates.ack_per_second, rates.publish_per_second,
+                     users_amount, rates.ack_per_second - rates.publish_per_second)
+        if users_amount == 0:
+            return
+
+        # TODO: Make sure not to overload the system
+        if rates.ack_per_second - rates.publish_per_second >= 0.0:
+            # Increase rate
+            new_rate = math.ceil((2 * (rates.publish_per_second + 1)) / users_amount)
+        else:
+            # Decrease rate
+            new_rate = math.ceil((rates.ack_per_second + 1) / users_amount)
+
+        trace(f"action: change_rate | new_rate: {new_rate}")
+
+        if new_rate == 0:
+            trace("Rate not changed because it would be 0")
+            return
+
+        for user in self.health_checker.get_clients():
+            client_control_queue = f"control_{user}"
+            packet = RateLimitChangeRequest(new_rate)
+
+            self._rabbit.produce(client_control_queue, ClientControlPacket(packet).encode())
+
+        self.health_checker.set_expected_client_rate(new_rate)
+
+    def __check_rates(self):
+        rates = self._rate_checker.get_rates(self._input_queue)
+        if rates is None:
+            logging.debug("action: check_rate | result: no data")
+        else:
+            self.__change_rates_if_needed(rates)
+
+        self._rabbit.call_later(RATE_CHECK_INTERVAL, self.__check_rates)
+
     def start(self):
         self.heartbeater.start()
+        self._rabbit.call_later(RATE_CHECK_INTERVAL, self.__check_rates)
         self.health_checker.start()
         self._rabbit.start()
 
