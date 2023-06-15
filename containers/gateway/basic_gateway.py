@@ -183,6 +183,8 @@ class BasicGateway(ABC):
 
             self._rabbit.produce(client_control_queue, ClientControlPacket(packet).encode())
 
+        self.health_checker.set_expected_client_rate(new_rate)
+
     def __check_rates(self):
         rates = self._rate_checker.get_rates(self._input_queue)
         if rates is None:

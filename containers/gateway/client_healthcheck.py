@@ -10,6 +10,7 @@ from common.utils import log_evict
 
 HEALTHCHECK_LAPSE = 10
 CLIENT_TIMEOUT = 10
+CLIENT_TIMEOUT_TO_LAPSE_RATIO = 5
 EVICTION_TIME = 10
 
 
@@ -22,7 +23,8 @@ class ClientHealthChecker:
                  replica_id: int,
                  save_state: Callable,
                  lapse: int = HEALTHCHECK_LAPSE,
-                 client_timeout: int = CLIENT_TIMEOUT,
+                 initial_client_timeout: float = CLIENT_TIMEOUT,
+                 client_timeout_to_lapse_ratio: int = CLIENT_TIMEOUT_TO_LAPSE_RATIO,
                  eviction_time: int = EVICTION_TIME
                  ) -> None:
 
@@ -35,7 +37,8 @@ class ClientHealthChecker:
 
         self._save_state = save_state
         self._lapse = lapse
-        self._client_timeout = client_timeout
+        self._client_timeout = initial_client_timeout
+        self._client_timeout_to_lapse_ratio = client_timeout_to_lapse_ratio
         self._eviction_time = eviction_time
 
         self._clients = {}  # [client_id]: (last_city, last_time, finished)
@@ -78,6 +81,17 @@ class ClientHealthChecker:
 
     def ping(self, client_id: str, city: Optional[str], finished: bool = False):
         self._clients[client_id] = (city, time.time(), finished)
+
+    def set_expected_client_rate(self, rate: float):
+        expected_lapse = 1 / rate
+        expected_timeout = expected_lapse * self._client_timeout_to_lapse_ratio
+
+        # Timeout can increase sharply, but decreases slowly
+        if expected_timeout > self._client_timeout:
+            self._client_timeout = expected_timeout
+        else:
+            self._client_timeout = 0.8 * self._client_timeout + 0.2 * expected_timeout
+
 
     def get_clients(self):
         clients = set(self._clients.keys())
