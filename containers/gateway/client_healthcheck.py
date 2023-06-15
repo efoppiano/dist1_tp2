@@ -5,6 +5,7 @@ from common.packets.eof import Eof
 from common.middleware.rabbit_middleware import Rabbit
 from common.components.message_sender import MessageSender
 from common.packets.generic_packet import GenericPacketBuilder
+from common.packets.client_control_packet import ClientControlPacket
 from common.utils import log_evict
 
 HEALTHCHECK_LAPSE = 10
@@ -32,9 +33,7 @@ class ClientHealthChecker:
         # TODO: Not sure if this could collide with the gateway, so I'm using a negative replica_id
         self._replica_id = -replica_id
 
-        # TODO: ClientHealthChecker could save state independently
         self._save_state = save_state
-
         self._lapse = lapse
         self._client_timeout = client_timeout
         self._eviction_time = eviction_time
@@ -43,13 +42,19 @@ class ClientHealthChecker:
         self._evicting = set()  # [client_id]
 
     def evict(self, client_id: str, last_city: str = None, drop: bool = False):
-        builder = GenericPacketBuilder(self._replica_id, client_id, last_city)
+        # Notify the client it has been evicted
+        control_queue = f"control_{client_id}"
+        self._rabbit.produce(control_queue, ClientControlPacket("SessionExpired").encode())
 
+        # Send EOF to the next replica with eviction time
+        builder = GenericPacketBuilder(self._replica_id, client_id, last_city)
         eof = Eof(drop, self._eviction_time)
         outgoing_messages = {self._output_queue: eof}
 
         self._message_sender.send(builder, outgoing_messages)
-        del self._clients[client_id]
+        if client_id in self._clients:
+            del self._clients[client_id]
+
         log_evict(f"Evicting client {client_id} | Drop: {drop}")
 
     def check_clients(self):
