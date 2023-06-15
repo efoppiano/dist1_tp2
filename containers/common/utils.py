@@ -21,9 +21,13 @@ def initialize_log(logging_level=logging.INFO):
     logging.addLevelName(
         logging.DEBUG, "\033[0;35m%s\033[1;0m" % logging.getLevelName(logging.DEBUG))
     
-    logging.MISSING = 15
+    logging.MISSING = 14
     logging.addLevelName(
         logging.MISSING, "\033[0;33mMISSING\033[1;0m")
+    
+    logging.MSG = 16
+    logging.addLevelName(
+        logging.MSG, "\033[0;32mMSG\033[1;0m")
 
     logging.addLevelName(
         logging.INFO, "\033[0;34m%s\033[1;0m" % logging.getLevelName(logging.INFO))
@@ -38,7 +42,7 @@ def initialize_log(logging_level=logging.INFO):
 
     logging.SUCCESS = 28
     logging.addLevelName(
-        logging.SUCCESS, "\033[1;32mSUCCESS\033[1;0m")
+        logging.SUCCESS, "\033[1;92mSUCCESS\033[1;0m")
 
     logging.addLevelName(
         logging.WARNING, "\033[1;93m%s\033[1;0m" % logging.getLevelName(logging.WARNING))
@@ -59,9 +63,11 @@ def trace(message, *args, **kws):
 def log_missing(message, *args, **kws):
     logging.log(logging.MISSING, message, *args, **kws)
 
+def log_msg(message, *args, **kws):
+    logging.log(logging.MSG, message, *args, **kws)
+
 def log_duplicate(message, *args, **kws):
     logging.log(logging.DUPLICATE, message, *args, **kws)
-
 
 def log_evict(message, *args, **kws):
     logging.log(logging.EVICT, message, *args, **kws)
