@@ -116,30 +116,32 @@ class BasicClient(ABC):
             self._invoker.check()
             time.sleep(1 / self._send_rate)
 
-    def __send_trips_data(self, queue: str, city: str):
+    def __send_trips_data(self, queue: str, city: str, last: bool = False):
         for trip_info_list in self.get_trips(city):
             self._rabbit.produce(queue, PacketFactory.build_trip_packet(city, trip_info_list))
             self._invoker.check()
             time.sleep(1 / self._send_rate)
 
+        self.finished = last
         self._rabbit.produce(queue, PacketFactory.build_trip_eof(city))
 
-    def __send_data_from_city(self, city: str):
+    def __send_data_from_city(self, city: str, last: bool = False):
         logging.info(f"action: client_send_data | result: in_progress | city: {city}")
         queue_name = self.router.route(hashing_key=CLIENT_ID)
 
         try:
             self.__send_weather_data(queue_name, city)
             self.__send_stations_data(queue_name, city)
-            self.__send_trips_data(queue_name, city)
-            logging.info(f"action: client_send_data | result: success | city: {city}")
+            self.__send_trips_data(queue_name, city, last)
+            logging.info(f"sent_data | city: {city}")
         except Exception as e:
-            logging.error(f"action: client_send_data | result: error | city: {city} | error: {e}")
+            logging.error(f"send_data | city: {city} | error: {e}")
             raise e
 
     def __send_cities_data(self):
         for city in self._all_cities:
-            self.__send_data_from_city(city)
+            last = city == self._all_cities[-1]
+            self.__send_data_from_city(city, last)
 
     def __handle_dist_mean(self, city_name: str, data: List[bytes]):
         for item in data:
@@ -219,7 +221,6 @@ class BasicClient(ABC):
 
     def __run(self):
         self.__send_cities_data()
-        self.finished = True
         self.__get_responses()
 
     def run(self):
