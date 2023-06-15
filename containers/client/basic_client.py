@@ -23,6 +23,7 @@ ID_REQ_QUEUE = os.environ["ID_REQ_QUEUE"]
 GATEWAY = os.environ["GATEWAY"]
 GATEWAY_AMOUNT = int(os.environ["GATEWAY_AMOUNT"])
 START_SEND_DATE = int(os.environ.get("START_SEND_DATE", 10))
+INVOKER_WAIT_TIME = int(os.environ.get("INVOKER_WAIT_TIME", 5))
 CLIENT_ID = os.environ["CLIENT_ID"]
 
 EOF_TYPES = ["dist_mean", "trip_count", "dur_avg"]
@@ -38,7 +39,7 @@ class BasicClient(ABC):
         self._all_cities = config["cities"]
         self._eofs = {}
         self._send_rate = START_SEND_DATE
-        self._invoker = Invoker(5, self.__check_control_queue)
+        self._invoker = Invoker(INVOKER_WAIT_TIME, self.__check_control_queue)
 
         self._rabbit = Rabbit(RABBIT_HOST)
         self.__set_up_signal_handler()
