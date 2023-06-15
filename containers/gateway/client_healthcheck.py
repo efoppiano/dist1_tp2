@@ -9,8 +9,9 @@ from common.packets.client_control_packet import ClientControlPacket
 from common.utils import log_evict
 
 HEALTHCHECK_LAPSE = 10
-CLIENT_TIMEOUT = 10
-CLIENT_TIMEOUT_TO_LAPSE_RATIO = 5
+INITIAL_CLIENT_TIMEOUT = 50
+NEW_CLIENT_GRACE_FACTOR = 5
+CLIENT_TIMEOUT_TO_LAPSE_RATIO = 10
 EVICTION_TIME = 10
 
 
@@ -23,7 +24,7 @@ class ClientHealthChecker:
                  replica_id: int,
                  save_state: Callable,
                  lapse: int = HEALTHCHECK_LAPSE,
-                 initial_client_timeout: float = CLIENT_TIMEOUT,
+                 initial_client_timeout: float = INITIAL_CLIENT_TIMEOUT,
                  client_timeout_to_lapse_ratio: int = CLIENT_TIMEOUT_TO_LAPSE_RATIO,
                  eviction_time: int = EVICTION_TIME
                  ) -> None:
@@ -63,8 +64,13 @@ class ClientHealthChecker:
     def check_clients(self):
         now = time.time()
 
-        for client_id, (_, last_time, _) in self._clients.items():
-            if now - last_time > self._client_timeout:
+        for client_id, (last_city, last_time, _) in self._clients.items():
+            if last_city is None:
+                timeout = INITIAL_CLIENT_TIMEOUT * NEW_CLIENT_GRACE_FACTOR
+            else:
+                timeout = self._client_timeout
+
+            if now - last_time > timeout:
                 self._evicting.add(client_id)
         self._save_state()
 

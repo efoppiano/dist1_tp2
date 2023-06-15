@@ -198,7 +198,7 @@ class BasicClient(ABC):
             trace(f"Rate limit changed to {self._send_rate}")
         elif client_control_packet.data == "SessionExpired":
             self._rabbit.close()
-            logging.critical("Session expired")
+            logging.critical("Session expired "+str(self.session_id))
             raise ConnectionAbortedError("SessionExpired")
         else:
             raise NotImplementedError(f"Unknown control packet type: {type(client_control_packet)}")
