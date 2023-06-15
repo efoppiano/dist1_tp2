@@ -1,9 +1,12 @@
 import logging
 import os
 import datetime
+import threading
+import time
 from abc import ABC, abstractmethod
-from typing import List, Optional
+from typing import List, Iterator
 
+from common.components.invoker import Invoker
 from common.packets.client_control_packet import ClientControlPacket, RateLimitChangeRequest
 from packet_factory import PacketFactory
 from common.packets.dur_avg_out import DurAvgOut
@@ -33,13 +36,9 @@ class BasicClient(ABC):
         self.router = Router(GATEWAY, GATEWAY_AMOUNT)
 
         self._all_cities = config["cities"]
-        self._cities_not_sent = self._all_cities.copy()
-        self._files_not_send = {city: ["weather", "stations", "trips"] for city in self._all_cities}
         self._eofs = {}
         self._send_rate = START_SEND_DATE
-        self._weather_lines_sent_by_city = {city: 0 for city in self._all_cities}
-        self._stations_lines_sent_by_city = {city: 0 for city in self._all_cities}
-        self._trips_lines_sent_by_city = {city: 0 for city in self._all_cities}
+        self._invoker = Invoker(5, self.__check_control_queue)
 
         self._rabbit = Rabbit(RABBIT_HOST)
         self.__set_up_signal_handler()
@@ -69,17 +68,17 @@ class BasicClient(ABC):
 
     @staticmethod
     @abstractmethod
-    def get_weather(city: str) -> Optional[List[WeatherInfo]]:
+    def get_weather(city: str) -> Iterator[List[WeatherInfo]]:
         pass
 
     @staticmethod
     @abstractmethod
-    def get_stations(city: str) -> Optional[List[StationInfo]]:
+    def get_stations(city: str) -> Iterator[List[StationInfo]]:
         pass
 
     @staticmethod
     @abstractmethod
-    def get_trips(city: str) -> Optional[List[TripInfo]]:
+    def get_trips(city: str) -> Iterator[List[TripInfo]]:
         pass
 
     @abstractmethod
@@ -95,59 +94,45 @@ class BasicClient(ABC):
         pass
 
     def __send_weather_data(self, queue: str, city: str):
-        weather_info_list = self.get_weather(city)
-        if weather_info_list:
-            self._weather_lines_sent_by_city[city] += len(weather_info_list)
+        for weather_info_list in self.get_weather(city):
             packet = PacketFactory.build_weather_packet(city, weather_info_list)
             self._rabbit.produce(queue, packet)
-            self._rabbit.call_later(1 / self._send_rate, lambda: self.__send_weather_data(queue, city))
-        else:
-            self._rabbit.call_later(1 / self._send_rate, lambda: self.__send_next_file_from_city(city))
+            self._invoker.check()
+            time.sleep(1 / self._send_rate)
 
     def __send_stations_data(self, queue: str, city: str):
-        station_info_list = self.get_stations(city)
-        if station_info_list:
-            self._stations_lines_sent_by_city[city] += len(station_info_list)
+        for station_info_list in self.get_stations(city):
             packet = PacketFactory.build_station_packet(city, station_info_list)
             self._rabbit.produce(queue, packet)
-            self._rabbit.call_later(1 / self._send_rate, lambda: self.__send_stations_data(queue, city))
-        else:
-            self._rabbit.call_later(1 / self._send_rate, lambda: self.__send_next_file_from_city(city))
+            self._invoker.check()
+            time.sleep(1 / self._send_rate)
 
     def __send_trips_data(self, queue: str, city: str):
-        trip_info_list = self.get_trips(city)
-        if trip_info_list:
-            self._trips_lines_sent_by_city[city] += len(trip_info_list)
+        for trip_info_list in self.get_trips(city):
             self._rabbit.produce(queue, PacketFactory.build_trip_packet(city, trip_info_list))
-            self._rabbit.call_later(1 / self._send_rate, lambda: self.__send_trips_data(queue, city))
-        else:
-            self._rabbit.produce(queue, PacketFactory.build_trip_eof(city))
-            self._rabbit.call_later(1 / self._send_rate, lambda: self.__send_next_file_from_city(city))
+            self._invoker.check()
+            time.sleep(1 / self._send_rate)
 
-    def __send_next_file_from_city(self, city: str):
+        self._rabbit.produce(queue, PacketFactory.build_trip_eof(city))
+
+    def __send_data_from_city(self, city: str):
+        logging.info(f"action: client_send_data | result: in_progress | city: {city}")
         queue_name = self.router.route(hashing_key=CLIENT_ID)
 
-        if not self._files_not_send[city]:
-            logging.info(f"action: client_send_data | result: finished | city: {city}")
-            self._rabbit.call_later(1 / self._send_rate, self.__send_next_city_data)
-            return
-
-        file = self._files_not_send[city].pop(0)
-        logging.info(f"action: client_send_data | result: in_progress | city: {city} | file: {file}")
-        if file == "weather":
+        try:
             self.__send_weather_data(queue_name, city)
-        elif file == "stations":
             self.__send_stations_data(queue_name, city)
-        elif file == "trips":
             self.__send_trips_data(queue_name, city)
+            logging.info(f"action: client_send_data | result: success | city: {city}")
+        except Exception as e:
+            logging.error(f"action: client_send_data | result: error | city: {city} | error: {e}")
+            raise e
+        finally:
+            logging.info(f"action: client_send_data | result: finished | city: {city}")
 
-    def __send_next_city_data(self):
-        if not self._cities_not_sent:
-            logging.info("action: client_send_data | result: finished")
-            return
-
-        city = self._cities_not_sent.pop()
-        self.__send_next_file_from_city(city)
+    def __send_cities_data(self):
+        for city in self._all_cities:
+            self.__send_data_from_city(city)
 
     def __handle_dist_mean(self, city_name: str, data: List[bytes]):
         for item in data:
@@ -165,7 +150,6 @@ class BasicClient(ABC):
             self.handle_trip_count_by_year_joined_packet(city_name, trips_count)
 
     def __handle_eof(self, eof_type: str, city_name: str):
-        logging.info(f"action: client_eof_received | city: {city_name} | eof_type: {eof_type}")
         self._eofs.setdefault(eof_type, set())
         self._eofs[eof_type].add(city_name)
 
@@ -192,12 +176,13 @@ class BasicClient(ABC):
             logging.warning(f"Unexpected message type: {packet.type}")
 
         if self.__all_eofs_received():
-            logging.info(f"weather_lines_sent_by_city: {self._weather_lines_sent_by_city}")
-            logging.info(f"stations_lines_sent_by_city: {self._stations_lines_sent_by_city}")
-            logging.info(f"trips_lines_sent_by_city: {self._trips_lines_sent_by_city}")
             self._rabbit.stop()
 
         return True
+
+    def __check_control_queue(self):
+        queue = f"control_{self.session_id}"
+        self._rabbit.consume_until_empty(queue, self.__handle_control_message)
 
     def __handle_control_message(self, message: bytes) -> bool:
         client_control_packet = ClientControlPacket.decode(message)
@@ -209,11 +194,19 @@ class BasicClient(ABC):
 
         return True
 
-    def run(self):
+    def __get_responses(self):
+
         # TODO: Do not hardcode the queue name
-        results_queue = f"results_{self.session_id}"
-        control_queue = f"control_{self.session_id}"
-        self._rabbit.consume(results_queue, self.__handle_message)
-        self._rabbit.consume(control_queue, self.__handle_control_message)
-        self._rabbit.call_later(1 / self._send_rate, self.__send_next_city_data)
+        queue = f"results_{self.session_id}"
+        self._rabbit.consume(queue, self.__handle_message)
+
         self._rabbit.start()
+
+    def __run(self):
+        self.__send_cities_data()
+        self.__get_responses()
+
+    def run(self):
+        thread = threading.Thread(target=self.__run)
+        thread.start()
+        thread.join()

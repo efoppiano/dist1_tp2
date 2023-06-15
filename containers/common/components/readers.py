@@ -1,6 +1,6 @@
 import uuid
 from dataclasses import dataclass
-from typing import Iterator, Union, List, Optional
+from typing import Iterator, Union, List
 
 from common.packets.basic_packet import BasicPacket
 
@@ -125,77 +125,72 @@ class WeatherReader:
     def __init__(self, data_folder_path: str, city: str):
         self._data_folder_path = data_folder_path
         self._city = city
-        # TODO: Close after reading
-        self._file = open(self.__weather_path())
-        self._file.readline()
 
     def __weather_path(self) -> str:
         return f"{self._data_folder_path}/{self._city}/weather.csv"
 
-    def next_data(self) -> Optional[List[WeatherInfo]]:
-        weather_info_list = []
-        for _ in range(CHUNK_SIZE):
-            line = self._file.readline()
-            if line == "":
-                break
-            try:
-                weather_info = WeatherInfo.from_csv(self._city, line)
-            except ValueError as e:
-                continue
-            weather_info_list.append(weather_info)
-        if len(weather_info_list) == 0:
-            return None
-        return weather_info_list
+    def next_data(self) -> Iterator[List[WeatherInfo]]:
+        with open(self.__weather_path()) as f:
+            _ = f.readline()
+            weather_info_list = []
+            for line in f:
+                try:
+                    weather_info = WeatherInfo.from_csv(self._city, line)
+                except ValueError as e:
+                    continue
+                weather_info_list.append(weather_info)
+                if len(weather_info_list) == CHUNK_SIZE:
+                    yield weather_info_list
+                    weather_info_list = []
+            if len(weather_info_list) > 0:
+                yield weather_info_list
 
 
 class StationReader:
     def __init__(self, data_folder_path: str, city: str):
         self._data_folder_path = data_folder_path
         self._city = city
-        # TODO: Close after reading
-        self._file = open(self.__station_path())
-        self._file.readline()
 
     def __station_path(self) -> str:
         return f"{self._data_folder_path}/{self._city}/stations.csv"
 
-    def next_data(self) -> Optional[List[StationInfo]]:
-        station_info_list = []
-        for _ in range(CHUNK_SIZE):
-            line = self._file.readline()
-            if line == "":
-                break
-            try:
-                station_info = StationInfo.from_csv(self._city, line)
-            except ValueError as e:
-                continue
-            station_info_list.append(station_info)
-        if len(station_info_list) == 0:
-            return None
-        return station_info_list
+    def next_data(self) -> Iterator[List[StationInfo]]:
+        with open(self.__station_path()) as f:
+            _ = f.readline()
+            station_info_list = []
+            for line in f:
+                try:
+                    station_info = StationInfo.from_csv(self._city, line)
+                except ValueError as e:
+                    continue
+                station_info_list.append(station_info)
+                if len(station_info_list) == CHUNK_SIZE:
+                    yield station_info_list
+                    station_info_list = []
+            if len(station_info_list) > 0:
+                yield station_info_list
 
 
 class TripReader:
     def __init__(self, data_folder_path: str, city: str):
         self._data_folder_path = data_folder_path
         self._city = city
-        self._file = open(self.__station_path())
-        self._file.readline()
 
     def __station_path(self) -> str:
         return f"{self._data_folder_path}/{self._city}/trips.csv"
 
-    def next_data(self) -> Optional[List[TripInfo]]:
-        trip_info_list = []
-        for _ in range(CHUNK_SIZE):
-            line = self._file.readline()
-            if line == "":
-                break
-            try:
-                trip_info = TripInfo.from_csv(self._city, line)
-            except ValueError as e:
-                continue
-            trip_info_list.append(trip_info)
-        if len(trip_info_list) == 0:
-            return None
-        return trip_info_list
+    def next_data(self) -> Iterator[List[TripInfo]]:
+        with open(self.__station_path()) as f:
+            _ = f.readline()
+            trip_info_list = []
+            for line in f:
+                try:
+                    trip_info = TripInfo.from_csv(self._city, line)
+                except ValueError as e:
+                    continue
+                trip_info_list.append(trip_info)
+                if len(trip_info_list) == CHUNK_SIZE:
+                    yield trip_info_list
+                    trip_info_list = []
+            if len(trip_info_list) > 0:
+                yield trip_info_list

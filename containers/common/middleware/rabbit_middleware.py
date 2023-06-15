@@ -97,9 +97,9 @@ class Rabbit(MessageQueue):
             self._channel.cancel()
 
     def consume_until_empty(self, queue: str, callback: Callable[[bytes], bool]):
-        '''
+        """
         Consumes messages from a queue until it is empty.
-        '''
+        """
         # TODO: Check if this works
         self.declare_queue(queue)
         while True:
