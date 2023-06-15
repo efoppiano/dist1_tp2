@@ -127,7 +127,7 @@ class BasicClient(ABC):
 
     def __send_data_from_city(self, city: str, last: bool = False):
         logging.info(f"action: client_send_data | result: in_progress | city: {city}")
-        queue_name = self.router.route(hashing_key=CLIENT_ID)
+        queue_name = self.router.route(hashing_key=self.client_id)
 
         try:
             self.__send_weather_data(queue_name, city)
