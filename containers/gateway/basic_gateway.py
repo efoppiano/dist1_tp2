@@ -14,7 +14,7 @@ from common.packets.client_control_packet import ClientControlPacket, RateLimitC
 from common.packets.client_packet import ClientDataPacket, ClientPacket
 from common.rate_checker import RateChecker, Rates
 from common.router import Router
-from common.utils import save_state, load_state, min_hash, log_duplicate
+from common.utils import save_state, load_state, min_hash, log_duplicate, trace
 from common.packets.eof import Eof
 from common.packets.generic_packet import GenericPacketBuilder
 from common.middleware.rabbit_middleware import Rabbit
@@ -29,6 +29,7 @@ NEXT_AMOUNT = int(os.environ["NEXT_AMOUNT"])
 RABBIT_HOST = os.environ.get("RABBIT_HOST", "rabbitmq")
 MAX_SEQ_NUMBER = 2 ** 10  # 2 packet ids would be enough, but we use more for traceability
 
+RATE_CHECK_INTERVAL = 5
 
 class BasicGateway(ABC):
     def __init__(self, replica_id: int):
@@ -104,7 +105,7 @@ class BasicGateway(ABC):
                 return False
             self._last_chunk_received = packet_id
 
-        logging.debug(f"Received {packet_id}-{min_hash(packet.data)}")
+        trace(f"Received {packet_id}-{min_hash(packet.data)}")
 
         return True
 
@@ -129,8 +130,9 @@ class BasicGateway(ABC):
             return True
 
         if not self.health_checker.is_client(decoded.data.client_id):
-            # TODO: Send error message to client
-            self.health_checker.evict(decoded.data.client_id)
+            # Got data from a client already marked as dead, it should realize its
+            # session is expired from the control message or the closing of its queues
+            logging.debug(f"Received data from dead client {decoded.data.client_id}")
             return True
 
         if not self.__update_last_received(decoded.data):
@@ -155,11 +157,13 @@ class BasicGateway(ABC):
 
     def __change_rates_if_needed(self, rates: Rates):
         users_amount = len(self.health_checker.get_clients())
-        logging.info(f"rates: {rates} | users_amount: {users_amount}")
-        logging.info(f"Difference: {rates.ack_per_second - rates.publish_per_second}")
+        trace("rates: %d ack/s %d pub*s | users_amount: %d | difference %d",
+                     rates.ack_per_second, rates.publish_per_second,
+                     users_amount, rates.ack_per_second - rates.publish_per_second)
         if users_amount == 0:
             return
 
+        # TODO: Make sure not to overload the system
         if rates.ack_per_second - rates.publish_per_second >= 0.0:
             # Increase rate
             new_rate = math.ceil((2 * (rates.publish_per_second + 1)) / users_amount)
@@ -167,10 +171,10 @@ class BasicGateway(ABC):
             # Decrease rate
             new_rate = math.ceil((rates.ack_per_second + 1) / users_amount)
 
-        logging.info(f"action: change_rate | new_rate: {new_rate}")
+        trace(f"action: change_rate | new_rate: {new_rate}")
 
         if new_rate == 0:
-            logging.info("Rate not changed because it would be 0")
+            trace("Rate not changed because it would be 0")
             return
 
         for user in self.health_checker.get_clients():
@@ -179,21 +183,18 @@ class BasicGateway(ABC):
 
             self._rabbit.produce(client_control_queue, ClientControlPacket(packet).encode())
 
-    def __log_rates(self):
+    def __check_rates(self):
         rates = self._rate_checker.get_rates(self._input_queue)
         if rates is None:
-            logging.info("action: check_rate | result: no data")
+            logging.debug("action: check_rate | result: no data")
         else:
-            logging.info(
-                f"action: check_rate | result: success | pub/s: {rates.publish_per_second} | ack/s: {rates.ack_per_second}")
             self.__change_rates_if_needed(rates)
 
-        # TODO: do not hardcode this
-        self._rabbit.call_later(5, self.__log_rates)
+        self._rabbit.call_later(RATE_CHECK_INTERVAL, self.__check_rates)
 
     def start(self):
         self.heartbeater.start()
-        self._rabbit.call_later(5, self.__log_rates)
+        self._rabbit.call_later(RATE_CHECK_INTERVAL, self.__check_rates)
         self.health_checker.start()
         self._rabbit.start()
 
