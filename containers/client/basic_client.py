@@ -196,7 +196,7 @@ class BasicClient(ABC):
         if isinstance(client_control_packet.data, RateLimitChangeRequest):
             self._send_rate = client_control_packet.data.new_rate
             trace(f"Rate limit changed to {self._send_rate}")
-        elif isinstance(client_control_packet.data, str) and client_control_packet.data == "stop":
+        elif client_control_packet.data == "SessionExpired":
             self._rabbit.close()
             logging.critical("Session expired")
             raise ConnectionAbortedError("SessionExpired")
