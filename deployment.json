@@ -5,7 +5,7 @@
   },
   "containers": {
     "gateway": {
-      "amount": 2,
+      "amount": 1,
       "next": "weather_aggregator",
       "env": {
         "WEATHER_SIDE_TABLE_QUEUE_NAME": "publish_weather",
@@ -13,14 +13,14 @@
       }
     },
     "weather_aggregator": {
-      "amount": 2,
+      "amount": 1,
       "next": "station_aggregator",
       "env": {
         "SIDE_TABLE_ROUTING_KEY": "weather"
       }
     },
     "station_aggregator": {
-      "amount": 3,
+      "amount": 1,
       "next": [
         "prec_filter",
         "year_filter",
@@ -45,7 +45,7 @@
       "next": "response_provider_dur_avg"
     },
     "year_filter": {
-      "amount": 2,
+      "amount": 1,
       "next": "trips_counter"
     },
     "trips_counter": {
@@ -60,7 +60,7 @@
       }
     },
     "distance_calculator": {
-      "amount": 2,
+      "amount": 1,
       "next": "dist_mean_calculator"
     },
     "dist_mean_calculator": {
@@ -87,8 +87,13 @@
         "montreal",
         "washington",
         "toronto"
+      ],
+      "copy": [
+        "montreal",
+        "washington",
+        "toronto"
       ]
     }
   },
-  "health_chekers": 5
+  "health_chekers": 2
 }
