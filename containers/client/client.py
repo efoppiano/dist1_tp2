@@ -8,7 +8,7 @@ from common.packets.dur_avg_out import DurAvgOut
 from common.packets.station_dist_mean import StationDistMean
 from common.packets.trips_count_by_year_joined import TripsCountByYearJoined
 from common.components.readers import TripInfo, StationInfo, WeatherInfo, WeatherReader, StationReader, TripReader
-from common.utils import initialize_log, json_serialize, log_duplicate, success
+from common.utils import initialize_log, json_serialize, log_duplicate, success, log_msg
 
 CLIENT_ID = os.environ["CLIENT_ID"]
 CITIES = os.environ["CITIES"].split(",")
@@ -54,17 +54,17 @@ class Client(BasicClient):
             city_name, "duration_average_prectot>=30mm", packet.start_date,
             {"avg": round(packet.dur_avg_sec, 2), "count": packet.dur_avg_amount}
         )
-        logging.info(
-            f"action: receive_dur_avg_packet | result: success | "
-            f"city: {city_name} | start_date: {packet.start_date} |  dur_avg_sec: {round(packet.dur_avg_sec, 2)} | amount: {packet.dur_avg_amount}")
+        log_msg(
+            f"receive dur_avg_packet |"
+            f" city: {city_name} | start_date: {packet.start_date} |  dur_avg_sec: {round(packet.dur_avg_sec, 2)} | amount: {packet.dur_avg_amount}")
 
     def handle_trip_count_by_year_joined_packet(self, city_name: str, packet: TripsCountByYearJoined):
         self.save_results(
             city_name, "trip_count_by_year", packet.start_station_name,
             {"2016": packet.trips_16, "2017": packet.trips_17}
         )
-        logging.info(
-            f"action: receive_trip_count_packet | result: success | city: {city_name} |"
+        log_msg(
+            f"receive trip_count_packet | city: {city_name} |"
             f" start_station_name: {packet.start_station_name} |"
             f" trips (2016): {packet.trips_16} | trips (2017): {packet.trips_17}")
 
@@ -73,8 +73,8 @@ class Client(BasicClient):
             city_name, "stations_mean_dist_>=6km", packet.end_station_name,
             {"mean_dist": round(packet.dist_mean, 2), "count": packet.dist_mean_amount}
         )
-        logging.info(
-            f"action: receive_dist_mean_packet | result: success | city: {city_name} |"
+        log_msg(
+            f"receive dist_mean_packet | city: {city_name} |"
             f" end_station_name: {packet.end_station_name} | dist_mean (km): {round(packet.dist_mean, 2)}")
 
 

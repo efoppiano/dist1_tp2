@@ -18,7 +18,7 @@ from common.packets.trips_count_by_year_joined import TripsCountByYearJoined
 from common.middleware.rabbit_middleware import Rabbit
 from common.components.readers import WeatherInfo, StationInfo, TripInfo, ClientIdResponsePacket
 from common.router import Router
-from common.utils import log_msg, success
+from common.utils import log_msg, success, bold
 
 RABBIT_HOST = os.environ.get("RABBIT_HOST", "rabbitmq")
 ID_REQ_QUEUE = os.environ["ID_REQ_QUEUE"]
@@ -136,8 +136,6 @@ class BasicClient(ABC):
         except Exception as e:
             logging.error(f"action: client_send_data | result: error | city: {city} | error: {e}")
             raise e
-        finally:
-            logging.info(f"action: client_send_data | result: finished | city: {city}")
 
     def __send_cities_data(self):
         for city in self._all_cities:
@@ -161,6 +159,7 @@ class BasicClient(ABC):
     def __handle_eof(self, eof_type: str, city_name: str):
         self._eofs.setdefault(eof_type, set())
         self._eofs[eof_type].add(city_name)
+        logging.info(f"Received all {bold(eof_type)} results for {bold(city_name)}")
 
     def __all_eofs_received(self) -> bool:
         for eof_type in EOF_TYPES:

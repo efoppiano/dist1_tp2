@@ -87,6 +87,9 @@ def min_hash(obj, n=4, min_log_level = logging.DEBUG):
     except:
         return "###"
     
+def bold(text: str) -> str:
+    return f"\033[1m{text}\033[0m"
+    
  
 def build_queue_name(queue: str, id: Union[int, None] = None) -> str:
     if id is None:
