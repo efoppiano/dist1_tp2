@@ -1,5 +1,5 @@
 from typing import List
-import logging
+import time
 
 from common.packets.client_packet import ClientDataPacket, ClientPacket
 from common.packets.eof import Eof
@@ -25,6 +25,7 @@ class PacketFactory:
 
     @staticmethod
     def next_seq_number():
+        time.sleep(1/3) # ! FIXME: This is a hack to test throttling in slow systems
         PacketFactory.seq_number += 1
         if MAX_SEQ_NUMBER and PacketFactory.seq_number > MAX_SEQ_NUMBER:
             PacketFactory.seq_number = 0
