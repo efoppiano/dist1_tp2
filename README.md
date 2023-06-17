@@ -230,18 +230,8 @@ cada uno de los nodos del sistema. A modo de ejemplo, se enviaron solo dos mensa
 de clima, uno de estaciones y uno de viajes, junto con los EOFs correspondientes.
 En un caso real, se enviarían muchos más mensajes de tipo `data`.
 
-Los mensajes tipo EOF deben ser enviados al Synchronizer, para que los retenga hasta que todas las
-réplicas de un nodo hayan terminado de procesar los datos.
-
-![sequence_diagram_2](docs/sequence_2.png)
-
-Diagrama de secuencia de la obtención de los reportes por parte del cliente.
-
-Para obtener los resultados, el cliente le envía un mensaje al `Result Provider`.
-El `Result Provider`, al recibirlo, toma de la queue correspondiente un mensaje, que es
-reenviado inmediatamente al cliente.
-Si este mensaje es un EOF, el cliente sabe que ya recibió todos los resultados para un
-conjunto dado de (ciudad, reporte)
+Los mensajes tipo EOF deben ser enviados a todas las replicas del siguiente nodo,
+que los almacenaran hasta recibir de todas las replicas del nodo anterior.
 
 ### Vista de Desarrollo
 
