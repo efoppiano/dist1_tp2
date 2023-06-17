@@ -255,16 +255,20 @@ para no depender de los detalles de implementación de la biblioteca pika.
 
 ![class_diagram_2](docs/class_2.png)
 
-![class_diagram_3](docs/class_3.png)
 
-Diagrama de clases de los filtros, aggregators y el synchronizer.
+Diagrama de clases de los filtros y aggregators.
 
-La forma en que se implementan estos tres tipos de componentes es muy similar:
-se define una clase que hereda de `BasicFilter`, `BasicAggregator` o `Synchronizer`,
+La forma en que se implementan estos componentes es muy similar:
+se define una clase que hereda de `BasicFilter` o `BasicAggregator`,
 y se implementa el método `handle_message`, que se ejecuta cada vez que se recibe un mensaje.
 El retorno de este método es un conjunto de mensajes que se deben enviar a la siguiente etapa.
 
 Esta abstracción permite implementar envio de batches de mensajes desde la clase abstracta, sin
 que las clases concretas tengan que preocuparse por ello.
 
+Ademas, puede redefinirse el método `handle_eof`, para realizar acciones al momento de recibir un EOF.
+este tiene un funcionamento similar, retornando un conjunto de mensajes que se deben enviar a la siguiente etapa.
+De este modo los filtros que acumulan, como `trips_counter`, pueden ser umplementados facilmente
 
+Tambien podemos ver la composicion de las clases `MessageSender`, que se encarga del envio de mensajes,
+y `MultiLastReceivedManager`, que se encarga de detectar duplicados.
