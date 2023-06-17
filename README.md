@@ -200,16 +200,17 @@ Diagrama de actividad de la comunicación entre el cliente, el Gateway y el prim
 
 En el diagrama anterior se puede observar el orden en que el cliente envía la información al Gateway, y
 el orden en que la esperan los aggregators.
-Por un lado, el cliente envía la información del clima, estaciones y viajes.
+Por un lado, el cliente envía la información del clima, estaciones y luego viajes.
 El `Weather Aggregator` necesita la información climática para armar su side table, por lo que no puede
 procesar la información de los viajes hasta que no reciba todos los datos del clima.
 Lo mismo sucede con el `Station Aggregator`, que necesita la información de las estaciones.
 
-El cliente envía la información de cada ciudad en un thread separado.
+El cliente envía la información de cada ciudad de manera secuencial.
+Si quisiera enviar la información en paralelo, deberia correr otra instancia del cliente.
 
 ![activity_diagram_2](docs/activity_2.png)
 
-Diagrama de actividad de la comunicación del `Station Aggregator` con el `Prec Filter` y `Result Provider`.
+Diagrama de actividad de la comunicación del `Station Aggregator` con el `Prec Filter`.
 
 En el diagrama se visualiza cómo se comunica la información, desde el momento en que se termina de agregar
 la información de las estaciones y el clima, hasta que se envía al primer conjunto de filtros y calculators.
@@ -217,8 +218,6 @@ la información de las estaciones y el clima, hasta que se envía al primer conj
 Se puede ver que el `Prec Filter` puede realizar su trabajo utilizando
 exclusivamente la información del paquete que acaban de recibir, por lo que el escalado de éstas entidades
 es muy sencillo. Lo mismo ocurre con `Year Filter`, `Trip Count Provider`, `Distance Calculator` y `Dist Mean Provider`.
-
-El `Result Provider` se encarga de comunicarle al cliente la información de los reportes.
 
 #### Diagrama de secuencia
 
