@@ -2,28 +2,30 @@
 
 ## Tabla de contenidos
 
-* [Ejecución](#ejecución)
-    * [Requisitos](#requisitos)
-    * [Ejecución del sistema](#ejecución-del-sistema)
-    * [Visualización de los reportes en tiempo real](#visualización-de-los-reportes-en-tiempo-real)
-* [Documentación](#documentación)
-    * [Alcance](#alcance)
-    * [Arquitectura de Software](#arquitectura-de-software)
-    * [Objetivos y limitaciones arquitectónicas](#objetivos-y-limitaciones-arquitectónicas)
-    * [Escenarios](#escenarios)
-    * [Vista Lógica](#vista-lógica)
-        * [DAG](#dag)
-    * [Vista Física](#vista-física)
-        * [Diagrama de robustez](#diagrama-de-robustez)
-        * [Sincronización de EOFs](#sincronización-de-eofs)
-        * [Diagrama de despliegue](#diagrama-de-despliegue)
-    * [Vista de Procesos](#vista-de-procesos)
-        * [Diagrama de actividad](#diagrama-de-actividad)
-        * [Diagrama de secuencia](#diagrama-de-secuencia)
-    * [Vista de Desarrollo](#vista-de-desarrollo)
-        * [Diagrama de paquetes](#diagrama-de-paquetes)
-    * [Vista Lógica](#vista-lógica)
-        * [Diagrama de clases](#diagrama-de-clases)
+- [TP1 - Sistemas Distribuidos I](#tp1---sistemas-distribuidos-i)
+  - [Tabla de contenidos](#tabla-de-contenidos)
+  - [Ejecución](#ejecución)
+    - [Requisitos](#requisitos)
+    - [Parametros del sistema](#parametros-del-sistema)
+    - [Ejecución del sistema](#ejecución-del-sistema)
+  - [Documentación](#documentación)
+    - [Alcance](#alcance)
+    - [Arquitectura de Software](#arquitectura-de-software)
+    - [Objetivos y limitaciones arquitectónicas](#objetivos-y-limitaciones-arquitectónicas)
+    - [Escenarios](#escenarios)
+    - [Vista Lógica](#vista-lógica)
+      - [DAG](#dag)
+    - [Vista Física](#vista-física)
+      - [Diagrama de robustez](#diagrama-de-robustez)
+      - [Sincronización de EOFs](#sincronización-de-eofs)
+      - [Diagrama de despliegue](#diagrama-de-despliegue)
+    - [Vista de Procesos](#vista-de-procesos)
+      - [Diagrama de actividad](#diagrama-de-actividad)
+      - [Diagrama de secuencia](#diagrama-de-secuencia)
+    - [Vista de Desarrollo](#vista-de-desarrollo)
+      - [Diagrama de paquetes](#diagrama-de-paquetes)
+    - [Vista Lógica](#vista-lógica-1)
+      - [Diagrama de clases](#diagrama-de-clases)
 
 ## Ejecución
 
@@ -50,17 +52,28 @@ El directorio debe tener la siguiente estructura:
     └── weather.csv
 ```
 
+### Parametros del sistema
+
+Podemos encontrar y editar las variables principales del sistema en el archivo `deployment.json`. Su contenido luego sera plasmado en el docker-compose al levantar el sistema (o al correr `scripts/build.py`).
+
+Dentro de este archivo podemos encontrar y editar:
+- La cantidad de nodos de cada tipo
+- Sus variables de entorno
+- Como se conectan entre si
+
+Ademas, podemos predefinir procesos clientes, definiendo:
+- Su nombre
+- El directorio del que obtendar los archivos
+- Las ciudades por las que consultaran
+
 ### Ejecución del sistema
 
-```bash
-make docker-compose-up
-```
+Utilizando el `Makefile` se puede ejecutar el sistema de forma sencilla. Algunos de los comandos disponibles son:
 
-### Visualización de los reportes en tiempo real
-
-```bash
-make client-logs-live
-```
+- `make`: levanta el sistema y muestra los logs
+- `make up`: levanta el sistema
+- `make logs`: muestra los logs del sistema
+- `make down`: detiene el sistema
 
 ## Documentación
 
