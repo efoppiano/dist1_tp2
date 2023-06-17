@@ -91,17 +91,23 @@ Se deben generar los siguientes reportes:
 - Los nombres de estaciones de Montreal para la que el promedio de
   los ciclistas recorren más de 6km en llegar a ellas.
 
+Ademas, el sistema debe permitir la ejecución de múltiples análisis en paralelo y/o en secuencia sin reiniciarlo.
+
 ### Arquitectura de Software
 
-La arquitectura consiste en un cliente, que se comunica con un sistema distribuido
-mediante sockets ZMQ. El sistema procesa la información recibida utilizando RabbitMQ como
-broker de mensajes.
+La arquitectura esta compuesta por multiples nodos de diferentes tipos que se distribuyen el trabajo y responsabilidades del sistema.
+Toda la comunicacion entre nodos se realiza mediante RabbitMQ.
+Los clientes enviaran sus peticiones a un `Gateway`, pudiendo recibir mensajes de control de este, y recibiran sus respuestas de un `ResponseProvider`.
+
+> Pueden verse en mas detalle los componentes del sistema en la [vista fisica](#vista-física).
 
 ### Objetivos y limitaciones arquitectónicas
 
 - **Escalabilidad**: Se debe soportar el incremento de los elementos de cómputo para
   escalar los volúmenes de información a procesar.
 - **Mantenibilidad**: La comunicación de grupos debe encapsularse en un middleware.
+- **Tolerancia a fallas**: El sistema debe ser tolerante a fallas y caidas de los nodos.
+- **Alta disponibilidad**: El sistema debe estar altamente disponible para los clientes.
 
 ### Escenarios
 
@@ -119,7 +125,7 @@ DAG global del sistema.
 
 En el diagrama se puede observar la división de responsabilidades entre los distintos componentes
 del sistema. En primer lugar, el Gateway se encarga de distribuir la información recibida del cliente,
-entre los aggregators. Cada aggregator opera con una side table que contiene un pequeño conjunto de
+entre los aggregators. Cada aggregator opera con una side table que contiene un conjunto de
 datos estáticos.
 
 Para disminuir el tamaño de los mensajes que debe procesar RabbitMQ, el Gateway poda todos los
@@ -129,7 +135,7 @@ necesita la precipitación. Por lo tanto, el Gateway elimina todos los campos qu
 antes de enviar la información al aggregator.
 
 La información de las side tables se ingresa al sistema mediante un mecanismo de pub-sub, para
-permitir que varias réplicas de los aggregators puedan construir sus side tables.
+permitir que todas las réplicas de los aggregators puedan construir sus side tables.
 Esto favorece la escalabilidad del sistema, a costa de duplicar la información en cada réplica.
 
 ### Vista Física
@@ -145,45 +151,34 @@ horizontal.
 
 El cliente se comunica con el sistema a través de dos endpoints: uno para enviar la información (`Gateway`),
 y otro para recibir los reportes (`Result Provider`). En ambos casos, la comunicación se realiza mediante
-sockets ZMQ.
-Dentro del sistema `Bike Rides Analyzer`, la comunicación se realiza mediante RabbitMQ.
+RabbitMQ.
+Dentro del sistema `Bike Rides Analyzer`, la comunicación tambien se realiza mediante RabbitMQ.
 
-Algunas entidades poseen el estereotipo `<<City Affinity>>`. Esto quiere decir que, para dicha entidad,
-existirá un nodo por cada ciudad. Por ejemplo, se deben desplegar tres instancias de `Weather Aggregator`.
 
-Los aggregators, además de tener affinity con una ciudad, pueden replicarse. Por ejemplo, pueden desplegarse
-3 `Weather Aggregator` para Washington, y 2 `Weather Aggregator` para Montreal.
 
-![robustness_query_1](docs/robustness_query_1.png)
+![robustness_query](docs/robustness_query.png)
 
-![robustness_query_2](docs/robustness_query_2.png)
-
-![robustness_query_3](docs/robustness_query_3.png)
-
-Diagramas de robustez detallados, con información de las queues que se utilizan para comunicar las distintas
+Diagrama de robustez detallado, con información de las queues que se utilizan para comunicar las distintas
 etapas del pipeline.
 
-En los anteriores se observa la forma en que se distribuyen los mensajes entre los distintos
-componentes del sistema. Además, se puede ver el mecanismo por el cual se dividen los mensajes en aquellos
-nodos que poseen `<<City Affinity>>`: el nombre de la queue inicia con el nombre de la ciudad, seguido de un
-guion bajo.
+Cada réplica tiene su propia queue, y se utiliza una función de hashing para determinar a qué réplica se le envía cada mensaje.
 
-Por otro lado, se puede observar la forma en que se distribuye el trabajo entre las diferentes réplicas de
-cada nodo. Cada réplica tiene su propia queue, y se utiliza una función de hashing para determinar a qué
-réplica se le envía cada mensaje.
+Siendo el response provider la unica excepcion, que tiene una queue para cada flujo de resultados.
 
 #### Sincronización de EOFs
 
-![synchronizer](docs/synchronizer.png)
+![synchronizer](docs/eofs.png)
 
 Diagrama de sincronización entre las distintas etapas del pipeline.
 
 Para evitar condiciones de carrera al momento de recibir un EOF de parte del cliente, se definió un
-nodo `Synchronizer`. Cuando una réplica de un nodo recibe un EOF, envía un mensaje al Synchronizer.
-Una vez que el Synchronizer recibe un EOF de cada réplica, envía un EOF a todas las réplicas de la
-siguiente etapa del pipeline. Este mensaje se envía a la misma queue que se utiliza para enviar los
-datos de procesamiento, por lo que se garantiza que el EOF se encolará luego de que todos los datos
-estén encolados.
+protocolo de manejo de EOFs (End Of File).
+
+Para propagar un EOF de una etapa a la siguiente, todos los nodos de previos deben enviar un EOF a
+todos los siguientes.
+
+El mecanismo de envio a todos se hace mediante un fanout exchange; donde por ejemplo:
+La routing key `trips_counter` publica mensajes a todos los trip counter (con colas `trip_counter_<num>`)
 
 #### Diagrama de despliegue
 
@@ -193,7 +188,6 @@ Diagrama de despliegue del sistema.
 
 Este diagrama pone en evidencia la fuerte dependencia que existe entre RabbitMQ (Message Queue) y
 los diferentes componentes del sistema.
-Para alivianar la carga del broker, el cliente se comunica directamente con el Gateway y el Result Provider.
 Cada nodo puede desplegarse de manera independiente.
 
 ### Vista de Procesos
