@@ -239,10 +239,10 @@ que los almacenaran hasta recibir de todas las replicas del nodo anterior.
 
 ![package_diagram](docs/package.png)
 
-Diagrama de paquetes ilustrativo del sistema.
+Diagrama de paquetes simplificado del sistema.
 
-En el diagrama se observa, a modo de ejemplo, la estructura de paquetes del
-`Weather Filter`, aunque es muy similar al resto de los componentes del sistema.
+En el diagrama se observa, la estructura de paquetes del sistema,
+los nodos particulares tienen poca logica de negocio y aprovechan en gran medida codigo comun.
 
 Tanto el `BasicFilter` como el `WeatherFilter` utilizan la abstracción `Rabbit Middleware`
 para no depender de los detalles de implementación de la biblioteca pika.
