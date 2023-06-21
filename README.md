@@ -52,19 +52,19 @@ El directorio debe tener la siguiente estructura:
     └── weather.csv
 ```
 
-### Parametros del sistema
+### Parámetros del sistema
 
 Podemos encontrar y editar las variables principales del sistema en el archivo `deployment.json`. Su contenido luego sera plasmado en el docker-compose al levantar el sistema (o al correr `scripts/build.py`).
 
 Dentro de este archivo podemos encontrar y editar:
 - La cantidad de nodos de cada tipo
 - Sus variables de entorno
-- Como se conectan entre si
+- Como se conectan entre sí
 
-Ademas, podemos predefinir procesos clientes, definiendo:
+Además, podemos predefinir procesos clientes, definiendo:
 - Su nombre
-- El directorio del que obtendar los archivos
-- Las ciudades por las que consultaran
+- El directorio del que obtendrá los archivos
+- Las ciudades por las que consultarán
 
 ### Ejecución del sistema
 
@@ -89,17 +89,17 @@ Se deben generar los siguientes reportes:
 - Los nombres de estaciones que al menos duplicaron la cantidad de
   viajes iniciados en ellas entre 2016 y el 2017.
 - Los nombres de estaciones de Montreal para la que el promedio de
-  los ciclistas recorren más de 6km en llegar a ellas.
+  los ciclistas recorren más de 6 km en llegar a ellas.
 
-Ademas, el sistema debe permitir la ejecución de múltiples análisis en paralelo y/o en secuencia sin reiniciarlo.
+Además, el sistema debe permitir la ejecución de múltiples análisis en paralelo y/o en secuencia sin reiniciarlo.
 
 ### Arquitectura de Software
 
-La arquitectura esta compuesta por multiples nodos de diferentes tipos que se distribuyen el trabajo y responsabilidades del sistema.
-Toda la comunicacion entre nodos se realiza mediante RabbitMQ.
-Los clientes enviaran sus peticiones a un `Gateway`, pudiendo recibir mensajes de control de este, y recibiran sus respuestas de un `ResponseProvider`.
+La arquitectura está compuesta por multiples nodos de diferentes tipos que se distribuyen el trabajo y responsabilidades del sistema.
+Toda la comunicación entre nodos se realiza mediante RabbitMQ.
+Los clientes enviarán sus peticiones a un `Gateway`, pudiendo recibir mensajes de control de este, y recibiran sus respuestas de un `ResponseProvider`.
 
-> Pueden verse en mas detalle los componentes del sistema en la [vista fisica](#vista-física).
+> Pueden verse en más detalle los componentes del sistema en la [vista física](#vista-física).
 
 ### Objetivos y limitaciones arquitectónicas
 
@@ -152,9 +152,9 @@ horizontal.
 El cliente se comunica con el sistema a través de dos endpoints: uno para enviar la información (`Gateway`),
 y otro para recibir los reportes (`Result Provider`). En ambos casos, la comunicación se realiza mediante
 RabbitMQ.
-Dentro del sistema `Bike Rides Analyzer`, la comunicación tambien se realiza mediante RabbitMQ.
+Dentro del sistema `Bike Rides Analyzer`, la comunicación también se realiza mediante RabbitMQ.
 
-
+![robustness_query_1](docs/robustness_query_1.png)
 
 ![robustness_query](docs/robustness_query.png)
 
@@ -163,7 +163,7 @@ etapas del pipeline.
 
 Cada réplica tiene su propia queue, y se utiliza una función de hashing para determinar a qué réplica se le envía cada mensaje.
 
-Siendo el response provider la unica excepcion, que tiene una queue para cada flujo de resultados.
+Siendo el response provider la única excepción, que tiene una queue para cada flujo de resultados.
 
 #### Sincronización de EOFs
 
@@ -206,7 +206,7 @@ procesar la información de los viajes hasta que no reciba todos los datos del c
 Lo mismo sucede con el `Station Aggregator`, que necesita la información de las estaciones.
 
 El cliente envía la información de cada ciudad de manera secuencial.
-Si quisiera enviar la información en paralelo, deberia correr otra instancia del cliente.
+Si quisiera enviar la información en paralelo, debería correr otra instancia del cliente.
 
 ![activity_diagram_2](docs/activity_2.png)
 
