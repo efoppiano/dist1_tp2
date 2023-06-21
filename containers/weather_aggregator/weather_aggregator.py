@@ -17,17 +17,12 @@ from common.utils import initialize_log, parse_date, datetime_str_to_date_str, l
 
 NEXT = os.environ["NEXT"]
 NEXT_AMOUNT = int(os.environ["NEXT_AMOUNT"])
-SIDE_TABLE_ROUTING_KEY = os.environ["SIDE_TABLE_ROUTING_KEY"]
-REPLICA_ID = os.environ["REPLICA_ID"]
 
 
 class WeatherAggregator(BasicAggregator):
-    def __init__(self, router: MultiRouter, replica_id: int, side_table_routing_key: str):
-        self._replica_id = replica_id
-
+    def __init__(self, router: MultiRouter):
         self._weather = {}
-
-        super().__init__(router, replica_id, side_table_routing_key)
+        super().__init__(router)
 
     def handle_eof(self, flow_id, message: Eof) -> Dict[str, Eof]:
         self._weather.pop(flow_id, None)
@@ -99,7 +94,7 @@ class WeatherAggregator(BasicAggregator):
 def main():
     initialize_log()
     router = MultiRouter({"next": (NEXT, NEXT_AMOUNT)})
-    aggregator = WeatherAggregator(router, int(REPLICA_ID), SIDE_TABLE_ROUTING_KEY)
+    aggregator = WeatherAggregator(router)
     aggregator.start()
 
 

@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import os
 from typing import Dict, List
 from haversine import haversine
 
@@ -8,15 +7,8 @@ from common.packets.dist_info import DistInfo
 from common.packets.distance_calc_in import DistanceCalcIn
 from common.utils import initialize_log
 
-REPLICA_ID = os.environ["REPLICA_ID"]
-
 
 class DistanceCalculator(BasicStatefulFilter):
-    def __init__(self, replica_id: int):
-        super().__init__(replica_id)
-
-        self._replica_id = replica_id
-
     def handle_message(self, _flow_id, message: bytes) -> Dict[str, List[bytes]]:
         packet = DistanceCalcIn.decode(message)
 
@@ -38,7 +30,7 @@ class DistanceCalculator(BasicStatefulFilter):
 
 def main():
     initialize_log()
-    filter = DistanceCalculator(int(REPLICA_ID))
+    filter = DistanceCalculator()
     filter.start()
 
 

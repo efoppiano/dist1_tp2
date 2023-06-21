@@ -14,6 +14,8 @@ from common.packets.eof import Eof
 from common.packets.generic_packet import GenericPacket, GenericPacketBuilder
 from common.middleware.rabbit_middleware import Rabbit
 
+SIDE_TABLE_ROUTING_KEY = os.environ["SIDE_TABLE_ROUTING_KEY"]
+CONTAINER_ID = os.environ["CONTAINER_ID"]
 INPUT_QUEUE = os.environ["INPUT_QUEUE"]
 PREV_AMOUNT = int(os.environ["PREV_AMOUNT"])
 EOF_ROUTING_KEY = os.environ["EOF_ROUTING_KEY"]
@@ -23,10 +25,11 @@ MAX_PACKET_ID = 2 ** 10  # 2 packet ids would be enough, but we use more for tra
 
 
 class BasicAggregator(ABC):
-    def __init__(self, router: MultiRouter, replica_id: int, side_table_routing_key: str):
+    def __init__(self, router: MultiRouter, container_id: str = CONTAINER_ID,
+                 side_table_routing_key: str = SIDE_TABLE_ROUTING_KEY):
         self.__setup_middleware(side_table_routing_key)
 
-        self._basic_agg_replica_id = replica_id
+        self._basic_agg_container_id = container_id
         self._last_received = MultiLastReceivedManager()
         self._message_sender = MessageSender(self._rabbit)
         self._eofs_received = {}
@@ -70,7 +73,7 @@ class BasicAggregator(ABC):
         else:
             raise Exception(f"Unknown message type: {type(decoded.data)}")
 
-        builder = GenericPacketBuilder(self._basic_agg_replica_id, decoded.client_id, decoded.city_name)
+        builder = GenericPacketBuilder(self._basic_agg_container_id, decoded.client_id, decoded.city_name)
         self._message_sender.send(builder, outgoing_messages)
 
         return True

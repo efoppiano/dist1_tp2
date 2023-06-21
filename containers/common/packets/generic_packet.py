@@ -7,7 +7,7 @@ from common.packets.eof import Eof
 
 @dataclass
 class GenericPacket(BasicPacket):
-    replica_id: int  # sender replica id
+    sender_id: str
     client_id: str
     city_name: str
     seq_number: int
@@ -28,14 +28,14 @@ class GenericPacket(BasicPacket):
 
 
 class GenericPacketBuilder:
-    def __init__(self, replica_id: int, client_id: str, city_name: str):
-        self._replica_id = replica_id
+    def __init__(self, sender_id: str, client_id: str, city_name: str):
+        self._sender_id = sender_id
         self._client_id = client_id
         self._city_name = city_name
 
     def build(self, seq_number: int, data: Union[List[bytes], Eof]) -> GenericPacket:
         return GenericPacket(
-            replica_id=self._replica_id,
+            sender_id=self._sender_id,
             client_id=self._client_id,
             city_name=self._city_name,
             seq_number=seq_number,
@@ -43,7 +43,7 @@ class GenericPacketBuilder:
         )
 
     def get_id(self) -> str:
-        return f"{self._replica_id}-{self._client_id}-{self._city_name}"
+        return f"{self._sender_id}-{self._client_id}-{self._city_name}"
 
 
 @dataclass

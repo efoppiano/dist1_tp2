@@ -48,7 +48,7 @@ class ResponseProvider:
         self._sig_hand_prev = signal.signal(signal.SIGTERM, signal_handler)
 
     def __update_last_received(self, packet_type, packet: GenericPacket):
-        sender_id = (packet_type, packet.replica_id)
+        sender_id = (packet_type, packet.sender_id)
 
         current_id = packet.get_id()
         self._last_received.setdefault(sender_id, [None, None])
@@ -134,7 +134,7 @@ class ResponseProvider:
 
         response_packet = GenericResponsePacket(
             packet.client_id, packet.city_name,
-            packet_type, packet.replica_id,
+            packet_type, packet.sender_id,
             packet.seq_number, packet.data
         )
         response_message = response_packet.encode()
@@ -175,7 +175,7 @@ class ResponseProvider:
 
     def __handle_last_sent(self, message: bytes) -> bool:
         packet = GenericResponsePacket.decode(message)
-        sender_id = (packet.type, packet.replica_id)
+        sender_id = (packet.type, packet.sender_id)
 
         self._last_received[sender_id] = packet.packet_id
 

@@ -21,7 +21,7 @@ class ClientHealthChecker:
                  _rabbit: Rabbit,
                  router: Router,
                  message_sender: MessageSender,
-                 replica_id: int,
+                 container_id: str,
                  save_state: Callable,
                  lapse: int = HEALTHCHECK_LAPSE,
                  initial_client_timeout: float = INITIAL_CLIENT_TIMEOUT,
@@ -33,8 +33,7 @@ class ClientHealthChecker:
         self._output_queue = router.publish()
         self._message_sender = message_sender
 
-        # TODO: Not sure if this could collide with the gateway, so I'm using a negative replica_id
-        self._replica_id = -replica_id
+        self._container_id = container_id + "_healthcheck"
 
         self._save_state = save_state
         self._lapse = lapse
@@ -51,7 +50,7 @@ class ClientHealthChecker:
         self._rabbit.produce(control_queue, ClientControlPacket("SessionExpired").encode())
 
         # Send EOF to the next replica with eviction time
-        builder = GenericPacketBuilder(self._replica_id, client_id, last_city)
+        builder = GenericPacketBuilder(self._container_id, client_id, last_city)
         eof = Eof(drop, self._eviction_time)
         outgoing_messages = {self._output_queue: eof}
 
@@ -97,7 +96,6 @@ class ClientHealthChecker:
             self._client_timeout = expected_timeout
         else:
             self._client_timeout = 0.8 * self._client_timeout + 0.2 * expected_timeout
-
 
     def get_clients(self):
         clients = set(self._clients.keys())

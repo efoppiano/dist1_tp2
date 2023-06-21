@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import os
 import pickle
 from typing import Dict, List, Union
 
@@ -9,14 +8,11 @@ from common.packets.eof import Eof
 from common.packets.station_dist_mean import StationDistMean
 from common.utils import initialize_log
 
-REPLICA_ID = os.environ["REPLICA_ID"]
-
 
 class DistMeanCalculator(BasicStatefulFilter):
-    def __init__(self, replica_id: int):
-        self._replica_id = replica_id
+    def __init__(self):
         self._mean_buffer = {}
-        super().__init__(replica_id)
+        super().__init__()
 
     def handle_eof(self, flow_id, message: Eof) -> Dict[str, Union[List[bytes], Eof]]:
         eof_output_queue = self.router.publish()
@@ -67,7 +63,7 @@ class DistMeanCalculator(BasicStatefulFilter):
 
 def main():
     initialize_log()
-    filter = DistMeanCalculator(int(REPLICA_ID))
+    filter = DistMeanCalculator()
     filter.start()
 
 

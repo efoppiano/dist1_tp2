@@ -10,19 +10,16 @@ from common.packets.weather_side_table_info import WeatherSideTableInfo
 from common.components.readers import ClientGatewayPacket, StationInfo, WeatherInfo, TripInfo
 from common.utils import initialize_log
 
-REPLICA_ID = os.environ["REPLICA_ID"]
 WEATHER_SIDE_TABLE_QUEUE_NAME = os.environ["WEATHER_SIDE_TABLE_QUEUE_NAME"]
 STATION_SIDE_TABLE_QUEUE_NAME = os.environ["STATION_SIDE_TABLE_QUEUE_NAME"]
 
 
 class Gateway(BasicGateway):
-    def __init__(self, replica_id: int, weather_side_table_queue_name: str, station_side_table_queue_name: str):
-
-        self._replica_id = replica_id
+    def __init__(self, weather_side_table_queue_name: str, station_side_table_queue_name: str):
         self._weather_side_table_queue_name = weather_side_table_queue_name
         self._station_side_table_queue_name = station_side_table_queue_name
 
-        super().__init__(replica_id)
+        super().__init__()
 
     def __handle_list(self, flow_id, packet: List[Union[WeatherInfo, StationInfo, TripInfo]]) -> Dict[
         str, List[bytes]]:
@@ -83,7 +80,7 @@ class Gateway(BasicGateway):
 
 def main():
     initialize_log(15)
-    gateway = Gateway(int(REPLICA_ID), WEATHER_SIDE_TABLE_QUEUE_NAME,
+    gateway = Gateway(WEATHER_SIDE_TABLE_QUEUE_NAME,
                       STATION_SIDE_TABLE_QUEUE_NAME)
     gateway.start()
 

@@ -30,7 +30,6 @@ services:
       - PYTHONUNBUFFERED=1
       - INPUT_QUEUE=gateway_0
       - EOF_ROUTING_KEY=gateway
-      - REPLICA_ID=0
       - HEALTH_CHECKER=health_checker_0
       - CONTAINER_ID=gateway_0
       - PREV_AMOUNT=1
@@ -54,7 +53,6 @@ services:
       - PYTHONUNBUFFERED=1
       - INPUT_QUEUE=gateway_1
       - EOF_ROUTING_KEY=gateway
-      - REPLICA_ID=1
       - HEALTH_CHECKER=health_checker_1
       - CONTAINER_ID=gateway_1
       - PREV_AMOUNT=1
@@ -78,7 +76,6 @@ services:
       - PYTHONUNBUFFERED=1
       - INPUT_QUEUE=weather_aggregator_0
       - EOF_ROUTING_KEY=weather_aggregator
-      - REPLICA_ID=0
       - HEALTH_CHECKER=health_checker_2
       - CONTAINER_ID=weather_aggregator_0
       - PREV_AMOUNT=1
@@ -101,7 +98,6 @@ services:
       - PYTHONUNBUFFERED=1
       - INPUT_QUEUE=weather_aggregator_1
       - EOF_ROUTING_KEY=weather_aggregator
-      - REPLICA_ID=1
       - HEALTH_CHECKER=health_checker_3
       - CONTAINER_ID=weather_aggregator_1
       - PREV_AMOUNT=1
@@ -124,7 +120,6 @@ services:
       - PYTHONUNBUFFERED=1
       - INPUT_QUEUE=station_aggregator_0
       - EOF_ROUTING_KEY=station_aggregator
-      - REPLICA_ID=0
       - HEALTH_CHECKER=health_checker_4
       - CONTAINER_ID=station_aggregator_0
       - PREV_AMOUNT=2
@@ -151,7 +146,6 @@ services:
       - PYTHONUNBUFFERED=1
       - INPUT_QUEUE=station_aggregator_1
       - EOF_ROUTING_KEY=station_aggregator
-      - REPLICA_ID=1
       - HEALTH_CHECKER=health_checker_0
       - CONTAINER_ID=station_aggregator_1
       - PREV_AMOUNT=2
@@ -178,7 +172,6 @@ services:
       - PYTHONUNBUFFERED=1
       - INPUT_QUEUE=station_aggregator_2
       - EOF_ROUTING_KEY=station_aggregator
-      - REPLICA_ID=2
       - HEALTH_CHECKER=health_checker_1
       - CONTAINER_ID=station_aggregator_2
       - PREV_AMOUNT=2
@@ -205,7 +198,6 @@ services:
       - PYTHONUNBUFFERED=1
       - INPUT_QUEUE=prec_filter_0
       - EOF_ROUTING_KEY=prec_filter
-      - REPLICA_ID=0
       - HEALTH_CHECKER=health_checker_2
       - CONTAINER_ID=prec_filter_0
       - PREV_AMOUNT=3
@@ -228,7 +220,6 @@ services:
       - PYTHONUNBUFFERED=1
       - INPUT_QUEUE=prec_filter_1
       - EOF_ROUTING_KEY=prec_filter
-      - REPLICA_ID=1
       - HEALTH_CHECKER=health_checker_3
       - CONTAINER_ID=prec_filter_1
       - PREV_AMOUNT=3
@@ -251,7 +242,6 @@ services:
       - PYTHONUNBUFFERED=1
       - INPUT_QUEUE=dur_avg_provider_0
       - EOF_ROUTING_KEY=dur_avg_provider
-      - REPLICA_ID=0
       - HEALTH_CHECKER=health_checker_4
       - CONTAINER_ID=dur_avg_provider_0
       - PREV_AMOUNT=2
@@ -272,7 +262,6 @@ services:
       - PYTHONUNBUFFERED=1
       - INPUT_QUEUE=year_filter_0
       - EOF_ROUTING_KEY=year_filter
-      - REPLICA_ID=0
       - HEALTH_CHECKER=health_checker_0
       - CONTAINER_ID=year_filter_0
       - PREV_AMOUNT=3
@@ -294,7 +283,6 @@ services:
       - PYTHONUNBUFFERED=1
       - INPUT_QUEUE=year_filter_1
       - EOF_ROUTING_KEY=year_filter
-      - REPLICA_ID=1
       - HEALTH_CHECKER=health_checker_1
       - CONTAINER_ID=year_filter_1
       - PREV_AMOUNT=3
@@ -316,7 +304,6 @@ services:
       - PYTHONUNBUFFERED=1
       - INPUT_QUEUE=trips_counter_0
       - EOF_ROUTING_KEY=trips_counter
-      - REPLICA_ID=0
       - HEALTH_CHECKER=health_checker_2
       - CONTAINER_ID=trips_counter_0
       - PREV_AMOUNT=2
@@ -338,7 +325,6 @@ services:
       - PYTHONUNBUFFERED=1
       - INPUT_QUEUE=trips_counter_1
       - EOF_ROUTING_KEY=trips_counter
-      - REPLICA_ID=1
       - HEALTH_CHECKER=health_checker_3
       - CONTAINER_ID=trips_counter_1
       - PREV_AMOUNT=2
@@ -360,7 +346,6 @@ services:
       - PYTHONUNBUFFERED=1
       - INPUT_QUEUE=trip_count_provider_0
       - EOF_ROUTING_KEY=trip_count_provider
-      - REPLICA_ID=0
       - HEALTH_CHECKER=health_checker_4
       - CONTAINER_ID=trip_count_provider_0
       - PREV_AMOUNT=2
@@ -382,7 +367,6 @@ services:
       - PYTHONUNBUFFERED=1
       - INPUT_QUEUE=distance_calculator_0
       - EOF_ROUTING_KEY=distance_calculator
-      - REPLICA_ID=0
       - HEALTH_CHECKER=health_checker_0
       - CONTAINER_ID=distance_calculator_0
       - PREV_AMOUNT=3
@@ -404,7 +388,6 @@ services:
       - PYTHONUNBUFFERED=1
       - INPUT_QUEUE=distance_calculator_1
       - EOF_ROUTING_KEY=distance_calculator
-      - REPLICA_ID=1
       - HEALTH_CHECKER=health_checker_1
       - CONTAINER_ID=distance_calculator_1
       - PREV_AMOUNT=3
@@ -426,7 +409,6 @@ services:
       - PYTHONUNBUFFERED=1
       - INPUT_QUEUE=dist_mean_calculator_0
       - EOF_ROUTING_KEY=dist_mean_calculator
-      - REPLICA_ID=0
       - HEALTH_CHECKER=health_checker_2
       - CONTAINER_ID=dist_mean_calculator_0
       - PREV_AMOUNT=2
@@ -448,7 +430,6 @@ services:
       - PYTHONUNBUFFERED=1
       - INPUT_QUEUE=dist_mean_calculator_1
       - EOF_ROUTING_KEY=dist_mean_calculator
-      - REPLICA_ID=1
       - HEALTH_CHECKER=health_checker_3
       - CONTAINER_ID=dist_mean_calculator_1
       - PREV_AMOUNT=2
@@ -470,7 +451,6 @@ services:
       - PYTHONUNBUFFERED=1
       - INPUT_QUEUE=dist_mean_provider_0
       - EOF_ROUTING_KEY=dist_mean_provider
-      - REPLICA_ID=0
       - HEALTH_CHECKER=health_checker_4
       - CONTAINER_ID=dist_mean_provider_0
       - PREV_AMOUNT=2

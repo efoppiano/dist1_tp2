@@ -7,14 +7,12 @@ from common.packets.prec_filter_in import PrecFilterIn
 from common.utils import initialize_log
 
 PREC_LIMIT = os.environ["PREC_LIMIT"]
-REPLICA_ID = os.environ["REPLICA_ID"]
 
 
 class PrecFilter(BasicStatefulFilter):
-    def __init__(self, replica_id: int, prec_limit: int):
-        super().__init__(replica_id)
+    def __init__(self, prec_limit: int):
+        super().__init__()
         self._prec_limit = prec_limit
-        self._replica_id = replica_id
 
     def handle_message(self, _flow_id, message: bytes) -> Dict[str, List[bytes]]:
         packet = PrecFilterIn.decode(message)
@@ -29,7 +27,7 @@ class PrecFilter(BasicStatefulFilter):
 
 def main():
     initialize_log()
-    filter = PrecFilter(int(REPLICA_ID), int(PREC_LIMIT))
+    filter = PrecFilter(int(PREC_LIMIT))
     filter.start()
 
 

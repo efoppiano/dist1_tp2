@@ -10,6 +10,7 @@ from common.basic_classes.basic_filter import BasicFilter
 from common.packets.eof import Eof
 from common.packets.generic_packet import GenericPacket
 
+CONTAINER_ID = os.environ["CONTAINER_ID"]
 RABBIT_HOST = os.environ.get("RABBIT_HOST", "rabbitmq")
 PREV_AMOUNT = int(os.environ["PREV_AMOUNT"])
 NEXT = os.environ["NEXT"]
@@ -20,12 +21,12 @@ MAX_SEQ_NUMBER = 2 ** 10  # 2 packet ids would be enough, but we use more for tr
 
 
 class BasicStatefulFilter(BasicFilter, ABC):
-    def __init__(self, replica_id: int):
+    def __init__(self, container_id: str = CONTAINER_ID):
         self._last_received = MultiLastReceivedManager()
         self._eofs_received = {}
 
         self.router = Router(NEXT, NEXT_AMOUNT)
-        super().__init__(replica_id)
+        super().__init__(container_id)
 
     def get_state(self) -> bytes:
         return pickle.dumps({

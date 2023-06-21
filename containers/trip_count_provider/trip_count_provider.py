@@ -6,15 +6,13 @@ from common.basic_classes.basic_stateful_filter import BasicStatefulFilter
 from common.packets.trips_count_by_year_joined import TripsCountByYearJoined
 from common.utils import initialize_log
 
-REPLICA_ID = os.environ["REPLICA_ID"]
 MULT_THRESHOLD = os.environ["MULT_THRESHOLD"]
 
 
 class TripCountProvider(BasicStatefulFilter):
-    def __init__(self, replica_id: int, mult_threshold: float):
-        super().__init__(replica_id)
+    def __init__(self, mult_threshold: float):
+        super().__init__()
         self._mult_threshold = mult_threshold
-        self._replica_id = replica_id
 
     def handle_message(self, _flow_id, message: bytes) -> Dict[str, List[bytes]]:
         packet = TripsCountByYearJoined.decode(message)
@@ -29,8 +27,7 @@ class TripCountProvider(BasicStatefulFilter):
 
 def main():
     initialize_log()
-
-    filter = TripCountProvider(int(REPLICA_ID), float(MULT_THRESHOLD))
+    filter = TripCountProvider(float(MULT_THRESHOLD))
     filter.start()
 
 

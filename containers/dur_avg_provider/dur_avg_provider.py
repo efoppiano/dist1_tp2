@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import os
 import pickle
 from typing import Dict, List, Union
 
@@ -9,14 +8,11 @@ from common.packets.eof import Eof
 from common.packets.prec_filter_in import PrecFilterIn
 from common.utils import initialize_log
 
-REPLICA_ID = os.environ["REPLICA_ID"]
-
 
 class DurAvgProvider(BasicStatefulFilter):
-    def __init__(self, replica_id: int):
-        self._replica_id = replica_id
+    def __init__(self):
         self._avg_buffer = {}
-        super().__init__(replica_id)
+        super().__init__()
         self._output_queue = self.router.route()
 
     def handle_eof(self, flow_id, message: Eof) -> Dict[str, Union[List[bytes], Eof]]:
@@ -63,7 +59,7 @@ class DurAvgProvider(BasicStatefulFilter):
 
 def main():
     initialize_log()
-    filter = DurAvgProvider(int(REPLICA_ID))
+    filter = DurAvgProvider()
     filter.start()
 
 

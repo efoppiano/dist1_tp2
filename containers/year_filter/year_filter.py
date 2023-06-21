@@ -7,15 +7,8 @@ from common.basic_classes.basic_stateful_filter import BasicStatefulFilter
 from common.packets.year_filter_in import YearFilterIn
 from common.utils import initialize_log
 
-REPLICA_ID = os.environ["REPLICA_ID"]
-
 
 class YearFilter(BasicStatefulFilter):
-    def __init__(self, replica_id: int):
-        super().__init__(replica_id)
-
-        self._replica_id = replica_id
-
     def handle_message(self, _flow_id, message: bytes) -> Dict[str, List[bytes]]:
         packet = YearFilterIn.decode(message)
         output = {}
@@ -28,7 +21,7 @@ class YearFilter(BasicStatefulFilter):
 
 def main():
     initialize_log()
-    filter = YearFilter(int(REPLICA_ID))
+    filter = YearFilter()
     filter.start()
 
 

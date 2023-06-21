@@ -20,6 +20,8 @@ from common.packets.generic_packet import GenericPacketBuilder
 from common.middleware.rabbit_middleware import Rabbit
 from client_healthcheck import ClientHealthChecker
 
+CONTAINER_ID = os.environ["CONTAINER_ID"]
+
 INPUT_QUEUE = os.environ["INPUT_QUEUE"]
 EOF_ROUTING_KEY = os.environ["EOF_ROUTING_KEY"]
 
@@ -31,11 +33,12 @@ MAX_SEQ_NUMBER = 2 ** 10  # 2 packet ids would be enough, but we use more for tr
 
 RATE_CHECK_INTERVAL = 5
 
+
 class BasicGateway(ABC):
-    def __init__(self, replica_id: int):
+    def __init__(self, container_id: str = CONTAINER_ID):
         self.__setup_middleware()
 
-        self._basic_gateway_replica_id = replica_id
+        self._basic_gateway_container_id = container_id
         self._last_chunk_received = None
         self._last_eof_received = None
 
@@ -45,7 +48,7 @@ class BasicGateway(ABC):
         self._message_sender = MessageSender(self._rabbit)
         self.health_checker = ClientHealthChecker(
             self._rabbit, self.router, self._message_sender,
-            self._basic_gateway_replica_id, self.save_state)
+            self._basic_gateway_container_id, self.save_state)
 
         self.__setup_state()
 
@@ -84,7 +87,7 @@ class BasicGateway(ABC):
         else:
             raise Exception(f"Unknown message type: {type(decoded.data)}")
 
-        builder = GenericPacketBuilder(self._basic_gateway_replica_id, decoded.client_id, decoded.city_name)
+        builder = GenericPacketBuilder(self._basic_gateway_container_id, decoded.client_id, decoded.city_name)
         self._message_sender.send(builder, outgoing_messages)
 
         return True
@@ -110,7 +113,7 @@ class BasicGateway(ABC):
         return True
 
     def __generate_and_send_client_id(self):
-        new_client_id = f"{self._basic_gateway_replica_id}_{time.time_ns()}"
+        new_client_id = f"{self._basic_gateway_container_id}_{time.time_ns()}"
         logging.info(f"New client id: {new_client_id}")
 
         control_queue = f"control_{new_client_id}"
@@ -158,8 +161,8 @@ class BasicGateway(ABC):
     def __change_rates_if_needed(self, rates: Rates):
         users_amount = len(self.health_checker.get_clients())
         trace("rates: %d ack/s %d pub*s | users_amount: %d | difference %d",
-                     rates.ack_per_second, rates.publish_per_second,
-                     users_amount, rates.ack_per_second - rates.publish_per_second)
+              rates.ack_per_second, rates.publish_per_second,
+              users_amount, rates.ack_per_second - rates.publish_per_second)
         if users_amount == 0:
             return
 

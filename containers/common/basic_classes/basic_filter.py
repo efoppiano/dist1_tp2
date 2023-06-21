@@ -18,12 +18,12 @@ EOF_ROUTING_KEY = os.environ["EOF_ROUTING_KEY"]
 
 
 class BasicFilter(ABC):
-    def __init__(self, replica_id: int):
+    def __init__(self, container_id: str):
         logging.info(
-            f"action: init | result: in_progress | filter: {self.__class__.__name__} | replica_id: {replica_id}")
+            f"action: init | result: in_progress | filter: {self.__class__.__name__} | container_id: {container_id}")
         self.__setup_middleware()
 
-        self.basic_filter_replica_id = replica_id
+        self.basic_filter_container_id = container_id
         self._message_sender = MessageSender(self._rabbit)
         self.heartbeater = HeartBeater(self._rabbit)
 
@@ -63,7 +63,7 @@ class BasicFilter(ABC):
         else:
             raise ValueError(f"Unknown packet type: {type(decoded.data)}")
 
-        builder = GenericPacketBuilder(self.basic_filter_replica_id, decoded.client_id, decoded.city_name)
+        builder = GenericPacketBuilder(self.basic_filter_container_id, decoded.client_id, decoded.city_name)
         self._message_sender.send(builder, outgoing_messages)
         save_state(self.get_state())
 
