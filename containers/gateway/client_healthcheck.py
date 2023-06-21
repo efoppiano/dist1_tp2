@@ -20,7 +20,6 @@ class ClientHealthChecker:
     def __init__(self,
                  _rabbit: Rabbit,
                  router: Router,
-                 message_sender: MessageSender,
                  container_id: str,
                  save_state: Callable,
                  lapse: int = HEALTHCHECK_LAPSE,
@@ -31,7 +30,6 @@ class ClientHealthChecker:
 
         self._rabbit = _rabbit
         self._output_queue = router.publish()
-        self._message_sender = message_sender
 
         self._container_id = container_id + "_healthcheck"
 
@@ -43,6 +41,8 @@ class ClientHealthChecker:
 
         self._clients = {}  # [client_id]: (last_city, last_time, finished)
         self._evicting = set()  # [client_id]
+
+        self._message_sender = MessageSender(self._rabbit)
 
     def evict(self, client_id: str, last_city: str = None, drop: bool = False):
         # Notify the client it has been evicted
@@ -112,9 +112,11 @@ class ClientHealthChecker:
     def get_state(self) -> dict:
         return {
             "clients": self._clients,
-            "evicting": self._evicting
+            "evicting": self._evicting,
+            "message_sender": self._message_sender.get_state()
         }
 
     def set_state(self, state: dict):
         self._clients = state["clients"]
         self._evicting = state["evicting"]
+        self._message_sender.set_state(state["message_sender"])

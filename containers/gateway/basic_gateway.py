@@ -47,8 +47,7 @@ class BasicGateway(ABC):
         self._rate_checker = RateChecker()
         self._message_sender = MessageSender(self._rabbit)
         self.health_checker = ClientHealthChecker(
-            self._rabbit, self.router, self._message_sender,
-            self._basic_gateway_container_id, self.save_state)
+            self._rabbit, self.router, self._basic_gateway_container_id, self.save_state)
 
         self.__setup_state()
 
