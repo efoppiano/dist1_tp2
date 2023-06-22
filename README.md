@@ -112,7 +112,7 @@ Además, el sistema debe permitir la ejecución de múltiples análisis en paral
 La arquitectura está compuesta por multiples nodos de diferentes tipos que se distribuyen el trabajo y responsabilidades
 del sistema.
 Toda la comunicación entre nodos se realiza mediante RabbitMQ.
-Los clientes enviarán sus peticiones a un `Gateway`, pudiendo recibir mensajes de control de este, y recibiran sus
+Los clientes enviarán sus peticiones a un `Gateway`, pudiendo recibir mensajes de control de este, y recibirán sus
 respuestas de un `ResponseProvider`.
 
 > Pueden verse en más detalle los componentes del sistema en la [vista física](#vista-física).
@@ -122,7 +122,7 @@ respuestas de un `ResponseProvider`.
 - **Escalabilidad**: Se debe soportar el incremento de los elementos de cómputo para
   escalar los volúmenes de información a procesar.
 - **Mantenibilidad**: La comunicación de grupos debe encapsularse en un middleware.
-- **Tolerancia a fallas**: El sistema debe ser tolerante a fallas y caidas de los nodos.
+- **Tolerancia a fallas**: El sistema debe ser tolerante a fallas y caídas de los nodos.
 - **Alta disponibilidad**: El sistema debe estar altamente disponible para los clientes.
 
 ### Escenarios
@@ -133,12 +133,12 @@ Diagrama de casos de uso del sistema.
 
 #### Caso de Uso 1 (CU 1)
 
-- Titulo: Obtener duración promedio de viajes donde prec > 30mm
+- Titulo: Obtener duración promedio de viajes donde prec > 30 mm
 - Actor: Cliente
 - Pasos
     - Cliente: envia información de las ciudades a procesar
     - Sistema: procesa la información y envia los reportes al cliente
-    - Cliente: recibe la duracion de viaje promedio en dias con precipitaciones mayores a 30mm
+    - Cliente: recibe la duracion de viaje promedio en días con precipitaciones mayores a 30 mm
 
 #### Caso de Uso 2 (CU 2)
 
@@ -288,8 +288,8 @@ A modo de ejemplo, se enviaron solo dos mensajes con información
 de clima, uno de estaciones y uno de viajes, junto con los EOFs correspondientes.
 En un caso real, se enviarían muchos más mensajes de tipo `data`.
 
-Los mensajes tipo EOF deben ser enviados a todas las replicas del siguiente nodo,
-que los almacenaran hasta recibir de todas las replicas del nodo anterior.
+Los mensajes tipo EOF deben ser enviados a todas las réplicas del siguiente nodo,
+que los almacenaran hasta recibir de todas las réplicas del nodo anterior.
 
 ### Vista de Desarrollo
 
@@ -328,11 +328,11 @@ El retorno de este método es un conjunto de mensajes que se deben enviar a la s
 Esta abstracción permite implementar envio de batches de mensajes desde la clase abstracta, sin
 que las clases concretas tengan que preocuparse por ello.
 
-Ademas, puede redefinirse el método `handle_eof`, para realizar acciones al momento de recibir un EOF.
-este tiene un funcionamento similar, retornando un conjunto de mensajes que se deben enviar a la siguiente etapa.
-De este modo los filtros que acumulan, como `trips_counter`, pueden ser umplementados facilmente
+Además, puede redefinirse el método `handle_eof`, para realizar acciones al momento de recibir un EOF.
+Este tiene un funcionamiento similar, retornando un conjunto de mensajes que se deben enviar a la siguiente etapa.
+De este modo los filtros que acumulan, como `trips_counter`, pueden ser implementados fácilmente
 
-Tambien podemos ver la composicion de las clases `MessageSender`, que se encarga del envio de mensajes,
+También podemos ver la composición de las clases `MessageSender`, que se encarga del envio de mensajes,
 y `MultiLastReceivedManager`, que se encarga de detectar duplicados.
 
 ## Alta Disponibilidad y Tolerancia a Fallos
@@ -373,7 +373,7 @@ Para garantizar el correcto funcionamiento del sistema frente a caídas de proce
 
 Flujo de un nodo que persiste su estado en disco
 
-Se quiere notar en el diagrama que al procesar un mensaje podría no actualizarse el estado (por ejemplo un filtro que en podría no necesitar estado de negocio) o no enviar mensajes (por ejemplo un nodo que acumula la suma de valores).
+Se quiere notar en el diagrama que al procesar un mensaje podría no actualizarse el estado (por ejemplo un filtro que podría no necesitar estado de negocio) o no enviar mensajes (por ejemplo un nodo que acumula la suma de valores).
 
 ### Filtrado Mensajes Repetidos
 
@@ -381,7 +381,7 @@ Es necesario agregar algo de lógica extra por sobre la persistencia antes descr
 
 Cada nodo del sistema almacena un identificador del último mensaje recibido (por cada remitente) a modo de no procesar un mensaje ya recibido.
 
-Solo es necesario almacenar el último identificador de cada remitente, ya que los estos sólo pueden generar repetidos consecutivos, gracias a que todos los nodos filtran duplicados.
+Solo es necesario almacenar el último identificador de cada remitente, ya que los estos solo pueden generar repetidos consecutivos, gracias a que todos los nodos filtran duplicados.
 
 Estos duplicados pueden seguir generando cuando envían un mensaje hacia adelante y mueren antes de hacer ‘ack’ al mensaje que estaban procesando.
 
@@ -395,9 +395,9 @@ En este caso, al procesar un mensaje siempre se actualizará el estado (ya que l
 
 Se reitera, si un nodo se cae antes de guardar en disco leerá un mismo mensaje al levantarse (ya que no le hizo ack) y al procesarlo actualizará su estado del mismo modo y mandará un mensaje duplicado idéntico de manera consecutiva.
 
-Por otro lado, luego de haber persistido el procesamiento de un mensaje, los duplicados de ese mensaje ( o el mensaje en sí, si el nodo cayera antes de mandar ack ) serán filtrados.
+Por otro lado, luego de haber persistido el procesamiento de un mensaje, los duplicados de ese mensaje (o el mensaje en sí, si el nodo cayera antes de mandar ack) serán filtrados.
 
-> #### Generacion de Ids
+> #### Generación de Ids
 > Es interesante notar que la generación de ids es independiente para cada réplica receptora, es decir, si un paso siguiente tiene N réplicas, mantendremos N ids a actualizar, de modo que estos no se pisen entre sí.
 >
 > También hay que tener en cuenta el caso donde queremos publicar un mensaje a todas las réplicas (por ejemplo un Eof), para esto se busca un id que no entre en conflicto con ninguna de ellas (recordando actualizarlo para todas las réplicas).
@@ -427,7 +427,7 @@ Todos los nodos del sistema (incluidos los health-checkers) deben mandar un hear
 
 Los procesos de un mismo tipo se distribuyen uniformemente entre los health-checkers, para que en caso de que uno muera no frene todo un tramo del sistema (asumiendo también la muerte de sus dependientes).
 
-Además, los health-checkers se asignan entre sí en forma de anillo, de modo que mientras mientras quede uno vivo este puede levantar al siguiente, que levantara a su siguiente, y así sucesivamente hasta volver a todo el sistema funcionando.
+Además, los health-checkers se asignan entre sí en forma de anillo, de modo que mientras quede uno vivo este puede levantar al siguiente, que levantara a su siguiente, y así sucesivamente hasta volver a todo el sistema funcionando.
 
 ![health-checkers](docs/fault_tolerance/healthcheckers.png)
 
@@ -437,7 +437,7 @@ Ejemplo de asignación de health-checkers
 
 Siendo que el sistema debe funcionar continuamente es importante limpiar el estado generado por los clientes, no solamente cuando terminan una consulta sino que también si se desconectan inesperadamente.
 
-Los clientes se comunicaran con un solo gateway, de modo que si un gateway no recibe un mensaje por parte de un cliente en un tiempo determinado (suficientemente largo) puede darlo por muerto o finalizado.
+Los clientes se comunicarán con un solo gateway, de modo que si un gateway no recibe un mensaje por parte de un cliente en un tiempo determinado (suficientemente largo) puede darlo por muerto o finalizado.
 
 Cuando un cliente deja de enviar mensajes, el gateway asignado lo da por terminado si mando EOF de su último flujo, en caso contrario lo da por muerto.
 
@@ -453,12 +453,12 @@ Flujo principal de los Gateway
 
 > #### Generación de Mensajes
 > Es interesante notar que para el envío de mensajes ambas ramas se identifican como remitentes distintos, es decir, los receptores los verán como nodos diferentes.
-> Esto es así ya que una precondición del funcionamiento del filtro de duplicados es el procesamiento secuencial y en orden de mensajes. Mientras que los mensajes generados por  la rama dependiente de un timer podría no ser replicable frente a caídas.
+> Esto es así, ya que una precondición del funcionamiento del filtro de duplicados es el procesamiento secuencial y en orden de mensajes. Mientras que los mensajes generados por la rama dependiente de un timer podría no ser replicable frente a caídas.
 
 > #### Aviso de desalojo
 > Cuando el gateway emite un Eof para el desalojo de un cliente, también envía un mensaje de control al cliente informando el desalojo.
-> De ese modo, si el cliente no hubiera muerto (si no que ha sido incapaz de comunicarse en tiempo) se enteraría de su desalojo de manera oportuna.
-> Ciertamente, el cliente eventualmente detectaría la eliminación de sus colas de control y respuestas eventualmente. Lo que este mecanismo facilita es una finalización temprana y un fallo informado ( la eliminación de las colas podría significar un fallo del sistema, un desalojo indica un fallo del cliente )
+> De ese modo, si el cliente no hubiera muerto (sino que ha sido incapaz de comunicarse en tiempo) se enteraría de su desalojo de manera oportuna.
+> Ciertamente, el cliente eventualmente detectaría la eliminación de sus colas de control y respuestas eventualmente. Lo que este mecanismo facilita es una finalización temprana y un fallo informado (la eliminación de las colas podría significar un fallo del sistema, un desalojo indica un fallo del cliente)
 
 ### Control de velocidad de envio
 
@@ -471,4 +471,4 @@ El mecanismo es implementado en los gateway, que periódicamente consultan la AP
 Luego, se enviará por la cola de control de los clientes un mensaje informando la tasa de envio actualizada, con lo cual estos regularan el tiempo de espera entre cada envío de mensajes.
 
 > #### Healthcheck de clientes
-> Se prevé la actualización del tiempo de timeout de los clientes en función a la taza de envio esperada, aplicando la reducción de velocidad inmediatamente y los incrementos de manera paulatina, a modo de ser lo más laxo posible
+> Se prevé la actualización del tiempo de timeout de los clientes en función a la tasa de envio esperada, aplicando la reducción de velocidad inmediatamente y los incrementos de manera paulatina, a modo de ser lo más laxo posible
