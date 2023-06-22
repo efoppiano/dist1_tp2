@@ -3,29 +3,29 @@
 ## Tabla de contenidos
 
 - [TP1 - Sistemas Distribuidos I](#tp1---sistemas-distribuidos-i)
-  - [Tabla de contenidos](#tabla-de-contenidos)
-  - [Ejecución](#ejecución)
-    - [Requisitos](#requisitos)
-    - [Parametros del sistema](#parametros-del-sistema)
-    - [Ejecución del sistema](#ejecución-del-sistema)
-  - [Documentación](#documentación)
-    - [Alcance](#alcance)
-    - [Arquitectura de Software](#arquitectura-de-software)
-    - [Objetivos y limitaciones arquitectónicas](#objetivos-y-limitaciones-arquitectónicas)
-    - [Escenarios](#escenarios)
-    - [Vista Lógica](#vista-lógica)
-      - [DAG](#dag)
-    - [Vista Física](#vista-física)
-      - [Diagrama de robustez](#diagrama-de-robustez)
-      - [Sincronización de EOFs](#sincronización-de-eofs)
-      - [Diagrama de despliegue](#diagrama-de-despliegue)
-    - [Vista de Procesos](#vista-de-procesos)
-      - [Diagrama de actividad](#diagrama-de-actividad)
-      - [Diagrama de secuencia](#diagrama-de-secuencia)
-    - [Vista de Desarrollo](#vista-de-desarrollo)
-      - [Diagrama de paquetes](#diagrama-de-paquetes)
-    - [Vista Lógica](#vista-lógica-1)
-      - [Diagrama de clases](#diagrama-de-clases)
+    - [Tabla de contenidos](#tabla-de-contenidos)
+    - [Ejecución](#ejecución)
+        - [Requisitos](#requisitos)
+        - [Parametros del sistema](#parametros-del-sistema)
+        - [Ejecución del sistema](#ejecución-del-sistema)
+    - [Documentación](#documentación)
+        - [Alcance](#alcance)
+        - [Arquitectura de Software](#arquitectura-de-software)
+        - [Objetivos y limitaciones arquitectónicas](#objetivos-y-limitaciones-arquitectónicas)
+        - [Escenarios](#escenarios)
+        - [Vista Lógica](#vista-lógica)
+            - [DAG](#dag)
+        - [Vista Física](#vista-física)
+            - [Diagrama de robustez](#diagrama-de-robustez)
+            - [Sincronización de EOFs](#sincronización-de-eofs)
+            - [Diagrama de despliegue](#diagrama-de-despliegue)
+        - [Vista de Procesos](#vista-de-procesos)
+            - [Diagrama de actividad](#diagrama-de-actividad)
+            - [Diagrama de secuencia](#diagrama-de-secuencia)
+        - [Vista de Desarrollo](#vista-de-desarrollo)
+            - [Diagrama de paquetes](#diagrama-de-paquetes)
+        - [Vista Lógica](#vista-lógica-1)
+            - [Diagrama de clases](#diagrama-de-clases)
 
 ## Ejecución
 
@@ -54,14 +54,17 @@ El directorio debe tener la siguiente estructura:
 
 ### Parámetros del sistema
 
-Podemos encontrar y editar las variables principales del sistema en el archivo `deployment.json`. Su contenido luego sera plasmado en el docker-compose al levantar el sistema (o al correr `scripts/build.py`).
+Podemos encontrar y editar las variables principales del sistema en el archivo `deployment.json`. Su contenido luego
+sera plasmado en el docker-compose al levantar el sistema (o al correr `scripts/build.py`).
 
 Dentro de este archivo podemos encontrar y editar:
+
 - La cantidad de nodos de cada tipo
 - Sus variables de entorno
 - Como se conectan entre sí
 
 Además, podemos predefinir procesos clientes, definiendo:
+
 - Su nombre
 - El directorio del que obtendrá los archivos
 - Las ciudades por las que consultarán
@@ -95,9 +98,11 @@ Además, el sistema debe permitir la ejecución de múltiples análisis en paral
 
 ### Arquitectura de Software
 
-La arquitectura está compuesta por multiples nodos de diferentes tipos que se distribuyen el trabajo y responsabilidades del sistema.
+La arquitectura está compuesta por multiples nodos de diferentes tipos que se distribuyen el trabajo y responsabilidades
+del sistema.
 Toda la comunicación entre nodos se realiza mediante RabbitMQ.
-Los clientes enviarán sus peticiones a un `Gateway`, pudiendo recibir mensajes de control de este, y recibiran sus respuestas de un `ResponseProvider`.
+Los clientes enviarán sus peticiones a un `Gateway`, pudiendo recibir mensajes de control de este, y recibiran sus
+respuestas de un `ResponseProvider`.
 
 > Pueden verse en más detalle los componentes del sistema en la [vista física](#vista-física).
 
@@ -114,6 +119,35 @@ Los clientes enviarán sus peticiones a un `Gateway`, pudiendo recibir mensajes 
 ![use_cases](docs/use_cases.png)
 
 Diagrama de casos de uso del sistema.
+
+#### Caso de Uso 1 (CU 1)
+
+- Titulo: Obtener duración promedio de viajes donde prec > 30mm
+- Actor: Cliente
+- Pasos
+    - Cliente: envia información de las ciudades a procesar
+    - Sistema: procesa la información y envia los reportes al cliente
+    - Cliente: recibe la duracion de viaje promedio en dias con precipitaciones mayores a 30mm
+
+#### Caso de Uso 2 (CU 2)
+
+- Título: Obtener estaciones donde trips_17 >= 2 * trips_16
+- Actor: Cliente
+- Pasos
+    - Cliente: envia información de las ciudades a procesar
+    - Sistema: procesa la información y envia los reportes al cliente
+    - Cliente: recibe las estaciones que duplicaron la cantidad de viajes iniciados en ellas
+      entre 2016 y el 2017
+
+#### Caso de Uso 3 (CU 3)
+
+- Título: Obtener estaciones de Montreal donde dist > 6km
+- Actor: Cliente
+- Pasos
+    - Cliente: envia información de las ciudades a procesar
+    - Sistema: procesa la información y envia los reportes al cliente
+    - Cliente: recibe las estaciones de Montreal para la que el promedio de los ciclistas recorren
+      más de 6 km en llegar a ellas
 
 ### Vista Lógica
 
@@ -154,14 +188,17 @@ y otro para recibir los reportes (`Result Provider`). En ambos casos, la comunic
 RabbitMQ.
 Dentro del sistema `Bike Rides Analyzer`, la comunicación también se realiza mediante RabbitMQ.
 
-![robustness_query_1](docs/robustness_query_1.png)
+![robustness_diagram_2](docs/robustness_query_1.png)
 
-![robustness_query](docs/robustness_query.png)
+![robustness_diagram_3](docs/robustness_query_2.png)
+
+![robustness_diagram_4](docs/robustness_query_3.png)
 
 Diagrama de robustez detallado, con información de las queues que se utilizan para comunicar las distintas
 etapas del pipeline.
 
-Cada réplica tiene su propia queue, y se utiliza una función de hashing para determinar a qué réplica se le envía cada mensaje.
+Cada réplica tiene su propia queue, y se utiliza una función de hashing para determinar a qué réplica se le envía cada
+mensaje.
 
 Siendo el response provider la única excepción, que tiene una queue para cada flujo de resultados.
 
@@ -225,8 +262,18 @@ es muy sencillo. Lo mismo ocurre con `Year Filter`, `Trip Count Provider`, `Dist
 
 Diagrama de secuencia de un posible envio de datos del cliente al sistema.
 
-En el diagrama se observa con más detalle el camino que recorre la información desde el cliente hasta
-cada uno de los nodos del sistema. A modo de ejemplo, se enviaron solo dos mensajes con información
+El diagrama presentado es una version simplificada, no estándar, de un diagrama de secuencia.
+Se decidió utilizar este formato para evitar saturarlo con demasiada información.
+
+Con esto se busca mostrar el camino que recorre la información que ingresa el cliente:
+se ve que primero es recibida por el `Gateway`, prácticamente sin modificaciones con respecto a los
+archivos originales. Luego, el `Gateway` se encarga de descartar los campos innecesarios, y de enviar
+los paquetes con la información correspondiente al `Weather Aggregator` y al `Station Aggregator`.
+Una vez enviada la información de clima y estaciones, el cliente comienza a enviar la información de viajes.
+Los aggregators, con sus side tables ya completas, agregan los campos necesarios a los paquetes, y los
+envían a la siguiente etapa del pipeline.
+
+A modo de ejemplo, se enviaron solo dos mensajes con información
 de clima, uno de estaciones y uno de viajes, junto con los EOFs correspondientes.
 En un caso real, se enviarían muchos más mensajes de tipo `data`.
 
@@ -247,6 +294,11 @@ los nodos particulares tienen poca logica de negocio y aprovechan en gran medida
 Tanto el `BasicFilter` como el `WeatherFilter` utilizan la abstracción `Rabbit Middleware`
 para no depender de los detalles de implementación de la biblioteca pika.
 
+`Message Queue` define una interfaz que debe ser implementada para poder utilizar un middleware
+en el sistema. En nuestro caso, la implementación es utilizando pika, por lo que se define la clase
+`Rabbit Middleware`, que hereda de `Message Queue`, e implementa los métodos de la interfaz,
+ocultando los detalles de implementación de pika.
+
 ### Vista Lógica
 
 #### Diagrama de clases
@@ -254,7 +306,6 @@ para no depender de los detalles de implementación de la biblioteca pika.
 ![class_diagram_1](docs/class_1.png)
 
 ![class_diagram_2](docs/class_2.png)
-
 
 Diagrama de clases de los filtros y aggregators.
 
