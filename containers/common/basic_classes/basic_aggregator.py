@@ -13,6 +13,10 @@ from common.utils import save_state, load_state
 from common.packets.eof import Eof
 from common.packets.generic_packet import GenericPacket, GenericPacketBuilder
 from common.middleware.rabbit_middleware import Rabbit
+from common.packets.gatway_or_static import GatewayOrStatic
+from common.packets.station_side_table_info import StationSideTableInfo
+from common.packets.weather_side_table_info import WeatherSideTableInfo
+
 
 SIDE_TABLE_ROUTING_KEY = os.environ["SIDE_TABLE_ROUTING_KEY"]
 CONTAINER_ID = os.environ["CONTAINER_ID"]
@@ -22,6 +26,11 @@ EOF_ROUTING_KEY = os.environ["EOF_ROUTING_KEY"]
 
 RABBIT_HOST = os.environ.get("RABBIT_HOST", "rabbitmq")
 MAX_PACKET_ID = 2 ** 10  # 2 packet ids would be enough, but we use more for traceability
+
+
+def is_side_table_message(message: GenericPacket) -> bool:
+    data = GatewayOrStatic.decode(message.data).data
+    return isinstance(data, StationSideTableInfo) or isinstance(data, WeatherSideTableInfo)
 
 
 class BasicAggregator(ABC):
@@ -40,9 +49,12 @@ class BasicAggregator(ABC):
         self.__setup_state()
 
     def __setup_state(self):
-        state = load_state()
+        state = load_state("/volumes/state")
         if state is not None:
             self.set_state(state)
+        inner_state = load_state("/volumes/inner_state")
+        if inner_state is not None:
+            self.__set_inner_state(inner_state)
 
     def __setup_middleware(self, side_table_routing_key: str):
         self._rabbit = Rabbit(RABBIT_HOST)
@@ -80,14 +92,19 @@ class BasicAggregator(ABC):
 
     def __on_stream_message_callback(self, msg: bytes) -> bool:
         decoded = GenericPacket.decode(msg)
+        side_table = is_side_table_message(decoded)
 
-        if not self._last_received.update(decoded):
+        # TODO: side table msgs should not update packet id
+        if not side_table and not self._last_received.update(decoded):
             return True
 
         if not self.__on_stream_message_without_duplicates(decoded):
             return False
 
-        save_state(self.get_state())
+        if side_table:
+            save_state(self.get_state(), "/volumes/state")
+        else:
+            save_state(self.__get_inner_state(), "/volumes/inner_state")
         return True
 
     def handle_eof_message(self, flow_id, message: Eof) -> Dict[str, Eof]:
@@ -116,19 +133,25 @@ class BasicAggregator(ABC):
 
     @abc.abstractmethod
     def get_state(self) -> bytes:
+        return pickle.dumps({})
+
+    @abc.abstractmethod
+    def set_state(self, state_bytes: bytes):
+        pass
+
+    def __get_inner_state(self) -> bytes:
         state = {
             "message_sender": self._message_sender.get_state(),
             "last_received": self._last_received.get_state(),
             "eofs_received": self._eofs_received,
         }
         return pickle.dumps(state)
-
-    @abc.abstractmethod
-    def set_state(self, state_bytes: bytes):
+    
+    def __set_inner_state(self, state_bytes: bytes):
         state = pickle.loads(state_bytes)
         self._message_sender.set_state(state["message_sender"])
-        self._eofs_received = state["eofs_received"]
         self._last_received.set_state(state["last_received"])
+        self._eofs_received = state["eofs_received"]
 
     def start(self):
         self.heartbeater.start()
