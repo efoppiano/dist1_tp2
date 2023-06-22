@@ -17,6 +17,7 @@ from common.router import Router
 from common.utils import save_state, load_state, min_hash, log_duplicate, trace
 from common.packets.eof import Eof
 from common.packets.generic_packet import GenericPacketBuilder
+from common.packets.gateway_or_static import is_side_table_message
 from common.middleware.rabbit_middleware import Rabbit
 from client_healthcheck import ClientHealthChecker
 
@@ -76,6 +77,7 @@ class BasicGateway(ABC):
     def __on_stream_message_without_duplicates(self, decoded: ClientDataPacket) -> bool:
         flow_id = decoded.get_flow_id()
         is_eof = decoded.is_eof()
+        is_side_table = False
 
         self.health_checker.ping(decoded.client_id, decoded.city_name, is_eof)
 
@@ -83,11 +85,12 @@ class BasicGateway(ABC):
             outgoing_messages = self.handle_eof(decoded.data)
         elif decoded.is_chunk():
             outgoing_messages = self.__handle_chunk(flow_id, decoded.data)
+            is_side_table = is_side_table_message(decoded.data[0])
         else:
             raise Exception(f"Unknown message type: {type(decoded.data)}")
 
         builder = GenericPacketBuilder(self._basic_gateway_container_id, decoded.client_id, decoded.city_name)
-        self._message_sender.send(builder, outgoing_messages)
+        self._message_sender.send(builder, outgoing_messages, skip_packet_id = is_side_table)
 
         return True
 

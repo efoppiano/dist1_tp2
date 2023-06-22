@@ -28,7 +28,10 @@ class MessageSender:
 
         return self._last_seq_number[queue]
 
-    def __get_next_publish_seq_number(self, queue: str) -> int:
+    def __get_next_publish_seq_number(self, queue: str, skip_packet_id:bool = False) -> int:
+        if skip_packet_id:
+            return 0
+        
         self._last_seq_number.setdefault(queue, 0)
         keys = list(self._last_seq_number.keys())
         keys = [key for key in keys if key.startswith(queue)]
@@ -47,12 +50,12 @@ class MessageSender:
 
         return possible_id
 
-    def send(self, builder: GenericPacketBuilder, outgoing_messages: Dict[str, Union[List[bytes], Eof]]):
+    def send(self, builder: GenericPacketBuilder, outgoing_messages: Dict[str, Union[List[bytes], Eof]], skip_packet_id:bool=False):
         for (queue, messages_or_eof) in outgoing_messages.items():
             if isinstance(messages_or_eof, Eof) or len(messages_or_eof) > 0:
                 if queue.startswith("publish_"):
                     queue = queue[len("publish_"):]
-                    encoded = builder.build(self.__get_next_publish_seq_number(queue), messages_or_eof).encode()
+                    encoded = builder.build(self.__get_next_publish_seq_number(queue, skip_packet_id), messages_or_eof).encode()
                     logging.debug(
                         f"Sending {builder.get_id()}-{min_hash(messages_or_eof)} to {queue}")
                     self._rabbit.send_to_route("publish", queue, encoded)
