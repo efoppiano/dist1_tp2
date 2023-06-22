@@ -127,7 +127,7 @@ respuestas de un `ResponseProvider`.
 
 ### Escenarios
 
-![use_cases](docs/use_cases.png)
+![use_cases](docs/4P1/use_cases.png)
 
 Diagrama de casos de uso del sistema.
 
@@ -164,7 +164,7 @@ Diagrama de casos de uso del sistema.
 
 #### DAG
 
-![DAG_diagram](docs/dag.png)
+![DAG_diagram](docs/4P1/dag.png)
 
 DAG global del sistema.
 
@@ -187,7 +187,7 @@ Esto favorece la escalabilidad del sistema, a costa de duplicar la información 
 
 #### Diagrama de robustez
 
-![robustness_diagram_1](docs/robustness_simple.png)
+![robustness_diagram_1](docs/4P1/robustness_simple.png)
 
 Diagrama de robustez simplificado
 
@@ -199,11 +199,11 @@ y otro para recibir los reportes (`Result Provider`). En ambos casos, la comunic
 RabbitMQ.
 Dentro del sistema `Bike Rides Analyzer`, la comunicación también se realiza mediante RabbitMQ.
 
-![robustness_diagram_2](docs/robustness_query_1.png)
+![robustness_diagram_2](docs/4P1/robustness_query_1.png)
 
-![robustness_diagram_3](docs/robustness_query_2.png)
+![robustness_diagram_3](docs/4P1/robustness_query_2.png)
 
-![robustness_diagram_4](docs/robustness_query_3.png)
+![robustness_diagram_4](docs/4P1/robustness_query_3.png)
 
 Diagrama de robustez detallado, con información de las queues que se utilizan para comunicar las distintas
 etapas del pipeline.
@@ -215,7 +215,7 @@ Siendo el response provider la única excepción, que tiene una queue para cada 
 
 #### Sincronización de EOFs
 
-![synchronizer](docs/eofs.png)
+![synchronizer](docs/4P1/eofs.png)
 
 Diagrama de sincronización entre las distintas etapas del pipeline.
 
@@ -230,7 +230,7 @@ La routing key `trips_counter` publica mensajes a todos los trip counter (con co
 
 #### Diagrama de despliegue
 
-![deployment_diagram](docs/deployment.png)
+![deployment_diagram](docs/4P1/deployment.png)
 
 Diagrama de despliegue del sistema.
 
@@ -242,7 +242,7 @@ Cada nodo puede desplegarse de manera independiente.
 
 #### Diagrama de actividad
 
-![activity_diagram_1](docs/activity_1.png)
+![activity_diagram_1](docs/4P1/activity_1.png)
 
 Diagrama de actividad de la comunicación entre el cliente, el Gateway y el primer aggregator
 
@@ -256,7 +256,7 @@ Lo mismo sucede con el `Station Aggregator`, que necesita la información de las
 El cliente envía la información de cada ciudad de manera secuencial.
 Si quisiera enviar la información en paralelo, debería correr otra instancia del cliente.
 
-![activity_diagram_2](docs/activity_2.png)
+![activity_diagram_2](docs/4P1/activity_2.png)
 
 Diagrama de actividad de la comunicación del `Station Aggregator` con el `Prec Filter`.
 
@@ -269,7 +269,7 @@ es muy sencillo. Lo mismo ocurre con `Year Filter`, `Trip Count Provider`, `Dist
 
 #### Diagrama de secuencia
 
-![sequence_diagram_1](docs/sequence_1.png)
+![sequence_diagram_1](docs/4P1/sequence_1.png)
 
 Diagrama de secuencia de un posible envio de datos del cliente al sistema.
 
@@ -295,7 +295,7 @@ que los almacenaran hasta recibir de todas las replicas del nodo anterior.
 
 #### Diagrama de paquetes
 
-![package_diagram](docs/package.png)
+![package_diagram](docs/4P1/package.png)
 
 Diagrama de paquetes simplificado del sistema.
 
@@ -314,9 +314,9 @@ ocultando los detalles de implementación de pika.
 
 #### Diagrama de clases
 
-![class_diagram_1](docs/class_1.png)
+![class_diagram_1](docs/4P1/class_1.png)
 
-![class_diagram_2](docs/class_2.png)
+![class_diagram_2](docs/4P1/class_2.png)
 
 Diagrama de clases de los filtros y aggregators.
 
@@ -369,12 +369,9 @@ Para garantizar el correcto funcionamiento del sistema frente a caídas de proce
 - El estado se guarda en disco de forma atómica.
 - No se le hace ‘ack’ a un mensaje hasta haberlo procesado y guardado el estado resultante a disco, asegurando la persistencia y evitando la pérdida de mensajes.
 
-<center>
+![Tolerancia a Fallos](docs/fault_tolerance/fault_tolerance.png)
 
-![Tolerancia a Fallos]()
 Flujo de un nodo que persiste su estado en disco
-
-</center>
 
 Se quiere notar en el diagrama que al procesar un mensaje podría no actualizarse el estado (por ejemplo un filtro que en podría no necesitar estado de negocio) o no enviar mensajes (por ejemplo un nodo que acumula la suma de valores).
 
@@ -390,12 +387,9 @@ Estos duplicados pueden seguir generando cuando envían un mensaje hacia adelant
 
 Guardando el estado luego de procesar un mensaje y su identificador en un mismo paso nos aseguramos de que el mensaje duplicado producido en el caso anterior es idéntico y puede ser detectado en el nodo siguiente.
 
-<center>
+![Filtrado de Repetidos](docs/fault_tolerance/dupe_filter.png)
 
-![Filtrado de Repetidos]()
 Flujo de un nodo que filtra duplicados
-
-</center>
 
 En este caso, al procesar un mensaje siempre se actualizará el estado (ya que la identificación del mensaje es parte del estado).
 
@@ -418,12 +412,9 @@ Si un mensaje es leído de esta ‘autocola’ durante la ejecución puede ser i
 
 Es al iniciar el proceso que debemos verificar los mensajes de la autocola, y asegurarnos de marcarlos como leídos.
 
-<center>
+![Envio sin Repetidos](docs/fault_tolerance/send_no_dupes.png)
 
-![Envio sin Repetidos]()
 Flujo del `response_provider`
-
-</center>
 
 ### Health check del sistema
 
@@ -438,12 +429,9 @@ Los procesos de un mismo tipo se distribuyen uniformemente entre los health-chec
 
 Además, los health-checkers se asignan entre sí en forma de anillo, de modo que mientras mientras quede uno vivo este puede levantar al siguiente, que levantara a su siguiente, y así sucesivamente hasta volver a todo el sistema funcionando.
 
-<center>
+![health-checkers](docs/fault_tolerance/healthcheckers.png)
 
-![health-checkers]()
 Ejemplo de asignación de health-checkers
-
-</center>
 
 ### Health check de los clientes
 
@@ -459,14 +447,9 @@ Si el cliente murió, se envía un EOF de su último flujo, marcando la eliminac
 
 > La eliminación de las colas se produce en el `response_provider`
 
+![gateways](docs/fault_tolerance/client_healthcheck.png)
 
-<center>
-
-![gateways]()
 Flujo principal de los Gateway
-
-</center>
-
 
 > #### Generación de Mensajes
 > Es interesante notar que para el envío de mensajes ambas ramas se identifican como remitentes distintos, es decir, los receptores los verán como nodos diferentes.
