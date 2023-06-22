@@ -3,29 +3,40 @@
 ## Tabla de contenidos
 
 - [TP1 - Sistemas Distribuidos I](#tp1---sistemas-distribuidos-i)
-    - [Tabla de contenidos](#tabla-de-contenidos)
-    - [Ejecución](#ejecución)
-        - [Requisitos](#requisitos)
-        - [Parametros del sistema](#parametros-del-sistema)
-        - [Ejecución del sistema](#ejecución-del-sistema)
-    - [Documentación](#documentación)
-        - [Alcance](#alcance)
-        - [Arquitectura de Software](#arquitectura-de-software)
-        - [Objetivos y limitaciones arquitectónicas](#objetivos-y-limitaciones-arquitectónicas)
-        - [Escenarios](#escenarios)
-        - [Vista Lógica](#vista-lógica)
-            - [DAG](#dag)
-        - [Vista Física](#vista-física)
-            - [Diagrama de robustez](#diagrama-de-robustez)
-            - [Sincronización de EOFs](#sincronización-de-eofs)
-            - [Diagrama de despliegue](#diagrama-de-despliegue)
-        - [Vista de Procesos](#vista-de-procesos)
-            - [Diagrama de actividad](#diagrama-de-actividad)
-            - [Diagrama de secuencia](#diagrama-de-secuencia)
-        - [Vista de Desarrollo](#vista-de-desarrollo)
-            - [Diagrama de paquetes](#diagrama-de-paquetes)
-        - [Vista Lógica](#vista-lógica-1)
-            - [Diagrama de clases](#diagrama-de-clases)
+  - [Tabla de contenidos](#tabla-de-contenidos)
+  - [Ejecución](#ejecución)
+    - [Requisitos](#requisitos)
+    - [Parámetros del sistema](#parámetros-del-sistema)
+    - [Ejecución del sistema](#ejecución-del-sistema)
+  - [Documentación](#documentación)
+    - [Alcance](#alcance)
+    - [Arquitectura de Software](#arquitectura-de-software)
+    - [Objetivos y limitaciones arquitectónicas](#objetivos-y-limitaciones-arquitectónicas)
+    - [Escenarios](#escenarios)
+      - [Caso de Uso 1 (CU 1)](#caso-de-uso-1-cu-1)
+      - [Caso de Uso 2 (CU 2)](#caso-de-uso-2-cu-2)
+      - [Caso de Uso 3 (CU 3)](#caso-de-uso-3-cu-3)
+    - [Vista Lógica](#vista-lógica)
+      - [DAG](#dag)
+    - [Vista Física](#vista-física)
+      - [Diagrama de robustez](#diagrama-de-robustez)
+      - [Sincronización de EOFs](#sincronización-de-eofs)
+      - [Diagrama de despliegue](#diagrama-de-despliegue)
+    - [Vista de Procesos](#vista-de-procesos)
+      - [Diagrama de actividad](#diagrama-de-actividad)
+      - [Diagrama de secuencia](#diagrama-de-secuencia)
+    - [Vista de Desarrollo](#vista-de-desarrollo)
+      - [Diagrama de paquetes](#diagrama-de-paquetes)
+    - [Vista Lógica](#vista-lógica-1)
+      - [Diagrama de clases](#diagrama-de-clases)
+  - [Alta Disponibilidad y Tolerancia a Fallos](#alta-disponibilidad-y-tolerancia-a-fallos)
+    - [Nuevos requerimientos](#nuevos-requerimientos)
+    - [Tolerancia a Fallos](#tolerancia-a-fallos)
+    - [Filtrado Mensajes Repetidos](#filtrado-mensajes-repetidos)
+    - [Envío de resultados sin repetidos](#envío-de-resultados-sin-repetidos)
+    - [Health check del sistema](#health-check-del-sistema)
+    - [Health check de los clientes](#health-check-de-los-clientes)
+    - [Control de velocidad de envio](#control-de-velocidad-de-envio)
 
 ## Ejecución
 
@@ -323,3 +334,158 @@ De este modo los filtros que acumulan, como `trips_counter`, pueden ser umplemen
 
 Tambien podemos ver la composicion de las clases `MessageSender`, que se encarga del envio de mensajes,
 y `MultiLastReceivedManager`, que se encarga de detectar duplicados.
+
+## Alta Disponibilidad y Tolerancia a Fallos
+
+### Nuevos requerimientos
+
+- El sistema debe mostrar alta disponibilidad hacia los clientes
+  > Se utiliza rabbitmq para la comunicación entre los clientes y el sistema, de modo que el cliente siempre puede enviar (y recibir) mensajes.
+  >
+  > Además, mediante la recuperación ante fallos nos aseguramos que el sistema esté altamente disponible.
+  >
+  > \*No hay garantías en cuanto a tiempo de respuesta
+- El sistema debe ser tolerante a fallos por caídas de proceso
+  > Se utiliza un cluster de ‘health checkers’ que monitorean el estado de todos los nodos del sistema y los ‘reviven’ si fuese necesario
+- El sistema debe permitir la ejecución de múltiples análisis en paralelo y/o en secuencia sin reiniciarlo.
+  > El sistema funciona de manera continua, múltiples clientes pueden generar peticiones en diferentes momentos y pueden ser procesados de manera paralela. Los nodos del sistema pueden escalar horizontalmente para distribuir la carga.
+  > 
+  > Se prevé la limpieza de datos con la finalización de un flujo, ya sea correcta o por desconexión del cliente. También se tiene en cuenta la diferenciación entre iteraciones de un mismo cliente.
+- En caso de usar un algoritmo de consenso, el mismo tiene que ser implementado por los alumnos
+  > No se utilizan algoritmos de consenso, no se generan situaciones de conflicto.
+  > 
+  > Por ejemplo: 
+  > - Las ‘tareas’ se direccionan inequívocamente
+  > - Los nodos que monitorea cada health checker son asignados al inicio
+- Se puede utilizar docker-in-docker para levantar procesos caídos
+- No está permitido utilizar la API de docker para verificar si un nodo está disponible.
+
+### Tolerancia a Fallos
+
+Para garantizar el correcto funcionamiento del sistema frente a caídas de procesos se implementa lo siguiente:
+
+- Los nodos direccionan mensajes de manera inequívoca, es decir, un mensaje no será recibido (por ende tampoco procesado) por dos nodos, incluso si uno se cae. Esto es posible gracias a que cualquier proceso caído eventualmente es levantado.
+- Las colas de comunicación son persistentes, de modo que aunque muera un proceso no se perderán sus mensajes.
+- El estado se guarda en disco de forma atómica.
+- No se le hace ‘ack’ a un mensaje hasta haberlo procesado y guardado el estado resultante a disco, asegurando la persistencia y evitando la pérdida de mensajes.
+
+<center>
+
+![Tolerancia a Fallos]()
+Flujo de un nodo que persiste su estado en disco
+
+</center>
+
+Se quiere notar en el diagrama que al procesar un mensaje podría no actualizarse el estado (por ejemplo un filtro que en podría no necesitar estado de negocio) o no enviar mensajes (por ejemplo un nodo que acumula la suma de valores).
+
+### Filtrado Mensajes Repetidos
+
+Es necesario agregar algo de lógica extra por sobre la persistencia antes descripta para evitar el procesamiento de mensajes duplicados.
+
+Cada nodo del sistema almacena un identificador del último mensaje recibido (por cada remitente) a modo de no procesar un mensaje ya recibido.
+
+Solo es necesario almacenar el último identificador de cada remitente, ya que los estos sólo pueden generar repetidos consecutivos, gracias a que todos los nodos filtran duplicados.
+
+Estos duplicados pueden seguir generando cuando envían un mensaje hacia adelante y mueren antes de hacer ‘ack’ al mensaje que estaban procesando.
+
+Guardando el estado luego de procesar un mensaje y su identificador en un mismo paso nos aseguramos de que el mensaje duplicado producido en el caso anterior es idéntico y puede ser detectado en el nodo siguiente.
+
+<center>
+
+![Filtrado de Repetidos]()
+Flujo de un nodo que filtra duplicados
+
+</center>
+
+En este caso, al procesar un mensaje siempre se actualizará el estado (ya que la identificación del mensaje es parte del estado).
+
+Se reitera, si un nodo se cae antes de guardar en disco leerá un mismo mensaje al levantarse (ya que no le hizo ack) y al procesarlo actualizará su estado del mismo modo y mandará un mensaje duplicado idéntico de manera consecutiva.
+
+Por otro lado, luego de haber persistido el procesamiento de un mensaje, los duplicados de ese mensaje ( o el mensaje en sí, si el nodo cayera antes de mandar ack ) serán filtrados.
+
+> #### Generacion de Ids
+> Es interesante notar que la generación de ids es independiente para cada réplica receptora, es decir, si un paso siguiente tiene N réplicas, mantendremos N ids a actualizar, de modo que estos no se pisen entre sí.
+>
+> También hay que tener en cuenta el caso donde queremos publicar un mensaje a todas las réplicas (por ejemplo un Eof), para esto se busca un id que no entre en conflicto con ninguna de ellas (recordando actualizarlo para todas las réplicas).
+
+### Envío de resultados sin repetidos
+
+Para el envío de mensajes al cliente queremos asegurarnos que no haya ningún tipo de repetidos, por lo que se implementa un mecanismo adicional, que envía una respuesta y la marca como leída de manera atómica.
+
+Para enviar un resultado a un cliente, se envía un mensaje a un exchange de rabbit que enviará el mensaje tanto al cliente como una ‘autocola’ del mismo proceso.
+
+Si un mensaje es leído de esta ‘autocola’ durante la ejecución puede ser ignorado; ya que ,por el comportamiento sincrónico del proceso, el marcado como leído ya estará en disco.
+
+Es al iniciar el proceso que debemos verificar los mensajes de la autocola, y asegurarnos de marcarlos como leídos.
+
+<center>
+
+![Envio sin Repetidos]()
+Flujo del `response_provider`
+
+</center>
+
+### Health check del sistema
+
+Para garantizar el correcto funcionamiento de los procesos se despliegan health-checkers.
+
+Todos los nodos del sistema (incluidos los health-checkers) deben mandar un heartbeat periódicamente a un health-checker fijo, que es previamente designado y proveído como variable de entorno.
+
+> #### Generación de HeartBeats
+> La generación de heartbeats se da de manera asincrónica al procesamiento de mensajes. Aprovechando el mecanismo de `call_later` de pika (RabbitMQ) que convive con la conexión bloqueante donde se reciben mensajes.
+
+Los procesos de un mismo tipo se distribuyen uniformemente entre los health-checkers, para que en caso de que uno muera no frene todo un tramo del sistema (asumiendo también la muerte de sus dependientes).
+
+Además, los health-checkers se asignan entre sí en forma de anillo, de modo que mientras mientras quede uno vivo este puede levantar al siguiente, que levantara a su siguiente, y así sucesivamente hasta volver a todo el sistema funcionando.
+
+<center>
+
+![health-checkers]()
+Ejemplo de asignación de health-checkers
+
+</center>
+
+### Health check de los clientes
+
+Siendo que el sistema debe funcionar continuamente es importante limpiar el estado generado por los clientes, no solamente cuando terminan una consulta sino que también si se desconectan inesperadamente.
+
+Los clientes se comunicaran con un solo gateway, de modo que si un gateway no recibe un mensaje por parte de un cliente en un tiempo determinado (suficientemente largo) puede darlo por muerto o finalizado.
+
+Cuando un cliente deja de enviar mensajes, el gateway asignado lo da por terminado si mando EOF de su último flujo, en caso contrario lo da por muerto.
+
+Si el cliente finalizó, vuelve a enviar un EOF de su último flujo, con un tiempo de desalojo, a partir del cual se eliminaran sus colas (de resultados y control).
+
+Si el cliente murió, se envía un EOF de su último flujo, marcando la eliminación inmediata de su estado y colas.
+
+> La eliminación de las colas se produce en el `response_provider`
+
+
+<center>
+
+![gateways]()
+Flujo principal de los Gateway
+
+</center>
+
+
+> #### Generación de Mensajes
+> Es interesante notar que para el envío de mensajes ambas ramas se identifican como remitentes distintos, es decir, los receptores los verán como nodos diferentes.
+> Esto es así ya que una precondición del funcionamiento del filtro de duplicados es el procesamiento secuencial y en orden de mensajes. Mientras que los mensajes generados por  la rama dependiente de un timer podría no ser replicable frente a caídas.
+
+> #### Aviso de desalojo
+> Cuando el gateway emite un Eof para el desalojo de un cliente, también envía un mensaje de control al cliente informando el desalojo.
+> De ese modo, si el cliente no hubiera muerto (si no que ha sido incapaz de comunicarse en tiempo) se enteraría de su desalojo de manera oportuna.
+> Ciertamente, el cliente eventualmente detectaría la eliminación de sus colas de control y respuestas eventualmente. Lo que este mecanismo facilita es una finalización temprana y un fallo informado ( la eliminación de las colas podría significar un fallo del sistema, un desalojo indica un fallo del cliente )
+
+### Control de velocidad de envio
+
+Se introduce un mecanismo de ‘Rate Limiting’ para regular la velocidad de envío de mensajes de los clientes. Esto implica tanto reducir la velocidad cuando el sistema no es capaz de procesarlos así como incrementarla cuando es posible.
+
+Siendo el resultado esperado el aprovechamiento máximo del sistema y evitar la saturación de la mensajería (RabbitMQ).
+
+El mecanismo es implementado en los gateway, que periódicamente consultan la API del backoffice de Rabbit para verificar la tasa de recepción y aceptación de mensajes de sus colas, a partir de la cual podrán calcular una tasa ideal de envío según la cantidad de clientes registrados.
+
+Luego, se enviará por la cola de control de los clientes un mensaje informando la tasa de envio actualizada, con lo cual estos regularan el tiempo de espera entre cada envío de mensajes.
+
+> #### Healthcheck de clientes
+> Se prevé la actualización del tiempo de timeout de los clientes en función a la taza de envio esperada, aplicando la reducción de velocidad inmediatamente y los incrementos de manera paulatina, a modo de ser lo más laxo posible
