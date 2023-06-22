@@ -13,9 +13,7 @@ from common.utils import save_state, load_state
 from common.packets.eof import Eof
 from common.packets.generic_packet import GenericPacket, GenericPacketBuilder
 from common.middleware.rabbit_middleware import Rabbit
-from common.packets.gatway_or_static import GatewayOrStatic
-from common.packets.station_side_table_info import StationSideTableInfo
-from common.packets.weather_side_table_info import WeatherSideTableInfo
+from common.packets.gateway_or_static import is_side_table_message
 
 
 SIDE_TABLE_ROUTING_KEY = os.environ["SIDE_TABLE_ROUTING_KEY"]
@@ -26,11 +24,6 @@ EOF_ROUTING_KEY = os.environ["EOF_ROUTING_KEY"]
 
 RABBIT_HOST = os.environ.get("RABBIT_HOST", "rabbitmq")
 MAX_PACKET_ID = 2 ** 10  # 2 packet ids would be enough, but we use more for traceability
-
-
-def is_side_table_message(message: GenericPacket) -> bool:
-    data = GatewayOrStatic.decode(message.data).data
-    return isinstance(data, StationSideTableInfo) or isinstance(data, WeatherSideTableInfo)
 
 
 class BasicAggregator(ABC):
@@ -92,7 +85,7 @@ class BasicAggregator(ABC):
 
     def __on_stream_message_callback(self, msg: bytes) -> bool:
         decoded = GenericPacket.decode(msg)
-        side_table = is_side_table_message(decoded)
+        side_table = is_side_table_message(decoded.data)
 
         # TODO: side table msgs should not update packet id
         if not side_table and not self._last_received.update(decoded):

@@ -13,3 +13,8 @@ from common.packets.stop_packet import StopPacket
 @dataclass
 class GatewayOrStatic(BasicPacket):
     data: Union[GatewayOut, GatewayIn, StationSideTableInfo, WeatherSideTableInfo, StopPacket]
+
+
+def is_side_table_message(message_bytes: bytes) -> bool:
+    data = GatewayOrStatic.decode(message_bytes).data
+    return isinstance(data, StationSideTableInfo) or isinstance(data, WeatherSideTableInfo)
