@@ -21,9 +21,9 @@ class Recoverable(Protocol):
 
 
 class StateSaver:
-    def __init__(self, component: Recoverable, max_log_size: int):
-        self._max_log_size = max_log_size
+    def __init__(self, component: Recoverable, chance_of_checkpoint: float = CHANCE_OF_CHECKPOINT):
         self._component = component
+        self._chance_of_checkpoint = chance_of_checkpoint
 
         self.__init_paths()
         self.__load_state()
@@ -107,7 +107,7 @@ class StateSaver:
 
         # This could be done in an exact manner, keeping a counter in memory
         # remembering to do a checkpoint on startup (so we don't lose it on crash)
-        do_checkpoint = CHANCE_OF_CHECKPOINT > random.random()
+        do_checkpoint = self._chance_of_checkpoint > random.random()
         if not do_checkpoint:
             return
         
