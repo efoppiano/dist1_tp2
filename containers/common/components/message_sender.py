@@ -18,7 +18,11 @@ class MessageSender:
         self._times_maxed_seq = 0
 
     def __get_next_seq_number(self, queue: str) -> int:
-        self._last_seq_number.setdefault(queue, 0)
+        queue_prefix = queue.split("_")[0]
+        if queue not in self._last_seq_number and queue_prefix in self._last_seq_number:
+            self._last_seq_number[queue] = self._last_seq_number[queue_prefix]
+        else:
+            self._last_seq_number.setdefault(queue, 0)
         self._last_seq_number[queue] += 1
 
         if self._last_seq_number[queue] > MAX_SEQ_NUMBER:
@@ -29,15 +33,22 @@ class MessageSender:
         return self._last_seq_number[queue]
 
     def __get_next_publish_seq_number(self, queue: str) -> int:
+        logging.info(f"Getting next publish seq number for {queue}")
         self._last_seq_number.setdefault(queue, 0)
+        logging.info(f"Last seq number: {self._last_seq_number}")
         keys = list(self._last_seq_number.keys())
+        logging.info(f"Keys before filtering: {keys}")
         keys = [key for key in keys if key.startswith(queue)]
+        used_ids = [self._last_seq_number[key] for key in keys]
+        logging.info(f"Keys after filtering: {keys}")
 
         possible_id = 0
         for i in range(MAX_SEQ_NUMBER):
-            if possible_id not in keys:
+            if possible_id not in used_ids:
                 break
             possible_id += 1
+
+        logging.info(f"Possible id: {possible_id}")
 
         if possible_id == MAX_SEQ_NUMBER:
             raise Exception("No more publish ids available")
@@ -45,9 +56,12 @@ class MessageSender:
         for key in keys:
             self._last_seq_number[key] = possible_id
 
+        logging.info(f"Last seq number after change: {self._last_seq_number}")
+
         return possible_id
 
-    def send(self, builder: GenericPacketBuilder, outgoing_messages: Dict[str, Union[List[bytes], Eof]], skip_send=False):
+    def send(self, builder: GenericPacketBuilder, outgoing_messages: Dict[str, Union[List[bytes], Eof]],
+             skip_send=False):
         for (queue, messages_or_eof) in outgoing_messages.items():
             if isinstance(messages_or_eof, Eof) or len(messages_or_eof) > 0:
                 if queue.startswith("publish_"):

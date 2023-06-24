@@ -10,12 +10,12 @@ S = typing.TypeVar("S")
 
 unpack_byte = struct.Struct("B").unpack
 unpack_bool = struct.Struct("?").unpack
-unpack_int = struct.Struct("i").unpack
+unpack_int = struct.Struct("q").unpack
 unpack_float = struct.Struct("d").unpack
 
 pack_byte = struct.Struct("B").pack
 pack_bool = struct.Struct("?").pack
-pack_int = struct.Struct("i").pack
+pack_int = struct.Struct("q").pack
 pack_float = struct.Struct("d").pack
 
 Element = Union[int, float, str, bool, bytes, List[T], "BasicPacket", "Array[T, S]", None]
