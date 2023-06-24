@@ -4,6 +4,7 @@ from typing import Callable, Union
 
 import pika
 
+from common.utils import append_signal
 from common.middleware.message_queue import MessageQueue
 
 
@@ -23,8 +24,6 @@ class Rabbit(MessageQueue):
 
     def close(self):
         self.connection.close()
-        if self._sig_hand_prev:
-            self._sig_hand_prev(signal.SIGTERM, None)
         logging.info("action: rabbit_close | status: success")
 
     def __set_up_signal_handler(self):
@@ -32,7 +31,7 @@ class Rabbit(MessageQueue):
             logging.info("action: rabbit_close | status: in_progress")
             self.connection.add_callback_threadsafe(self.close)
 
-        self._sig_hand_prev = signal.signal(signal.SIGTERM, signal_handler)
+        append_signal(signal.SIGTERM, signal_handler)
 
     def publish(self, event: str, message: bytes):
         self.__declare_exchange(event, "fanout")

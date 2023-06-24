@@ -2,13 +2,17 @@ import csv
 import logging
 import os
 import random
+import signal
 from typing import Protocol
+
+from common.utils import append_signal
 
 DIRECTORY = os.environ.get("DIRECTORY", "/volumes/state")
 LOG_FILE_NAME = os.environ.get("LOG_FILE_NAME", "log")
 STATE_FILE_NAME = os.environ.get("STATE_FILE_NAME", "state")
-CHANCE_OF_CHECKPOINT = float(os.environ.get("CHANCE_OF_CHECKPOINT", "0.05"))
+CHANCE_OF_CHECKPOINT = float(os.environ.get("CHANCE_OF_CHECKPOINT", "0.2"))
 CHECKPOINT = "checkpoint"
+COLUMN_PARTITION_SIZE = 1024
 
 
 class Recoverable(Protocol):
@@ -31,10 +35,21 @@ class StateSaver:
         self.__load_state()
 
         os.makedirs(self._directory, exist_ok=True)
-        self.__open_log_file()
+        self._log_file = None
+        self._log_writer = None
+        self.__setup_signal_handler()
 
     def __del__(self):
-        self._log_file.close()
+        if self._log_file is not None:
+            self._log_file.close()
+
+    def __setup_signal_handler(self):
+        def signal_handler(_sig, _frame):
+            logging.info("action: state_saver_close | status: in_progress")
+            self.__save_checkpoint()
+            logging.info("action: state_saver_close | status: success")
+
+        append_signal(signal.SIGTERM, signal_handler)
 
     def __open_log_file(self):
         if self.__log_exists():
@@ -81,10 +96,14 @@ class StateSaver:
 
     def __remove_log(self):
         try:
+            self._log_file.close()
             os.rename(self._log_file_path, self._tmp_log_file_path)
             os.remove(self._tmp_log_file_path)
         except FileNotFoundError:
             pass
+
+        self._log_file = None
+        self._log_writer = None
 
     def __load_state_with_log(self):
         if self.__state_exists():
@@ -103,6 +122,7 @@ class StateSaver:
 
     def __load_from_checkpoint(self):
         self.__remove_log()
+        self.__open_log_file()
 
         if self.__tmp_state_exists():
             os.rename(self._tmp_state_file_path, self._state_file_path)
@@ -129,7 +149,6 @@ class StateSaver:
                     self._component.replay(msg)
                     log_truncated_writer.writerow(row)
                 else:
-                    logging.error(f"Invalid message size {msg_size} for message {msg}")
                     error_lines.append(i)
 
                 i += 1
@@ -142,20 +161,7 @@ class StateSaver:
         logging.info("Replayed valid lines, truncating log file")
         os.rename(self._truncated_log_file_path, self._log_file_path)
 
-    def save_state(self, new_msg: bytes):
-        # Append the new message to the log
-        new_msg_size = len(new_msg)
-
-        row = [new_msg[i:i + 1024].hex() for i in range(0, len(new_msg), 8)]
-        self._log_writer.writerow([new_msg_size, *row])
-        self._log_file.flush()
-
-        # This could be done in an exact manner, keeping a counter in memory
-        # remembering to do a checkpoint on startup (so we don't lose it on crash)
-        do_checkpoint = self._chance_of_checkpoint > random.random()
-        if not do_checkpoint:
-            return
-
+    def __save_checkpoint(self):
         # get the updated state from the component
         state = self._component.get_state()
 
@@ -163,6 +169,9 @@ class StateSaver:
         with open(self._tmp_state_file_path, "wb") as f:
             f.write(state)
             f.flush()
+
+        if self._log_file is None:
+            self.__open_log_file()
 
         # write the checkpoint to the log
         self._log_writer.writerow([CHECKPOINT])
@@ -173,6 +182,25 @@ class StateSaver:
 
         # remove the log file
         self.__remove_log()
+
+    def __append_to_log(self, msg: bytes):
+        if self._log_file is None:
+            self.__open_log_file()
+
+        new_msg_size = len(msg)
+
+        row = [msg[i:i + COLUMN_PARTITION_SIZE].hex() for i in range(0, len(msg), COLUMN_PARTITION_SIZE)]
+        self._log_writer.writerow([new_msg_size, *row])
+        self._log_file.flush()
+
+    def save_state(self, new_msg: bytes):
+        self.__append_to_log(new_msg)
+
+        # This could be done in an exact manner, keeping a counter in memory
+        # remembering to do a checkpoint on startup (so we don't lose it on crash)
+        do_checkpoint = self._chance_of_checkpoint > random.random()
+        if do_checkpoint:
+            self.__save_checkpoint()
 
 
 def replay_valid_lines():
@@ -197,28 +225,3 @@ def replay_valid_lines():
 
     if len(error_lines) > 0:
         logging.warning(f"Found {len(error_lines)}/{i} invalid lines in the log file - {error_lines}")
-
-
-def save_state(new_msg: bytes):
-    # Append the new message to the log
-    new_msg_size = len(new_msg)
-
-    # Partition "new_msg" into 1024 byte chunks
-    row = [new_msg[i:i + 8].hex() for i in range(0, len(new_msg), 8)]
-
-    print(f"Row: {row}")
-    with open("log", "a") as f:
-        writer = csv.writer(f)
-        writer.writerow([new_msg_size, *row])
-        f.flush()
-
-
-def main():
-    # initialize_log()
-    open("log", "w").close()
-    save_state(b"Test message")
-    replay_valid_lines()
-
-
-if __name__ == '__main__':
-    main()

@@ -42,6 +42,7 @@ class BasicStatefulFilter(BasicFilter, ABC):
         super().set_state(state["parent_state"])
 
     def on_message_callback(self, msg: bytes) -> bool:
+        logging.debug(f"Received message of size {len(msg)}")
         decoded = GenericPacket.decode(msg)
 
         if not self._last_received.update(decoded):

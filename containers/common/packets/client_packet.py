@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Union, List, Literal
+from typing import Union, List
 
 from common.packets.basic_packet import BasicPacket
 from common.packets.eof import Eof
@@ -27,4 +27,4 @@ class ClientDataPacket(BasicPacket):
 
 @dataclass
 class ClientPacket(BasicPacket):
-    data: Union[ClientDataPacket, Literal["IdRequest"]]
+    data: Union[ClientDataPacket, str]

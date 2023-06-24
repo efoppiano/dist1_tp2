@@ -76,6 +76,7 @@ class BasicAggregator(Recoverable, ABC):
         return True
 
     def __on_stream_message_callback(self, msg: bytes) -> bool:
+        logging.info(f"Received message of size {len(msg)}")
         decoded = GenericPacket.decode(msg)
 
         if not self._last_received.update(decoded):

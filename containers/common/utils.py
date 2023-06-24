@@ -1,8 +1,10 @@
 import logging
 import os
 import json
+import signal
 from datetime import datetime, date
-from typing import Union
+from types import FrameType
+from typing import Union, Callable
 
 
 def initialize_log(logging_level=logging.INFO):
@@ -20,11 +22,11 @@ def initialize_log(logging_level=logging.INFO):
 
     logging.addLevelName(
         logging.DEBUG, "\033[0;35m%s\033[1;0m" % logging.getLevelName(logging.DEBUG))
-    
+
     logging.MISSING = 14
     logging.addLevelName(
         logging.MISSING, "\033[0;33mMISSING\033[1;0m")
-    
+
     logging.MSG = 16
     logging.addLevelName(
         logging.MSG, "\033[0;32mMSG\033[1;0m")
@@ -60,14 +62,18 @@ def initialize_log(logging_level=logging.INFO):
 def trace(message, *args, **kws):
     logging.log(logging.TRACE, message, *args, **kws)
 
+
 def log_missing(message, *args, **kws):
     logging.log(logging.MISSING, message, *args, **kws)
+
 
 def log_msg(message, *args, **kws):
     logging.log(logging.MSG, message, *args, **kws)
 
+
 def log_duplicate(message, *args, **kws):
     logging.log(logging.DUPLICATE, message, *args, **kws)
+
 
 def log_evict(message, *args, **kws):
     logging.log(logging.EVICT, message, *args, **kws)
@@ -76,8 +82,8 @@ def log_evict(message, *args, **kws):
 def success(message, *args, **kws):
     logging.log(logging.SUCCESS, message, *args, **kws)
 
-def min_hash(obj, n=4, min_log_level = logging.DEBUG):
 
+def min_hash(obj, n=4, min_log_level=logging.DEBUG):
     # This function is specific for debbuging purposes
     if logging.getLogger().getEffectiveLevel() > min_log_level:
         return "###"
@@ -86,11 +92,12 @@ def min_hash(obj, n=4, min_log_level = logging.DEBUG):
         return str(hash(obj))[-n:]
     except:
         return "###"
-    
+
+
 def bold(text: str) -> str:
     return f"\033[1m{text}\033[0m"
-    
- 
+
+
 def build_queue_name(queue: str, id: Union[int, None] = None) -> str:
     if id is None:
         return queue
@@ -158,3 +165,16 @@ def json_serialize(obj):
         return json.dumps(obj, default=lambda o: o.__dict__, sort_keys=True, indent=4)
     except TypeError:
         return json.dumps(obj, default=lambda o: str(o), sort_keys=True, indent=4)
+
+
+def append_signal(sig, f: Callable[[signal.Signals, FrameType], None]):
+    old = None
+    if callable(signal.getsignal(sig)):
+        old = signal.getsignal(sig)
+
+    def helper(signum: signal.Signals, frame: FrameType):
+        if old is not None:
+            old(signum, frame)
+        f(signum, frame)
+
+    signal.signal(sig, helper)
