@@ -35,13 +35,15 @@ class Killer:
             self._blacklist.add(name)
 
     def kill_container(self, name: str, replica_id: int):
-        if name in self._blacklist:
+        if replica_id == -1:
+            container_name = name
+        else:
+            container_name = f"{name}_{replica_id}"
+
+        if container_name in self._blacklist:
             return
 
-        if replica_id == -1:
-            container = f"tp2-{name}-1"
-        else:
-            container = f"tp2-{name}_{replica_id}-1"
+        container = f"tp2-{container_name}-1"
         try:
             self._client.containers.get(container).kill(signal="SIGKILL")
             print(f"Killed {container}")
@@ -68,7 +70,7 @@ class Killer:
             for (container_to_kill, replica_to_kill) in containers_to_kill:
                 self.kill_container(container_to_kill, replica_to_kill)
 
-            time_to_sleep = random.random() * 30
+            time_to_sleep = random.random() * 120
             print(f"Sleeping for {time_to_sleep} seconds")
             sleep(time_to_sleep)
 
