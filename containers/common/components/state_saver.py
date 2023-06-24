@@ -1,3 +1,4 @@
+import logging
 import os
 import random
 from typing import Protocol
@@ -28,10 +29,17 @@ class StateSaver:
         self.__init_paths()
         self.__load_state()
 
-        self._log_file = open(self._log_file_path, "a")
+        os.makedirs(self._directory, exist_ok=True)
+        self.__open_log_file()
 
     def __del__(self):
         self._log_file.close()
+
+    def __open_log_file(self):
+        if self.__log_exists():
+            self._log_file = open(self._log_file_path, "ab", buffering=0)
+        else:
+            self._log_file = open(self._log_file_path, "wb", buffering=0)
 
     def __init_paths(self):
         self._log_file_path = os.path.join(DIRECTORY, LOG_FILE_NAME)
@@ -39,6 +47,7 @@ class StateSaver:
         self._truncated_log_file_path = os.path.join(DIRECTORY, f"{LOG_FILE_NAME}.truncated")
         self._state_file_path = os.path.join(DIRECTORY, STATE_FILE_NAME)
         self._tmp_state_file_path = os.path.join(DIRECTORY, f"{STATE_FILE_NAME}.tmp")
+        self._directory = DIRECTORY
 
     def __load_state(self):
         if self.__log_exists():
@@ -62,7 +71,8 @@ class StateSaver:
 
     def __remove_log(self):
         try:
-            os.remove(self._log_file_path)
+            os.rename(self._log_file_path, self._tmp_log_file_path)
+            os.remove(self._tmp_log_file_path)
         except FileNotFoundError:
             pass
 
@@ -85,24 +95,33 @@ class StateSaver:
 
         if self.__tmp_state_exists():
             os.rename(self._tmp_state_file_path, self._state_file_path)
-            self.__load_from_state()   
+            self.__load_from_state()
 
     def __replay_valid_lines(self):
-        with open(self._log_file_path, "r") as log_file, open(self._truncated_log_file_path, "w") as truncate_log_file:
+        error_lines = []
+        i = 0
+        with open(self._log_file_path, "rb") as log_file, open(self._truncated_log_file_path,
+                                                               "wb", buffering=0) as truncate_log_file:
             for line in log_file:
-                msg_size, msg = line.split(" ", 1)
+                msg_size, msg = line.split(b" ", 1)
                 if int(msg_size) == len(msg):
                     self._component.replay(msg)
-                    truncate_log_file.write(line + "\n")
+                    truncate_log_file.write(line + b"\n")
+                else:
+                    error_lines.append(i)
+                i += 1
 
             truncate_log_file.flush()
+
+        if len(error_lines) > 0:
+            logging.warning(f"Found {len(error_lines)}/{i} invalid lines in the log file - {error_lines}")
 
         os.rename(self._truncated_log_file_path, self._log_file_path)
 
     def save_state(self, new_msg: bytes):
         # Append the new message to the log
         new_msg_size = len(new_msg)
-        self._log_file.write(f"{new_msg_size} {new_msg}\n")
+        self._log_file.write(f"{new_msg_size} {new_msg}\n".encode())
         self._log_file.flush()
 
         # This could be done in an exact manner, keeping a counter in memory
@@ -110,17 +129,19 @@ class StateSaver:
         do_checkpoint = self._chance_of_checkpoint > random.random()
         if not do_checkpoint:
             return
-        
+
         # get the updated state from the component
         state = self._component.get_state()
 
         # write the state to a tmp file
         with open(self._tmp_state_file_path, "wb") as f:
             f.write(state)
+            f.flush()
 
         # write the checkpoint to the log
         with open(self._log_file_path, "a") as f:
             f.write(f"{CHECKPOINT}\n")
+            f.flush()
 
         # rename the tmp state file to the state file
         os.rename(self._tmp_state_file_path, self._state_file_path)
