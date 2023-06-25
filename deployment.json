@@ -8,15 +8,15 @@
       "amount": 2,
       "next": "weather_aggregator",
       "env": {
-        "WEATHER_SIDE_TABLE_QUEUE_NAME": "publish_weather",
-        "STATION_SIDE_TABLE_QUEUE_NAME": "publish_station"
+        "WEATHER_SIDE_TABLE_QUEUE_NAME": "publish_weather_aggregator",
+        "STATION_SIDE_TABLE_QUEUE_NAME": "publish_station_aggregator"
       }
     },
     "weather_aggregator": {
       "amount": 2,
       "next": "station_aggregator",
       "env": {
-        "SIDE_TABLE_ROUTING_KEY": "weather"
+        "SIDE_TABLE_ROUTING_KEY": "weather_aggregator"
       }
     },
     "station_aggregator": {
@@ -30,7 +30,7 @@
         "PREC_FILTER_QUEUE": "prec_filter",
         "YEAR_FILTER_QUEUE": "year_filter",
         "DISTANCE_CALCULATOR_QUEUE": "distance_calculator",
-        "SIDE_TABLE_ROUTING_KEY": "station"
+        "SIDE_TABLE_ROUTING_KEY": "station_aggregator"
       }
     },
     "prec_filter": {
@@ -83,9 +83,13 @@
   "clients": {
     "data": "./.data_3/",
     "clients": {
-      "original": [
-        "montreal",
-        "washington",
+      "montreal": [
+        "montreal"
+      ],
+      "washington": [
+        "washington"
+      ],
+      "toronto": [
         "toronto"
       ]
     }
