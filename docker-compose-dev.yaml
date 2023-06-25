@@ -35,8 +35,8 @@ services:
       - PREV_AMOUNT=1
       - NEXT=weather_aggregator
       - NEXT_AMOUNT=2
-      - WEATHER_SIDE_TABLE_QUEUE_NAME=publish_weather
-      - STATION_SIDE_TABLE_QUEUE_NAME=publish_station
+      - WEATHER_SIDE_TABLE_QUEUE_NAME=publish_weather_aggregator
+      - STATION_SIDE_TABLE_QUEUE_NAME=publish_station_aggregator
 
   gateway_1:
     build:
@@ -58,8 +58,8 @@ services:
       - PREV_AMOUNT=1
       - NEXT=weather_aggregator
       - NEXT_AMOUNT=2
-      - WEATHER_SIDE_TABLE_QUEUE_NAME=publish_weather
-      - STATION_SIDE_TABLE_QUEUE_NAME=publish_station
+      - WEATHER_SIDE_TABLE_QUEUE_NAME=publish_weather_aggregator
+      - STATION_SIDE_TABLE_QUEUE_NAME=publish_station_aggregator
 
   weather_aggregator_0:
     build:
@@ -81,7 +81,7 @@ services:
       - PREV_AMOUNT=1
       - NEXT=station_aggregator
       - NEXT_AMOUNT=3
-      - SIDE_TABLE_ROUTING_KEY=weather
+      - SIDE_TABLE_ROUTING_KEY=weather_aggregator
 
   weather_aggregator_1:
     build:
@@ -103,7 +103,7 @@ services:
       - PREV_AMOUNT=1
       - NEXT=station_aggregator
       - NEXT_AMOUNT=3
-      - SIDE_TABLE_ROUTING_KEY=weather
+      - SIDE_TABLE_ROUTING_KEY=weather_aggregator
 
   station_aggregator_0:
     build:
@@ -129,7 +129,7 @@ services:
       - PREC_FILTER_QUEUE=prec_filter
       - YEAR_FILTER_QUEUE=year_filter
       - DISTANCE_CALCULATOR_QUEUE=distance_calculator
-      - SIDE_TABLE_ROUTING_KEY=station
+      - SIDE_TABLE_ROUTING_KEY=station_aggregator
 
   station_aggregator_1:
     build:
@@ -155,7 +155,7 @@ services:
       - PREC_FILTER_QUEUE=prec_filter
       - YEAR_FILTER_QUEUE=year_filter
       - DISTANCE_CALCULATOR_QUEUE=distance_calculator
-      - SIDE_TABLE_ROUTING_KEY=station
+      - SIDE_TABLE_ROUTING_KEY=station_aggregator
 
   station_aggregator_2:
     build:
@@ -181,7 +181,7 @@ services:
       - PREC_FILTER_QUEUE=prec_filter
       - YEAR_FILTER_QUEUE=year_filter
       - DISTANCE_CALCULATOR_QUEUE=distance_calculator
-      - SIDE_TABLE_ROUTING_KEY=station
+      - SIDE_TABLE_ROUTING_KEY=station_aggregator
 
   prec_filter_0:
     build:
@@ -569,7 +569,7 @@ services:
       - HEALTH_CHECKER=health_checker_3
       - CONTAINER_ID=health_checker_4
 
-  client_original:
+  client_montreal:
     build:
       context: ./containers
       dockerfile: client/Dockerfile
@@ -583,8 +583,48 @@ services:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
       - DATA_FOLDER_PATH=/opt/app/.data
-      - CLIENT_ID=original
-      - CITIES=montreal,washington,toronto
+      - CLIENT_ID=montreal
+      - CITIES=montreal
+      - ID_REQ_QUEUE=client_id_queue
+      - GATEWAY=gateway
+      - GATEWAY_AMOUNT=2
+
+  client_washington:
+    build:
+      context: ./containers
+      dockerfile: client/Dockerfile
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    entrypoint: python3 /opt/app/client.py
+    volumes:
+      - ./.data_3/:/opt/app/.data/
+    environment:
+      - PYTHONHASHSEED=0
+      - PYTHONUNBUFFERED=1
+      - DATA_FOLDER_PATH=/opt/app/.data
+      - CLIENT_ID=washington
+      - CITIES=washington
+      - ID_REQ_QUEUE=client_id_queue
+      - GATEWAY=gateway
+      - GATEWAY_AMOUNT=2
+
+  client_toronto:
+    build:
+      context: ./containers
+      dockerfile: client/Dockerfile
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    entrypoint: python3 /opt/app/client.py
+    volumes:
+      - ./.data_3/:/opt/app/.data/
+    environment:
+      - PYTHONHASHSEED=0
+      - PYTHONUNBUFFERED=1
+      - DATA_FOLDER_PATH=/opt/app/.data
+      - CLIENT_ID=toronto
+      - CITIES=toronto
       - ID_REQ_QUEUE=client_id_queue
       - GATEWAY=gateway
       - GATEWAY_AMOUNT=2

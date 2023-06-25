@@ -72,7 +72,7 @@ class Killer:
             for (container_to_kill, replica_to_kill) in containers_to_kill:
                 self.kill_container(container_to_kill, replica_to_kill)
 
-            time_to_sleep = random.random() * 30
+            time_to_sleep = random.random() * 60
             print(f"Sleeping for {time_to_sleep} seconds")
             sleep(time_to_sleep)
 

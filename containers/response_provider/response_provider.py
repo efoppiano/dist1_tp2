@@ -110,7 +110,7 @@ class ResponseProvider:
         logging.debug(
             f"Received EOF {eof_key} - {self._eofs_received[eof_key]}/{self.input_queues[packet_type][1]}")
 
-        self._eofs_received.pop(flow_id)
+        self._eofs_received.pop(eof_key)
 
         if eof.drop:
             self.__evict_client(packet.client_id)

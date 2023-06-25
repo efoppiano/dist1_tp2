@@ -63,7 +63,7 @@ class BasicStatefulFilter(BasicFilter, ABC):
         self._eofs_received.setdefault(eof_key, 0)
         self._eofs_received[eof_key] += 1
 
-        if self._eofs_received[flow_id] < PREV_AMOUNT:
+        if self._eofs_received[eof_key] < PREV_AMOUNT:
             logging.debug(f"Received EOF for flow {eof_key} ({self._eofs_received[eof_key]}/{PREV_AMOUNT})")
             return {}
         logging.info(f"Received EOF for flow {eof_key} ({self._eofs_received[eof_key]}/{PREV_AMOUNT})")
