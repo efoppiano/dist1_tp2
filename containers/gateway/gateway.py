@@ -8,7 +8,6 @@ from common.packets.station_side_table_info import StationSideTableInfo
 from common.packets.gateway_in import GatewayIn
 from common.packets.weather_side_table_info import WeatherSideTableInfo
 from common.components.readers import ClientGatewayPacket, StationInfo, WeatherInfo, TripInfo
-from common.router import MultiRouter
 from common.utils import initialize_log
 
 WEATHER_SIDE_TABLE_QUEUE_NAME = os.environ["WEATHER_SIDE_TABLE_QUEUE_NAME"]

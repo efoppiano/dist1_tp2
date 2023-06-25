@@ -10,8 +10,9 @@ from common.utils import log_evict
 
 HEALTHCHECK_LAPSE = 10
 INITIAL_CLIENT_TIMEOUT = 50
-NEW_CLIENT_GRACE_FACTOR = 5
-CLIENT_TIMEOUT_TO_LAPSE_RATIO = 10
+NEW_CLIENT_GRACE_FACTOR = 10
+CLIENT_TIMEOUT_TO_LAPSE_RATIO = 15
+MIN_TIMEOUT = 1
 EVICTION_TIME = 10
 
 
@@ -89,7 +90,7 @@ class ClientHealthChecker:
 
     def set_expected_client_rate(self, rate: float):
         expected_lapse = 1 / rate
-        expected_timeout = expected_lapse * self._client_timeout_to_lapse_ratio
+        expected_timeout = expected_lapse * self._client_timeout_to_lapse_ratio + MIN_TIMEOUT
 
         # Timeout can increase sharply, but decreases slowly
         if expected_timeout > self._client_timeout:

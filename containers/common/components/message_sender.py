@@ -18,7 +18,8 @@ class MessageSender:
         self._times_maxed_seq = 0
 
     def __get_next_seq_number(self, queue: str) -> int:
-        queue_prefix = queue.split("_")[0]
+        logging.info(f"Getting next seq number for {queue} - self._last_seq_number: {self._last_seq_number}")
+        queue_prefix = queue[:-2]
         if queue not in self._last_seq_number and queue_prefix in self._last_seq_number:
             self._last_seq_number[queue] = self._last_seq_number[queue_prefix]
         else:
