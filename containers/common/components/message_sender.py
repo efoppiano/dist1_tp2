@@ -18,7 +18,6 @@ class MessageSender:
         self._times_maxed_seq = 0
 
     def __get_next_seq_number(self, queue: str) -> int:
-        logging.info(f"Getting next seq number for {queue} - self._last_seq_number: {self._last_seq_number}")
         queue_prefix = queue[:-2]
         if queue not in self._last_seq_number and queue_prefix in self._last_seq_number:
             self._last_seq_number[queue] = self._last_seq_number[queue_prefix]
@@ -34,14 +33,10 @@ class MessageSender:
         return self._last_seq_number[queue]
 
     def __get_next_publish_seq_number(self, queue: str) -> int:
-        logging.info(f"Getting next publish seq number for {queue}")
         self._last_seq_number.setdefault(queue, 0)
-        logging.info(f"Last seq number: {self._last_seq_number}")
         keys = list(self._last_seq_number.keys())
-        logging.info(f"Keys before filtering: {keys}")
         keys = [key for key in keys if key.startswith(queue)]
         used_ids = [self._last_seq_number[key] for key in keys]
-        logging.info(f"Keys after filtering: {keys}")
 
         possible_id = 0
         for i in range(MAX_SEQ_NUMBER):
@@ -49,15 +44,11 @@ class MessageSender:
                 break
             possible_id += 1
 
-        logging.info(f"Possible id: {possible_id}")
-
         if possible_id == MAX_SEQ_NUMBER:
             raise Exception("No more publish ids available")
 
         for key in keys:
             self._last_seq_number[key] = possible_id
-
-        logging.info(f"Last seq number after change: {self._last_seq_number}")
 
         return possible_id
 

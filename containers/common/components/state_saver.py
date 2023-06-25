@@ -201,27 +201,3 @@ class StateSaver:
         do_checkpoint = self._chance_of_checkpoint > random.random()
         if do_checkpoint:
             self.__save_checkpoint()
-
-
-def replay_valid_lines():
-    error_lines = []
-    i = 0
-    with open("log", "r") as log_file:
-        log_reader = csv.reader(log_file)
-
-        for line in log_reader:
-            print(f"Line: {line}")
-            msg_size, *msg_rows = line
-            print(msg_rows)
-            msg = "".join(msg_rows)
-            msg = bytes.fromhex(msg)
-            print(f"Msg: {msg}")
-
-            if int(msg_size) == len(msg):
-                logging.info(f"Replaying {msg}")
-            else:
-                error_lines.append(i)
-            i += 1
-
-    if len(error_lines) > 0:
-        logging.warning(f"Found {len(error_lines)}/{i} invalid lines in the log file - {error_lines}")
