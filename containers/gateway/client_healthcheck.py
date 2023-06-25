@@ -8,11 +8,11 @@ from common.packets.generic_packet import GenericPacketBuilder
 from common.packets.client_control_packet import ClientControlPacket
 from common.utils import log_evict
 
-HEALTHCHECK_LAPSE = 10
-INITIAL_CLIENT_TIMEOUT = 50
+HEALTHCHECK_LAPSE = 60
+INITIAL_CLIENT_TIMEOUT = 100
 NEW_CLIENT_GRACE_FACTOR = 10
-CLIENT_TIMEOUT_TO_LAPSE_RATIO = 15
-MIN_TIMEOUT = 1
+CLIENT_TIMEOUT_TO_LAPSE_RATIO = 20
+MIN_TIMEOUT = 60
 EVICTION_TIME = 10
 
 
@@ -83,7 +83,7 @@ class ClientHealthChecker:
         self._rabbit.call_later(self._lapse, self.check_clients)
 
     def start(self):
-        self._rabbit.call_later(self._lapse, self.check_clients)
+        self._rabbit.call_later(self._lapse + MIN_TIMEOUT + INITIAL_CLIENT_TIMEOUT, self.check_clients)
 
     def ping(self, client_id: str, city: Optional[str], finished: bool = False):
         self._clients[client_id] = (city, time.time(), finished)
