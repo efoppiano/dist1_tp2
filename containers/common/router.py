@@ -13,6 +13,12 @@ class Router:
         queue_num = hash(hashing_key) % self.amount
         return f"{self.queue_name}_{queue_num}"
 
+    def all_routes(self) -> List[str]:
+        if self.amount is None:
+            return [f"{self.queue_name}"]
+
+        return [f"{self.queue_name}_{i}" for i in range(self.amount)]
+
     def publish(self) -> str:
         return f"publish_{self.queue_name}"
 
@@ -26,6 +32,11 @@ class MultiRouter:
 
         queue_num = hash(hashing_key) % amount
         return f"{queue}_{queue_num}"
+
+    def all_routes(self, queue: str) -> List[str]:
+        (queue, amount) = self.queues.get(queue)
+
+        return [f"{queue}_{i}" for i in range(amount)]
 
     def publish(self) -> List[str]:
         queues = []

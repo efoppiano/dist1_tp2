@@ -54,9 +54,10 @@ class BasicHealthChecker(ABC):
                 logging.warning(f"Container {id_to_monitor} is unheard for {difference} seconds")
                 self.on_check_fail(id_to_monitor)
                 self._last_seen[id_to_monitor] = time.time_ns()
-        
+
         end_time = time.time()
-        logging.debug(f"Health check took {end_time - start_time} seconds - after {end_time - self._last_check} seconds")
+        logging.debug(
+            f"Health check took {end_time - start_time} seconds - after {end_time - self._last_check} seconds")
         self._last_check = end_time
 
         self._rabbit.call_later(HEALTH_CHECK_INTERVAL_SEC, self.__check_health)

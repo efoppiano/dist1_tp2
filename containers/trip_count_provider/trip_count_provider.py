@@ -11,8 +11,8 @@ MULT_THRESHOLD = os.environ["MULT_THRESHOLD"]
 
 class TripCountProvider(BasicStatefulFilter):
     def __init__(self, mult_threshold: float):
-        super().__init__()
         self._mult_threshold = mult_threshold
+        super().__init__()
 
     def handle_message(self, _flow_id, message: bytes) -> Dict[str, List[bytes]]:
         packet = TripsCountByYearJoined.decode(message)

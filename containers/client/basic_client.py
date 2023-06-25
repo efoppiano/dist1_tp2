@@ -31,7 +31,7 @@ RESULTS_QUEUE_PREFIX = os.environ.get("RESULTS_QUEUE_PREFIX", "results_")
 EOF_TYPES = ["dist_mean", "trip_count", "dur_avg"]
 
 INITIAL_SEND_RATE = int(os.environ.get("INITIAL_SEND_RATE", 10))
-INVOKER_WAIT_TIME = int(os.environ.get("INVOKER_WAIT_TIME", 5))
+INVOKER_WAIT_TIME = int(os.environ.get("INVOKER_WAIT_TIME", 3))
 CONTROL_TIMEOUT = float(os.environ.get("CONTROL_TIMEOUT", 0.1))
 LOG_RATE_CHANCE = 0.3
 
@@ -191,7 +191,7 @@ class BasicClient(ABC):
         return True
 
     def __check_control_queue(self):
-        queue = CONTROL_QUEUE_PREFIX+str(self.session_id)
+        queue = CONTROL_QUEUE_PREFIX + str(self.session_id)
         self._rabbit.consume_one(queue, self.__handle_control_message, timeout=CONTROL_TIMEOUT, create=False)
 
     def __handle_control_message(self, message: bytes) -> bool:
@@ -203,7 +203,7 @@ class BasicClient(ABC):
         elif client_control_packet.data == "SessionExpired":
             if not self.finished:
                 self._rabbit.close()
-                logging.critical("Session expired "+str(self.session_id))
+                logging.critical("Session expired " + str(self.session_id))
                 raise ConnectionAbortedError("SessionExpired")
         else:
             raise NotImplementedError(f"Unknown control packet type: {type(client_control_packet)}")
@@ -212,7 +212,7 @@ class BasicClient(ABC):
 
     def __get_responses(self):
 
-        results_queue = RESULTS_QUEUE_PREFIX+str(self.session_id)
+        results_queue = RESULTS_QUEUE_PREFIX + str(self.session_id)
         self._rabbit.consume(results_queue, self.__handle_message, create=False)
 
         # control_queue not needed, since we are no longer sending packets

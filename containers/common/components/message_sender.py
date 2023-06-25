@@ -18,7 +18,11 @@ class MessageSender:
         self._times_maxed_seq = 0
 
     def __get_next_seq_number(self, queue: str) -> int:
-        self._last_seq_number.setdefault(queue, 0)
+        queue_prefix = queue[:-2]
+        if queue not in self._last_seq_number and queue_prefix in self._last_seq_number:
+            self._last_seq_number[queue] = self._last_seq_number[queue_prefix]
+        else:
+            self._last_seq_number.setdefault(queue, 0)
         self._last_seq_number[queue] += 1
 
         if self._last_seq_number[queue] > MAX_SEQ_NUMBER:
@@ -32,10 +36,11 @@ class MessageSender:
         self._last_seq_number.setdefault(queue, 0)
         keys = list(self._last_seq_number.keys())
         keys = [key for key in keys if key.startswith(queue)]
+        used_ids = [self._last_seq_number[key] for key in keys]
 
         possible_id = 0
         for i in range(MAX_SEQ_NUMBER):
-            if possible_id not in keys:
+            if possible_id not in used_ids:
                 break
             possible_id += 1
 
@@ -47,20 +52,23 @@ class MessageSender:
 
         return possible_id
 
-    def send(self, builder: GenericPacketBuilder, outgoing_messages: Dict[str, Union[List[bytes], Eof]]):
+    def send(self, builder: GenericPacketBuilder, outgoing_messages: Dict[str, Union[List[bytes], Eof]],
+             skip_send=False):
         for (queue, messages_or_eof) in outgoing_messages.items():
             if isinstance(messages_or_eof, Eof) or len(messages_or_eof) > 0:
                 if queue.startswith("publish_"):
                     queue = queue[len("publish_"):]
                     encoded = builder.build(self.__get_next_publish_seq_number(queue), messages_or_eof).encode()
-                    logging.debug(
-                        f"Sending {builder.get_id()}-{min_hash(messages_or_eof)} to {queue}")
-                    self._rabbit.send_to_route("publish", queue, encoded)
+                    if not skip_send:
+                        logging.debug(
+                            f"Sending {builder.get_id()}-{min_hash(messages_or_eof)} to {queue}")
+                        self._rabbit.send_to_route("publish", queue, encoded)
                 else:
                     encoded = builder.build(self.__get_next_seq_number(queue), messages_or_eof).encode()
-                    logging.debug(
-                        f"Sending {builder.get_id()}-{min_hash(messages_or_eof)} to {queue}")
-                    self._rabbit.produce(queue, encoded)
+                    if not skip_send:
+                        logging.debug(
+                            f"Sending {builder.get_id()}-{min_hash(messages_or_eof)} to {queue}")
+                        self._rabbit.produce(queue, encoded)
 
     def get_state(self) -> bytes:
         state = {

@@ -3,7 +3,9 @@ import signal
 from typing import Callable, Union
 
 import pika
+from pika.exceptions import ChannelWrongStateError, ChannelClosedByBroker
 
+from common.utils import append_signal
 from common.middleware.message_queue import MessageQueue
 
 
@@ -23,8 +25,6 @@ class Rabbit(MessageQueue):
 
     def close(self):
         self.connection.close()
-        if self._sig_hand_prev:
-            self._sig_hand_prev(signal.SIGTERM, None)
         logging.info("action: rabbit_close | status: success")
 
     def __set_up_signal_handler(self):
@@ -32,7 +32,7 @@ class Rabbit(MessageQueue):
             logging.info("action: rabbit_close | status: in_progress")
             self.connection.add_callback_threadsafe(self.close)
 
-        self._sig_hand_prev = signal.signal(signal.SIGTERM, signal_handler)
+        append_signal(signal.SIGTERM, signal_handler)
 
     def publish(self, event: str, message: bytes):
         self.__declare_exchange(event, "fanout")
@@ -41,10 +41,13 @@ class Rabbit(MessageQueue):
     @staticmethod
     def __callback_wrapper(callback: Callable[[bytes], bool]):
         def wrapper(ch, method, properties, body):
-            if callback(body):
-                ch.basic_ack(delivery_tag=method.delivery_tag)
-            else:
-                ch.basic_nack(delivery_tag=method.delivery_tag)
+            try:
+                if callback(body):
+                    ch.basic_ack(delivery_tag=method.delivery_tag)
+                else:
+                    ch.basic_nack(delivery_tag=method.delivery_tag)
+            except ChannelWrongStateError:
+                pass
 
         return wrapper
 
@@ -60,7 +63,11 @@ class Rabbit(MessageQueue):
     def route(self, queue: str, exchange: str, routing_key: str, callback: Union[Callable[[bytes], bool], None] = None):
         self.__declare_exchange(exchange, "direct")
         self.declare_queue(queue)
-        self._channel.queue_bind(exchange=exchange, queue=queue, routing_key=routing_key)
+
+        try:
+            self._channel.queue_bind(exchange=exchange, queue=queue, routing_key=routing_key)
+        except ChannelClosedByBroker:
+            pass
         if callback is not None:
             self._channel.basic_consume(queue=queue, on_message_callback=self.__callback_wrapper(callback),
                                         auto_ack=False)

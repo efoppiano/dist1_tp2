@@ -134,7 +134,7 @@ class BasicGateway(ABC):
         if not self.health_checker.is_client(decoded.data.client_id):
             # Got data from a client already marked as dead, it should realize its
             # session is expired from the control message or the closing of its queues
-            logging.debug(f"Received data from dead client {decoded.data.client_id}")
+            logging.warning(f"Received data from dead client {decoded.data.client_id}")
             return True
 
         if not self.__update_last_received(decoded.data):
@@ -152,6 +152,8 @@ class BasicGateway(ABC):
 
     def handle_eof(self, message: Eof) -> Dict[str, Eof]:
         eof_output_queue = self.router.publish()
+
+        message.timestamp = time.time_ns()
 
         return {
             eof_output_queue: message

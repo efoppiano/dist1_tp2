@@ -91,7 +91,7 @@ def main():
     client.run()
     end_time = time.time()
     client.dump_results()
-    success(f"action: client_run | duration: {end_time - start_time} sec")
+    success(f"action: client_run | duration: {end_time - start_time} sec | output_file: {client.client_id}")
 
 
 if __name__ == "__main__":
