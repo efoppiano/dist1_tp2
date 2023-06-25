@@ -7,7 +7,8 @@ HEARTBEAT_EXCHANGE = os.environ.get("HEARTBEAT_EXCHANGE", "healthcheck")
 CONTAINER_ID = os.environ["CONTAINER_ID"]
 HEALTHCHECKER = os.environ["HEALTH_CHECKER"]
 LAPSE = int(os.environ.get("HEARTBEAT_LAPSE", 1))
-MAX_HEALTHY_LAPSE = int(os.environ.get("MAX_HEALTHY_LAPSE", 5))
+S_TO_NS = 10 ** 9
+MAX_HEALTHY_LAPSE = int(os.environ.get("MAX_HEALTHY_LAPSE", 10)) * S_TO_NS
 INITIAL_GRACE_FACTOR = int(os.environ.get("INITIAL_GRACE_FACTOR", 3))
 
 
