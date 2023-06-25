@@ -98,16 +98,17 @@ class ResponseProvider:
 
     def __handle_eof(self, packet: GenericPacket, eof: Eof, packet_type: str) -> bool:
         flow_id = (packet.client_id, packet.city_name, packet_type)
-        self._eofs_received.setdefault(flow_id, 0)
-        self._eofs_received[flow_id] += 1
+        eof_key = (flow_id, eof.timestamp)
+        self._eofs_received.setdefault(eof_key, 0)
+        self._eofs_received[eof_key] += 1
 
-        if self._eofs_received[flow_id] < self.input_queues[packet_type][1]:
+        if self._eofs_received[eof_key] < self.input_queues[packet_type][1]:
             trace(
-                f"Received EOF {flow_id} - {self._eofs_received[flow_id]}/{self.input_queues[packet_type][1]}")
+                f"Received EOF {eof_key} - {self._eofs_received[eof_key]}/{self.input_queues[packet_type][1]}")
             self.__save_state()
             return False
         logging.debug(
-            f"Received EOF {flow_id} - {self._eofs_received[flow_id]}/{self.input_queues[packet_type][1]}")
+            f"Received EOF {eof_key} - {self._eofs_received[eof_key]}/{self.input_queues[packet_type][1]}")
 
         self._eofs_received.pop(flow_id)
 

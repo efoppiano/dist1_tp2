@@ -153,6 +153,8 @@ class BasicGateway(ABC):
     def handle_eof(self, message: Eof) -> Dict[str, Eof]:
         eof_output_queue = self.router.publish()
 
+        message.timestamp = time.time_ns()
+
         return {
             eof_output_queue: message
         }

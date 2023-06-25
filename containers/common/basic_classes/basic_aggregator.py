@@ -89,14 +89,15 @@ class BasicAggregator(Recoverable, ABC):
         return True
 
     def handle_eof_message(self, flow_id, message: Eof) -> Dict[str, Eof]:
-        self._eofs_received.setdefault(flow_id, 0)
-        self._eofs_received[flow_id] += 1
+        eof_key = (flow_id, message.timestamp)
+        self._eofs_received.setdefault(eof_key, 0)
+        self._eofs_received[eof_key] += 1
 
-        logging.debug(f"Received EOF for flow {flow_id} ({self._eofs_received[flow_id]}/{PREV_AMOUNT})")
-        if self._eofs_received[flow_id] < PREV_AMOUNT:
+        logging.debug(f"Received EOF for flow {eof_key} ({self._eofs_received[eof_key]}/{PREV_AMOUNT})")
+        if self._eofs_received[eof_key] < PREV_AMOUNT:
             return {}
 
-        self._eofs_received.pop(flow_id)
+        self._eofs_received.pop(eof_key)
 
         return self.handle_eof(flow_id, message)
 

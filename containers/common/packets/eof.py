@@ -9,3 +9,4 @@ from common.packets.basic_packet import BasicPacket
 class Eof(BasicPacket):
     drop: bool = False
     eviction_time: Union[int, None] = None
+    timestamp: Union[int, None] = None
