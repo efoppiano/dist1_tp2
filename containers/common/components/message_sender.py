@@ -18,7 +18,11 @@ class MessageSender:
         self._times_maxed_seq = 0
 
     def __get_next_seq_number(self, queue: str) -> int:
-        self._last_seq_number.setdefault(queue, 0)
+        queue_prefix = queue[:-2]
+        if queue not in self._last_seq_number and queue_prefix in self._last_seq_number:
+            self._last_seq_number[queue] = self._last_seq_number[queue_prefix]
+        else:
+            self._last_seq_number.setdefault(queue, 0)
         self._last_seq_number[queue] += 1
 
         if self._last_seq_number[queue] > MAX_SEQ_NUMBER:
@@ -32,10 +36,11 @@ class MessageSender:
         self._last_seq_number.setdefault(queue, 0)
         keys = list(self._last_seq_number.keys())
         keys = [key for key in keys if key.startswith(queue)]
+        used_ids = [self._last_seq_number[key] for key in keys]
 
         possible_id = 0
         for i in range(MAX_SEQ_NUMBER):
-            if possible_id not in keys:
+            if possible_id not in used_ids:
                 break
             possible_id += 1
 
