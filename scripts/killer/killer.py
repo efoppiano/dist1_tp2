@@ -48,8 +48,9 @@ class Killer:
         try:
             self._client.containers.get(container).kill(signal="SIGKILL")
             print(f"Killed {container}")
+
         except Exception as e:
-            print(f"Failed to kill {container}: {e}")
+            print(f"Failed to kill {container}")
             pass
 
     def run_kill_loop(self):
@@ -71,7 +72,7 @@ class Killer:
             for (container_to_kill, replica_to_kill) in containers_to_kill:
                 self.kill_container(container_to_kill, replica_to_kill)
 
-            time_to_sleep = random.random() * 120
+            time_to_sleep = random.random() * 30
             print(f"Sleeping for {time_to_sleep} seconds")
             sleep(time_to_sleep)
 
