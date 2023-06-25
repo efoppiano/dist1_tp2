@@ -18,7 +18,8 @@ HEALTH_CHECK_INTERVAL_SEC = os.environ.get("HEALTH_CHECK_INTERVAL_SEC", 2)
 GRACE_INTERVALS = os.environ.get("GRACE_INTERVALS", 5)
 
 S_TO_NS = 10 ** 9
-START_TIME = time.time_ns()
+SECONDS_AFTER_FAIL = 10
+START_TIME = time.time_ns()+SECONDS_AFTER_FAIL*S_TO_NS
 
 
 class BasicHealthChecker(ABC):
@@ -35,16 +36,21 @@ class BasicHealthChecker(ABC):
 
     def on_message_callback(self, msg: bytes) -> bool:
         packet = HealthCheck.decode(msg)
-        difference = (time.time_ns() - packet.timestamp) / S_TO_NS
-        trace(f"Received health check from {packet.id} with {difference} seconds of difference from now")
+        difference_ns = (time.time_ns() - packet.timestamp)
+        trace(f"Received health check from {packet.id} with {difference_ns/ S_TO_NS} seconds of difference from now")
+
+        timestamp = time.time_ns() + difference_ns + packet.max_lapse
+
         if packet.id in self._ids_to_monitor:
-            self._last_seen[packet.id] = packet.timestamp
+            self._last_seen[packet.id] = timestamp
+        else:
+            logging.warning(f"Received health check from {packet.id} which is not in the list of monitored ids")
 
         return True
 
     @abstractmethod
     def on_check_fail(self, failed_id: str):
-        pass
+        self._last_seen[failed_id] = time.time_ns() + SECONDS_AFTER_FAIL * S_TO_NS
 
     def __check_health(self):
         start_time = time.time()

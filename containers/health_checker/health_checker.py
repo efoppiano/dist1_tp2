@@ -19,11 +19,7 @@ class HealthChecker(BasicHealthChecker):
         )
         end = time.time()
         logging.debug("Container %s restarted in %s seconds", container_name, end - start)
-
-        return True
-
-    def on_message_callback(self, msg: bytes) -> bool:
-        return super().on_message_callback(msg)
+        super().on_check_fail(container_name)
 
 
 def main():
