@@ -1,3 +1,4 @@
+import signal
 from random import randint
 import random
 from time import sleep
@@ -75,6 +76,12 @@ class Killer:
             sleep(time_to_sleep)
 
 
+def signal_handler(sig, frame):
+    print('Exiting...')
+    exit(0)
+
+
 if __name__ == "__main__":
+    signal.signal(signal.SIGINT, signal_handler)
     killer = Killer()
     killer.run_kill_loop()
