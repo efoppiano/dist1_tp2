@@ -1,3 +1,4 @@
+import math
 import os
 import time
 from common.packets.health_check import HealthCheck
@@ -6,7 +7,8 @@ HEARTBEAT_EXCHANGE = os.environ.get("HEARTBEAT_EXCHANGE", "healthcheck")
 CONTAINER_ID = os.environ["CONTAINER_ID"]
 HEALTHCHECKER = os.environ["HEALTH_CHECKER"]
 LAPSE = int(os.environ.get("HEARTBEAT_LAPSE", 1))
-INITIAL_GRACE_FACTOR = 10
+MAX_HEALTHY_LAPSE = int(os.environ.get("MAX_HEALTHY_LAPSE", 5))
+INITIAL_GRACE_FACTOR = int(os.environ.get("INITIAL_GRACE_FACTOR", 3))
 
 
 class HeartBeater:
@@ -32,7 +34,7 @@ class HeartBeater:
             max_lapse = self._lapse* INITIAL_GRACE_FACTOR
         else:
             if lapse > self._max_lapse:
-                self._max_lapse = lapse
+                self._max_lapse = math.max(lapse, MAX_HEALTHY_LAPSE)
             max_lapse = self._max_lapse
 
         packet = HealthCheck(
