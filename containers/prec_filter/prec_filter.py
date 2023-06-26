@@ -11,8 +11,8 @@ PREC_LIMIT = os.environ["PREC_LIMIT"]
 
 class PrecFilter(BasicStatefulFilter):
     def __init__(self, prec_limit: int):
-        super().__init__()
         self._prec_limit = prec_limit
+        super().__init__()
 
     def handle_message(self, _flow_id, message: bytes) -> Dict[str, List[bytes]]:
         packet = PrecFilterIn.decode(message)

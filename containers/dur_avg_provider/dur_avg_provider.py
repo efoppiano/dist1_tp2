@@ -13,7 +13,6 @@ class DurAvgProvider(BasicStatefulFilter):
     def __init__(self):
         self._avg_buffer = {}
         super().__init__()
-        self._output_queue = self.router.route()
 
     def handle_eof(self, flow_id, message: Eof) -> Dict[str, Union[List[bytes], Eof]]:
         eof_output_queue = self.router.publish()
@@ -26,7 +25,7 @@ class DurAvgProvider(BasicStatefulFilter):
                 city_output.append(DurAvgOut(start_date, avg, amount).encode())
         self._avg_buffer.pop(flow_id)
         return {
-            self._output_queue: city_output,
+            self.router.route(): city_output,
             eof_output_queue: message,
         }
 

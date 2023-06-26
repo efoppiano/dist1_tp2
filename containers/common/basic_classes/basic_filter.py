@@ -7,18 +7,19 @@ from typing import List, Dict, Union
 
 from common.components.heartbeater import HeartBeater
 from common.components.message_sender import MessageSender
+from common.components.state_saver import Recoverable, StateSaver
 from common.packets.eof import Eof
 from common.packets.generic_packet import GenericPacket, GenericPacketBuilder
 from common.middleware.rabbit_middleware import Rabbit
-from common.utils import load_state, save_state
 
 RABBIT_HOST = os.environ.get("RABBIT_HOST", "rabbitmq")
 INPUT_QUEUE = os.environ["INPUT_QUEUE"]
 EOF_ROUTING_KEY = os.environ["EOF_ROUTING_KEY"]
 
 
-class BasicFilter(ABC):
+class BasicFilter(Recoverable, ABC):
     def __init__(self, container_id: str):
+        self._starting_up = True
         logging.info(
             f"action: init | result: in_progress | filter: {self.__class__.__name__} | container_id: {container_id}")
         self.__setup_middleware()
@@ -26,11 +27,8 @@ class BasicFilter(ABC):
         self.basic_filter_container_id = container_id
         self._message_sender = MessageSender(self._rabbit)
         self.heartbeater = HeartBeater(self._rabbit)
-
-        state = load_state()
-        if state is not None:
-            logging.info(f"Found previous state, setting it")
-            self.set_state(state)
+        self.state_saver = StateSaver(self)
+        self._starting_up = False
 
     def __setup_middleware(self):
         self._input_queue = INPUT_QUEUE
@@ -51,8 +49,10 @@ class BasicFilter(ABC):
     def on_message_callback(self, msg: Union[bytes, GenericPacket]) -> bool:
         if isinstance(msg, bytes):
             decoded = GenericPacket.decode(msg)
+            encoded = msg
         else:
             decoded = msg
+            encoded = msg.encode()
 
         flow_id = decoded.get_flow_id()
 
@@ -64,8 +64,10 @@ class BasicFilter(ABC):
             raise ValueError(f"Unknown packet type: {type(decoded.data)}")
 
         builder = GenericPacketBuilder(self.basic_filter_container_id, decoded.client_id, decoded.city_name)
-        self._message_sender.send(builder, outgoing_messages)
-        save_state(self.get_state())
+        self._message_sender.send(builder, outgoing_messages, skip_send=self._starting_up)
+
+        if not self._starting_up:
+            self.state_saver.save_state(encoded)
 
         return True
 
@@ -86,6 +88,9 @@ class BasicFilter(ABC):
             "message_sender": self._message_sender.get_state()
         }
         return pickle.dumps(state)
+    
+    def replay(self, msg: bytes) -> None:
+        self.on_message_callback(msg)
 
     def start(self):
         self.heartbeater.start()

@@ -8,8 +8,9 @@ from typing import Dict, List
 from common.components.heartbeater import HeartBeater
 from common.components.last_received import MultiLastReceivedManager
 from common.components.message_sender import MessageSender
+from common.components.state_saver import Recoverable, StateSaver
 from common.router import MultiRouter
-from common.utils import save_state, load_state
+from common.utils import save_state
 from common.packets.eof import Eof
 from common.packets.generic_packet import GenericPacket, GenericPacketBuilder
 from common.middleware.rabbit_middleware import Rabbit
@@ -24,9 +25,10 @@ RABBIT_HOST = os.environ.get("RABBIT_HOST", "rabbitmq")
 MAX_PACKET_ID = 2 ** 10  # 2 packet ids would be enough, but we use more for traceability
 
 
-class BasicAggregator(ABC):
+class BasicAggregator(Recoverable, ABC):
     def __init__(self, router: MultiRouter, container_id: str = CONTAINER_ID,
                  side_table_routing_key: str = SIDE_TABLE_ROUTING_KEY):
+        self._starting_up = True
         self.__setup_middleware(side_table_routing_key)
 
         self._basic_agg_container_id = container_id
@@ -36,13 +38,8 @@ class BasicAggregator(ABC):
         self.heartbeater = HeartBeater(self._rabbit)
 
         self.router = router
-
-        self.__setup_state()
-
-    def __setup_state(self):
-        state = load_state()
-        if state is not None:
-            self.set_state(state)
+        self.state_saver = StateSaver(self)
+        self._starting_up = False
 
     def __setup_middleware(self, side_table_routing_key: str):
         self._rabbit = Rabbit(RABBIT_HOST)
@@ -74,7 +71,7 @@ class BasicAggregator(ABC):
             raise Exception(f"Unknown message type: {type(decoded.data)}")
 
         builder = GenericPacketBuilder(self._basic_agg_container_id, decoded.client_id, decoded.city_name)
-        self._message_sender.send(builder, outgoing_messages)
+        self._message_sender.send(builder, outgoing_messages, skip_send=self._starting_up)
 
         return True
 
@@ -87,18 +84,20 @@ class BasicAggregator(ABC):
         if not self.__on_stream_message_without_duplicates(decoded):
             return False
 
-        save_state(self.get_state())
+        if not self._starting_up:
+            self.state_saver.save_state(msg)
         return True
 
     def handle_eof_message(self, flow_id, message: Eof) -> Dict[str, Eof]:
-        self._eofs_received.setdefault(flow_id, 0)
-        self._eofs_received[flow_id] += 1
+        eof_key = (flow_id, message.timestamp)
+        self._eofs_received.setdefault(eof_key, 0)
+        self._eofs_received[eof_key] += 1
 
-        logging.debug(f"Received EOF for flow {flow_id} ({self._eofs_received[flow_id]}/{PREV_AMOUNT})")
-        if self._eofs_received[flow_id] < PREV_AMOUNT:
+        logging.debug(f"Received EOF for flow {eof_key} ({self._eofs_received[eof_key]}/{PREV_AMOUNT})")
+        if self._eofs_received[eof_key] < PREV_AMOUNT:
             return {}
 
-        self._eofs_received.pop(flow_id)
+        self._eofs_received.pop(eof_key)
 
         return self.handle_eof(flow_id, message)
 
@@ -129,6 +128,9 @@ class BasicAggregator(ABC):
         self._message_sender.set_state(state["message_sender"])
         self._eofs_received = state["eofs_received"]
         self._last_received.set_state(state["last_received"])
+
+    def replay(self, msg: bytes) -> None:
+        self.__on_stream_message_callback(msg)
 
     def start(self):
         self.heartbeater.start()
