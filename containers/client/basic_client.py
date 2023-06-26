@@ -108,6 +108,8 @@ class BasicClient(ABC):
 
     def __send_weather_data(self, queue: str, city: str):
         for weather_info_list in self.get_weather(city):
+            if self.canceled:
+                return
             packet = PacketFactory.build_weather_packet(city, weather_info_list)
             self._rabbit.produce(queue, packet)
             self._invoker.check()
@@ -115,6 +117,8 @@ class BasicClient(ABC):
 
     def __send_stations_data(self, queue: str, city: str):
         for station_info_list in self.get_stations(city):
+            if self.canceled:
+                return
             packet = PacketFactory.build_station_packet(city, station_info_list)
             self._rabbit.produce(queue, packet)
             self._invoker.check()
@@ -122,6 +126,8 @@ class BasicClient(ABC):
 
     def __send_trips_data(self, queue: str, city: str, last: bool = False):
         for trip_info_list in self.get_trips(city):
+            if self.canceled:
+                return
             self._rabbit.produce(queue, PacketFactory.build_trip_packet(city, trip_info_list))
             self._invoker.check()
             time.sleep(1 / self._send_rate)
