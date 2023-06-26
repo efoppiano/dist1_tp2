@@ -76,7 +76,10 @@ class BasicClient(ABC):
             return True
 
         response_queue = ID_REQ_QUEUE
-        self._rabbit.consume_one(response_queue, on_client_id_packet)
+        while self.session_id is None:
+            self._rabbit.consume_one(response_queue, on_client_id_packet, timeout=CONTROL_TIMEOUT)
+            if self.canceled:
+                return None
         return self.session_id
 
     @staticmethod
@@ -154,6 +157,8 @@ class BasicClient(ABC):
             raise e
 
     def __send_cities_data(self):
+        if self.canceled:
+            return
         for city in self._all_cities:
             last = city == self._all_cities[-1]
             self.__send_data_from_city(city, last)
