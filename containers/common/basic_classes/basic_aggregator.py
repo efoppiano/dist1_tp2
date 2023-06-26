@@ -5,12 +5,11 @@ import pickle
 from abc import ABC
 from typing import Dict, List
 
-from common.components.heartbeater import HeartBeater
+from common.components.heartbeater.heartbeater import HeartBeater
 from common.components.last_received import MultiLastReceivedManager
 from common.components.message_sender import MessageSender
 from common.components.state_saver import Recoverable, StateSaver
 from common.router import MultiRouter
-from common.utils import save_state
 from common.packets.eof import Eof
 from common.packets.generic_packet import GenericPacket, GenericPacketBuilder
 from common.middleware.rabbit_middleware import Rabbit
@@ -35,7 +34,7 @@ class BasicAggregator(Recoverable, ABC):
         self._last_received = MultiLastReceivedManager()
         self._message_sender = MessageSender(self._rabbit)
         self._eofs_received = {}
-        self.heartbeater = HeartBeater(self._rabbit)
+        self.heartbeater = HeartBeater()
 
         self.router = router
         self.state_saver = StateSaver(self)

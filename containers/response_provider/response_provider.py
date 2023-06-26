@@ -3,7 +3,7 @@ import os
 import signal
 import pickle
 
-from common.components.heartbeater import HeartBeater
+from common.components.heartbeater.heartbeater import HeartBeater
 from common.packets.generic_packet import GenericPacket
 from common.packets.eof import Eof
 from common.packets.client_response_packets import GenericResponsePacket
@@ -32,7 +32,7 @@ class ResponseProvider:
         }
 
         self._rabbit = Rabbit("rabbitmq")
-        self._heartbeater = HeartBeater(self._rabbit)
+        self._heartbeater = HeartBeater()
         self.__set_up_signal_handler()
         self.__load_state()
         self.__load_last_sent()

@@ -5,7 +5,7 @@ import pickle
 from abc import ABC
 from typing import List, Dict, Union
 
-from common.components.heartbeater import HeartBeater
+from common.components.heartbeater.heartbeater import HeartBeater
 from common.components.message_sender import MessageSender
 from common.components.state_saver import Recoverable, StateSaver
 from common.packets.eof import Eof
@@ -26,7 +26,7 @@ class BasicFilter(Recoverable, ABC):
 
         self.basic_filter_container_id = container_id
         self._message_sender = MessageSender(self._rabbit)
-        self.heartbeater = HeartBeater(self._rabbit)
+        self.heartbeater = HeartBeater()
         self.state_saver = StateSaver(self)
         self._starting_up = False
 
@@ -88,7 +88,7 @@ class BasicFilter(Recoverable, ABC):
             "message_sender": self._message_sender.get_state()
         }
         return pickle.dumps(state)
-    
+
     def replay(self, msg: bytes) -> None:
         self.on_message_callback(msg)
 

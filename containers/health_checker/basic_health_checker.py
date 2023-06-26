@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from typing import List
 
 from common.utils import trace
-from common.components.heartbeater import HeartBeater
+from common.components.heartbeater.heartbeater import HeartBeater
 from common.packets.health_check import HealthCheck
 from common.middleware.rabbit_middleware import Rabbit
 
@@ -28,7 +28,7 @@ class BasicHealthChecker(ABC):
         self._last_check = time.time()
 
         self._rabbit = Rabbit(RABBIT_HOST)
-        self._heartbeater = HeartBeater(self._rabbit)
+        self._heartbeater = HeartBeater()
 
         self._rabbit.declare_queue(CONTAINER_ID, durable=False)
         self._rabbit.route(CONTAINER_ID, HEARTBEAT_EXCHANGE, CONTAINER_ID, self.on_message_callback)
