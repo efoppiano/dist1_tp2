@@ -2,10 +2,7 @@ import csv
 import logging
 import os
 import random
-import signal
 from typing import Protocol
-
-from common.utils import append_signal
 
 DIRECTORY = os.environ.get("DIRECTORY", "/volumes/state")
 LOG_FILE_NAME = os.environ.get("LOG_FILE_NAME", "log")
@@ -37,21 +34,15 @@ class StateSaver:
         os.makedirs(self._directory, exist_ok=True)
         self._log_file = None
         self._log_writer = None
-        self.__setup_signal_handler()
 
     def __del__(self):
         if self._log_file is not None:
-            self._log_file.close()
-
-    def __setup_signal_handler(self):
-        def signal_handler(_sig, _frame):
-            logging.info("action: state_saver_close | status: in_progress")
             self.__save_checkpoint()
-            logging.info("action: state_saver_close | status: success")
-
-        append_signal(signal.SIGTERM, signal_handler)
 
     def __open_log_file(self):
+        if self._log_file and not self._log_file.closed:
+            return
+
         if self.__log_exists():
             self._log_file = open(self._log_file_path, "a")
         else:
@@ -170,12 +161,15 @@ class StateSaver:
             f.write(state)
             f.flush()
 
-        if self._log_file is None:
+        try:
+            # write the checkpoint to the log
+            self._log_writer.writerow([CHECKPOINT])
+            self._log_file.flush()
+        except (AttributeError, ValueError):  # log file was closed
+            logging.warning("Log file was closed, reopening")
             self.__open_log_file()
-
-        # write the checkpoint to the log
-        self._log_writer.writerow([CHECKPOINT])
-        self._log_file.flush()
+            self._log_writer.writerow([CHECKPOINT])
+            self._log_file.flush()
 
         # rename the tmp state file to the state file
         os.rename(self._tmp_state_file_path, self._state_file_path)
