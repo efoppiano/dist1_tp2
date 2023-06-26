@@ -180,6 +180,10 @@ class BasicClient(ABC):
         return True
 
     def __handle_message(self, message: bytes) -> bool:
+
+        if self.canceled:
+            self._rabbit.safe_close()
+
         packet = GenericResponsePacket.decode(message)
         city_name = packet.city_name
 
