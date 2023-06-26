@@ -1,11 +1,12 @@
 import logging
 import os
+import signal
 import sys
 import time
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 
-from common.utils import initialize_log
+from common.utils import initialize_log, append_signal
 from common.middleware.rabbit_middleware import Rabbit
 from common.packets.health_check import HealthCheck
 
@@ -20,6 +21,17 @@ class Monitor:
         self._health_checker_queue = health_checker_queue
         self._heartbeat_lapse = heartbeat_lapse
         self._monitored_pid = os.getppid()
+
+        self._closing = False
+
+        self.__setup_signal_handler()
+
+    def __setup_signal_handler(self):
+        def handler(_sig, _frame):
+            logging.info("action: monitor_stop | status: in_progress")
+            self._closing = True
+
+        append_signal(signal.SIGTERM, handler)
 
     def __del__(self):
         self._rabbit.close()
@@ -41,7 +53,7 @@ class Monitor:
     def __is_alive(self) -> bool:
         try:
             os.kill(self._monitored_pid, 0)
-            return True
+            return not self._closing
         except OSError:
             return False
 
@@ -73,7 +85,7 @@ def main():
         logging.error(
             f"action: monitor_start | status: fail | container_id: {container_id} | error: {e}")
 
-    logging.info("action: monitor_end | status: success")
+    logging.info("action: monitor_stop | status: success")
 
 
 if __name__ == "__main__":
