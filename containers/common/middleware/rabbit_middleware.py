@@ -27,6 +27,9 @@ class Rabbit(MessageQueue):
         self.connection.close()
         logging.info("action: rabbit_close | status: success")
 
+    def safe_close(self):
+        self.connection.add_callback_threadsafe(self.close)
+
     def __set_up_signal_handler(self):
         def signal_handler(_sig, _frame):
             logging.info("action: rabbit_close | status: in_progress")

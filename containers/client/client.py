@@ -89,6 +89,7 @@ def main():
         "cities": CITIES,
     })
     client.run()
+    client.close()
     end_time = time.time()
     client.dump_results()
     success(f"action: client_run | duration: {end_time - start_time} sec | output_file: {client.client_id}")

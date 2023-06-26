@@ -3,7 +3,6 @@ import os
 import signal
 import random
 import datetime
-import threading
 import time
 from abc import ABC, abstractmethod
 from typing import List, Iterator
@@ -58,7 +57,6 @@ class BasicClient(ABC):
 
     def handle_signal(self, signum, frame):
         self.canceled = True
-        self._rabbit.close()
 
     def __set_up_signal_handler(self):
         append_signal(signal.SIGINT, self.handle_signal)
@@ -233,11 +231,11 @@ class BasicClient(ABC):
 
         self._rabbit.start()
 
-    def __run(self):
+    def run(self):
         self.__send_cities_data()
         self.__get_responses()
 
-    def run(self):
-        thread = threading.Thread(target=self.__run)
-        thread.start()
-        thread.join()
+    def close(self):
+        self.canceled = True
+        self._rabbit.close()
+
