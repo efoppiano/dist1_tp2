@@ -22,7 +22,7 @@ docker-compose-up: docker-compose-down
 .PHONY: docker-compose-up
 
 docker-compose-stop:
-	docker compose -f docker-compose-dev.yaml stop -t 1
+	docker compose -f docker-compose-dev.yaml stop -t 5
 .PHONY: docker-compose-stop
 
 docker-compose-down: docker-compose-stop
