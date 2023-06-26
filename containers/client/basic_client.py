@@ -19,7 +19,7 @@ from common.packets.trips_count_by_year_joined import TripsCountByYearJoined
 from common.middleware.rabbit_middleware import Rabbit
 from common.components.readers import WeatherInfo, StationInfo, TripInfo, ClientIdResponsePacket
 from common.router import Router
-from common.utils import log_msg, success, bold
+from common.utils import log_msg, success, bold, append_signal
 
 RABBIT_HOST = os.environ.get("RABBIT_HOST", "rabbitmq")
 ID_REQ_QUEUE = os.environ["ID_REQ_QUEUE"]
@@ -61,8 +61,8 @@ class BasicClient(ABC):
         self._rabbit.close()
 
     def __set_up_signal_handler(self):
-        signal.signal(signal.SIGINT, self.handle_signal)
-        signal.signal(signal.SIGTERM, self.handle_signal)
+        append_signal(signal.SIGINT, self.handle_signal)
+        append_signal(signal.SIGTERM, self.handle_signal)
 
     def __request_session_id(self) -> str:
         queue_name = self.router.route(self.client_id)
