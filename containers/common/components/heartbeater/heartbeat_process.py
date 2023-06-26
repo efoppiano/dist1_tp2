@@ -2,6 +2,7 @@ import logging
 import os
 import signal
 import sys
+import threading
 import time
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
@@ -22,6 +23,7 @@ class Monitor:
         self._heartbeat_lapse = heartbeat_lapse
         self._monitored_pid = os.getppid()
 
+        self._closing_event = threading.Event()
         self._closing = False
 
         self.__setup_signal_handler()
@@ -30,6 +32,7 @@ class Monitor:
         def handler(_sig, _frame):
             logging.info("action: monitor_stop | status: in_progress")
             self._closing = True
+            self._closing_event.set()
 
         append_signal(signal.SIGTERM, handler)
 
@@ -59,7 +62,7 @@ class Monitor:
 
     def start(self):
         while self.send_heartbeat():
-            time.sleep(self._heartbeat_lapse)
+            self._closing_event.wait(self._heartbeat_lapse)
 
 
 def main():
