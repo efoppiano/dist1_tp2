@@ -24,7 +24,8 @@ class Rabbit(MessageQueue):
         self._pika_thread = None
 
     def close(self):
-        self.connection.close()
+        if self.connection.is_open:
+            self.connection.close()
         logging.info("action: rabbit_close | status: success")
 
     def safe_close(self):
