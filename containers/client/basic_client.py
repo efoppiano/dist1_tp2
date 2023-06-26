@@ -1,5 +1,6 @@
 import logging
 import os
+import signal
 import random
 import datetime
 import threading
@@ -42,6 +43,7 @@ class BasicClient(ABC):
         self.client_id = f'{config["client_id"]}-{timestamp}'
         self.session_id = None  # Assigned by the server
         self.finished = False
+        self.canceled = False
         self.router = Router(GATEWAY, GATEWAY_AMOUNT)
 
         self._all_cities = config["cities"]
@@ -54,9 +56,13 @@ class BasicClient(ABC):
 
         PacketFactory.set_ids(self.__request_session_id())
 
+    def handle_signal(self, signum, frame):
+        self.canceled = True
+        self._rabbit.close()
+
     def __set_up_signal_handler(self):
-        # TODO: Implement graceful shutdown
-        pass
+        signal.signal(signal.SIGINT, self.handle_signal)
+        signal.signal(signal.SIGTERM, self.handle_signal)
 
     def __request_session_id(self) -> str:
         queue_name = self.router.route(self.client_id)
@@ -129,6 +135,9 @@ class BasicClient(ABC):
         logging.info(f"action: client_send_data | result: in_progress | city: {city}")
         queue_name = self.router.route(hashing_key=self.client_id)
 
+        if self.canceled:
+            return
+
         try:
             self.__send_weather_data(queue_name, city)
             self.__send_stations_data(queue_name, city)
@@ -136,6 +145,8 @@ class BasicClient(ABC):
             logging.info(f"sent_data | city: {city}")
         except Exception as e:
             logging.error(f"send_data | city: {city} | error: {e}")
+            if self.canceled:
+                return
             raise e
 
     def __send_cities_data(self):
@@ -211,6 +222,9 @@ class BasicClient(ABC):
         return True
 
     def __get_responses(self):
+
+        if self.canceled:
+            return
 
         results_queue = RESULTS_QUEUE_PREFIX + str(self.session_id)
         self._rabbit.consume(results_queue, self.__handle_message, create=False)
