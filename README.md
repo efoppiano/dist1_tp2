@@ -32,6 +32,7 @@
   - [Alta Disponibilidad y Tolerancia a Fallos](#alta-disponibilidad-y-tolerancia-a-fallos)
     - [Nuevos requerimientos](#nuevos-requerimientos)
     - [Tolerancia a Fallos](#tolerancia-a-fallos)
+      - [Guardado de estado a disco](#guardado-de-estado-a-disco)
     - [Filtrado Mensajes Repetidos](#filtrado-mensajes-repetidos)
     - [Envío de resultados sin repetidos](#envío-de-resultados-sin-repetidos)
     - [Health check del sistema](#health-check-del-sistema)
@@ -375,6 +376,30 @@ Flujo de un nodo que persiste su estado en disco
 
 Se quiere notar en el diagrama que al procesar un mensaje podría no actualizarse el estado (por ejemplo un filtro que podría no necesitar estado de negocio) o no enviar mensajes (por ejemplo un nodo que acumula la suma de valores).
 
+#### Guardado de estado a disco
+
+Para implementar el guardado a disco, los nodos implementan una interfaz `Recoverable`, exponiendo los métodos `get_state():bytes`, `set_state(bytes)` y `replay(message)`.
+
+Estos metodos son accedidos por un componente `StateSaver`, que se encarga de guardar el estado a disco y de resetearlo al momento de levantar un nodo.
+
+Para ello, al guardar estado en disco se le proveera al `StateSaver` el mensaje procesado, mientras que el estado resultante puede ser obtenido mediante la interfaz.
+
+Lo que hara el state saver es:
+- 'appendear' el mensaje a un archivo de `log`.
+- Cuando haya suficientes entradas de log se guarda el estado completo a disco, limpiando el log.
+
+Si un nodo se cae:
+- Se levanta el ultimo estado guardado en disco
+- Se vuelven a ejecutar los mensajes del log (sin mandar mensajes para adelente, evitando duplicados).
+
+![checkpointing](docs/fault_tolerance/checkpointing.png)
+
+Podemos ver en el diagrama mas detalle sobre la implementacion del protocolo,
+donde se tiene en cuenta que se guarde y cargue un estado valido sin importar en que punto muera el proceso.
+
+> Por ejemplo, una escritura a disco puede fallar y quedar a medias;
+> por eso, para hacerla atomica se escribe primero a un archivo temporal y luego se renombra a su nombre final (Esta operacion es atomica, dejando el archivo existente si falla).
+
 ### Filtrado Mensajes Repetidos
 
 Es necesario agregar algo de lógica extra por sobre la persistencia antes descripta para evitar el procesamiento de mensajes duplicados.
@@ -423,7 +448,8 @@ Para garantizar el correcto funcionamiento de los procesos se despliegan health-
 Todos los nodos del sistema (incluidos los health-checkers) deben mandar un heartbeat periódicamente a un health-checker fijo, que es previamente designado y proveído como variable de entorno.
 
 > #### Generación de HeartBeats
-> La generación de heartbeats se da de manera asincrónica al procesamiento de mensajes. Aprovechando el mecanismo de `call_later` de pika (RabbitMQ) que convive con la conexión bloqueante donde se reciben mensajes.
+> Los heartbeats se generan en un proceso a parte, de modo que no sean afectados por retrasos de procesamiento.
+> Este proceso no solo mandara heartbeats periodicamente, sino que verificara la salud del proceso principal.
 
 Los procesos de un mismo tipo se distribuyen uniformemente entre los health-checkers, para que en caso de que uno muera no frene todo un tramo del sistema (asumiendo también la muerte de sus dependientes).
 
