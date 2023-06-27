@@ -7,7 +7,7 @@ import time
 from abc import ABC
 from typing import Dict, List
 
-from common.components.heartbeater import HeartBeater
+from common.components.heartbeater.heartbeater import HeartBeater
 from common.components.message_sender import MessageSender
 from common.components.readers import ClientIdResponsePacket
 from common.packets.client_control_packet import ClientControlPacket, RateLimitChangeRequest
@@ -43,7 +43,7 @@ class BasicGateway(ABC):
         self._last_eof_received = None
 
         self.router = Router(NEXT, NEXT_AMOUNT)
-        self.heartbeater = HeartBeater(self._rabbit)
+        self.heartbeater = HeartBeater()
         self._rate_checker = RateChecker()
         self._message_sender = MessageSender(self._rabbit)
         self.health_checker = ClientHealthChecker(
