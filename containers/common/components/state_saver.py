@@ -27,13 +27,11 @@ class StateSaver:
     def __init__(self, component: Recoverable, chance_of_checkpoint: float = CHANCE_OF_CHECKPOINT):
         self._component = component
         self._chance_of_checkpoint = chance_of_checkpoint
+        self._log_file = None
+        self._log_writer = None
 
         self.__init_paths()
         self.__load_state()
-
-        os.makedirs(self._directory, exist_ok=True)
-        self._log_file = None
-        self._log_writer = None
 
     def __del__(self):
         if self._log_file is not None:
@@ -57,6 +55,7 @@ class StateSaver:
         self._state_file_path = os.path.join(DIRECTORY, STATE_FILE_NAME)
         self._tmp_state_file_path = os.path.join(DIRECTORY, f"{STATE_FILE_NAME}.tmp")
         self._directory = DIRECTORY
+        os.makedirs(self._directory, exist_ok=True)
 
     def __load_state(self):
         if self.__log_exists():
@@ -87,7 +86,8 @@ class StateSaver:
 
     def __remove_log(self):
         try:
-            self._log_file.close()
+            if self._log_file and not self._log_file.closed:
+                self._log_file.close()
             os.rename(self._log_file_path, self._tmp_log_file_path)
             os.remove(self._tmp_log_file_path)
         except FileNotFoundError:
