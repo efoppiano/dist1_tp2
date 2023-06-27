@@ -120,7 +120,7 @@ class BasicGateway(ABC):
         self._rabbit.declare_queue(control_queue)
         self._rabbit.declare_queue(results_queue)
 
-        response = ClientIdResponsePacket(new_client_id).encode()
+        response = ClientIdResponsePacket(new_client_id, self._input_queue).encode()
 
         self._rabbit.produce("client_id_queue", response)
         self.health_checker.ping(new_client_id, None, False)

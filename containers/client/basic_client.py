@@ -41,6 +41,7 @@ class BasicClient(ABC):
         timestamp = datetime.datetime.now().strftime("%Y-%m%d-%H%M")
         self.client_id = f'{config["client_id"]}-{timestamp}'
         self.session_id = None  # Assigned by the server
+        self.gateway = None
         self.finished = False
         self.canceled = False
         self.router = Router(GATEWAY, GATEWAY_AMOUNT)
@@ -70,6 +71,7 @@ class BasicClient(ABC):
         def on_client_id_packet(client_id_packet: bytes):
             response = ClientIdResponsePacket.decode(client_id_packet)
             session_id = response.client_id
+            self.gateway = response.gateway_queue
 
             self.session_id = session_id
             success(f"Assigned Session Id: {session_id}")
@@ -140,7 +142,7 @@ class BasicClient(ABC):
 
     def __send_data_from_city(self, city: str, last: bool = False):
         logging.info(f"action: client_send_data | result: in_progress | city: {city}")
-        queue_name = self.router.route(hashing_key=self.client_id)
+        queue_name = self.gateway
 
         if self.canceled:
             return

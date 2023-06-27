@@ -80,13 +80,14 @@ class Client(BasicClient):
 
 def main():
     initialize_log(15)
-    logging.info(f"action: client_run | result: start")
-    start_time = time.time()
     client = Client({
         "data_folder_path": DATA_FOLDER_PATH,
         "client_id": CLIENT_ID,
         "cities": CITIES,
     })
+    time.sleep(5)
+    logging.info(f"action: client_run | result: start")
+    start_time = time.time()
     client.run()
     client.close()
     end_time = time.time()

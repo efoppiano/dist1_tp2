@@ -114,6 +114,7 @@ class TripInfo(BasicPacket):
 @dataclass
 class ClientIdResponsePacket(BasicPacket):
     client_id: str
+    gateway_queue: str
 
 
 @dataclass
