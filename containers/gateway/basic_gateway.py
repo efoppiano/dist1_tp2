@@ -122,8 +122,9 @@ class BasicGateway(ABC):
 
         response = ClientIdResponsePacket(new_client_id, self._input_queue).encode()
 
-        self._rabbit.produce("client_id_queue", response)
         self.health_checker.ping(new_client_id, None, False)
+        self._rabbit.produce("client_id_queue", response)
+        self.save_state()
 
     def __on_stream_message_callback(self, msg: bytes) -> bool:
         decoded = ClientPacket.decode(msg)
