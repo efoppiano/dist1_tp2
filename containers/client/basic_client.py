@@ -5,7 +5,7 @@ import random
 import datetime
 import time
 from abc import ABC, abstractmethod
-from typing import List, Iterator
+from typing import List, Iterator, Optional
 
 from common.components.invoker import Invoker
 from common.packets.client_control_packet import ClientControlPacket, RateLimitChangeRequest
@@ -63,7 +63,7 @@ class BasicClient(ABC):
         append_signal(signal.SIGINT, self.handle_signal)
         append_signal(signal.SIGTERM, self.handle_signal)
 
-    def __request_session_id(self) -> str:
+    def __request_session_id(self) -> Optional[str]:
         queue_name = self.router.route(self.client_id)
         packet = PacketFactory.build_id_request_packet()
         self._rabbit.produce(queue_name, packet)
