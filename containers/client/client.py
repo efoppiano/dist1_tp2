@@ -1,5 +1,6 @@
 import logging
 import os
+import json
 import time
 from typing import List, Iterator
 
@@ -13,6 +14,7 @@ from common.utils import initialize_log, json_serialize, log_duplicate, success,
 CLIENT_ID = os.environ["CLIENT_ID"]
 CITIES = os.environ["CITIES"].split(",")
 DATA_FOLDER_PATH = os.environ["DATA_FOLDER_PATH"]
+BASELINE="baseline.json"
 
 
 class Client(BasicClient):
@@ -48,6 +50,43 @@ class Client(BasicClient):
         with open(filename, "w") as f:
             data = json_serialize(self.results)
             f.write(data)
+
+    def compare_results(self):
+        baseline_filename = f"{self._data_folder_path}/results/{BASELINE}"
+        baseline = {}
+        with open(baseline_filename, "r") as f:
+            baseline = json.load(f)
+
+        for city in self.results:
+            # Check duration_average_prectot>=30mm results are the same
+            for key in self.results[city]["duration_average_prectot>=30mm"]:
+                if key not in baseline[city]["duration_average_prectot>=30mm"]:
+                    logging.error(f"city: {city} | key: {key} | not in baseline")
+                    continue
+                if self.results[city]["duration_average_prectot>=30mm"][key] != baseline[city]["duration_average_prectot>=30mm"][key]:
+                    logging.error(f"city: {city} | key: {key} | different results")
+                    continue
+            
+            # Check trip_count_by_year results are the same
+            for key in self.results[city]["trip_count_by_year"]:
+                if key not in baseline[city]["trip_count_by_year"]:
+                    logging.error(f"city: {city} | key: {key} | not in baseline")
+                    continue
+                if self.results[city]["trip_count_by_year"][key] != baseline[city]["trip_count_by_year"][key]:
+                    logging.error(f"city: {city} | key: {key} | different results")
+                    continue
+
+            # Check stations_mean_dist_>=6km results are the same
+            for key in self.results[city]["stations_mean_dist_>=6km"]:
+                if key not in baseline[city]["stations_mean_dist_>=6km"]:
+                    logging.error(f"city: {city} | key: {key} | not in baseline")
+                    continue
+                if self.results[city]["stations_mean_dist_>=6km"][key] != baseline[city]["stations_mean_dist_>=6km"][key]:
+                    logging.error(f"city: {city} | key: {key} | different results")
+                    continue
+
+        
+
 
     def handle_dur_avg_out_packet(self, city_name: str, packet: DurAvgOut):
         self.save_results(
@@ -92,6 +131,7 @@ def main():
     client.close()
     end_time = time.time()
     client.dump_results()
+    client.compare_results()
     success(f"action: client_run | duration: {end_time - start_time} sec | output_file: {client.client_id}")
 
 
