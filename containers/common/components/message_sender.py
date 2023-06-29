@@ -38,24 +38,15 @@ class MessageSender:
         return self._last_seq_number[queue]
 
     def __get_next_publish_seq_number(self, queue: str) -> int:
-        self._last_seq_number.setdefault(queue, 0)
-        keys = list(self._last_seq_number.keys())
-        keys = [key for key in keys if key.startswith(queue)]
-        used_ids = [self._last_seq_number[key] for key in keys]
+        self._last_seq_number.setdefault(queue, -1)
+        self._last_seq_number[queue] -= 1
 
-        possible_id = 0
-        for i in range(MAX_SEQ_NUMBER):
-            if possible_id not in used_ids:
-                break
-            possible_id += 1
+        if self._last_seq_number[queue] < -MAX_SEQ_NUMBER:
+            self._last_seq_number[queue] = -1
+            self._times_maxed_seq += 1
+            log_msg("Generated %d packets [%d]", MAX_SEQ_NUMBER, self._times_maxed_seq)
 
-        if possible_id == MAX_SEQ_NUMBER:
-            raise Exception("No more publish ids available")
-
-        for key in keys:
-            self._last_seq_number[key] = possible_id
-
-        return possible_id
+        return self._last_seq_number[queue]
 
     def send(self, builder: GenericPacketBuilder, outgoing_messages: OutgoingMessages,
              skip_send=False):
