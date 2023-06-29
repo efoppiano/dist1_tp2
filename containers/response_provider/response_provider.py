@@ -5,12 +5,14 @@ import pickle
 
 from typing import Dict
 
+from common import utils
 from common.components.heartbeater.heartbeater import HeartBeater
 from common.packets.generic_packet import GenericPacket
 from common.packets.eof import Eof
 from common.packets.client_response_packets import GenericResponsePacket
 from common.middleware.rabbit_middleware import Rabbit
-from common.utils import initialize_log, save_state, load_state, min_hash, log_duplicate, log_evict, trace
+from common.utils import initialize_log, save_state, load_state, min_hash, log_duplicate, log_evict, trace, \
+    RESULTS_ROUTING_KEY, PUBLISH_ROUTING_KEY
 
 SELF_QUEUE = f"sent_responses"
 DIST_MEAN_SRC = os.environ["DIST_MEAN_SRC"]
@@ -76,12 +78,11 @@ class ResponseProvider:
 
     def __send_response(self, destination: str, message: bytes):
 
-        # TODO: Do not hardcode the queue name
-        result_queue = f"results_{destination}"
-        self._rabbit.route(SELF_QUEUE, "results", destination)
-        self._rabbit.route(result_queue, "results", destination)
+        result_queue = utils.build_results_queue_name(destination)
+        self._rabbit.route(SELF_QUEUE, RESULTS_ROUTING_KEY, destination)
+        self._rabbit.route(result_queue, RESULTS_ROUTING_KEY, destination)
 
-        self._rabbit.send_to_route("results", destination, message)
+        self._rabbit.send_to_route(RESULTS_ROUTING_KEY, destination, message)
 
     def __evict_client(self, client_id: str, time: int = 0):
         if client_id in self._evicting and not time == 0:
@@ -201,9 +202,9 @@ class ResponseProvider:
         self._rabbit.consume(trip_count_queue, self.__handle_type("trip_count"))
         self._rabbit.consume(avg_queue, self.__handle_type("dur_avg"))
 
-        self._rabbit.route(dist_mean_queue, "publish", dist_mean_queue)
-        self._rabbit.route(trip_count_queue, "publish", trip_count_queue)
-        self._rabbit.route(avg_queue, "publish", avg_queue)
+        self._rabbit.route(dist_mean_queue, PUBLISH_ROUTING_KEY, dist_mean_queue)
+        self._rabbit.route(trip_count_queue, PUBLISH_ROUTING_KEY, trip_count_queue)
+        self._rabbit.route(avg_queue, PUBLISH_ROUTING_KEY, avg_queue)
 
         # Returns True every time, as this is already saved to disk if reading at runtime
         self._rabbit.consume(SELF_QUEUE, lambda _message: True)

@@ -1,6 +1,8 @@
 import logging
 import time
 from typing import Callable, Optional
+
+from common import utils
 from common.router import Router
 from common.packets.eof import Eof
 from common.middleware.rabbit_middleware import Rabbit
@@ -33,7 +35,7 @@ class ClientHealthChecker:
         self._rabbit = _rabbit
         self._output_queue = router.publish()
 
-        self._container_id = container_id + "_healthcheck"
+        self._container_id = utils.build_healthcheck_container_id(container_id)
 
         self._save_state = save_state
         self._lapse = lapse
@@ -48,7 +50,7 @@ class ClientHealthChecker:
 
     def evict(self, client_id: str, last_city: str = None, drop: bool = False):
         # Notify the client it has been evicted
-        control_queue = f"control_{client_id}"
+        control_queue = utils.build_control_queue_name(client_id)
         self._rabbit.produce(control_queue, ClientControlPacket("SessionExpired").encode())
 
         # Send EOF to the next replica with eviction time
@@ -89,7 +91,6 @@ class ClientHealthChecker:
         self._rabbit.call_later(self._lapse + MIN_TIMEOUT + INITIAL_CLIENT_TIMEOUT, self.check_clients)
 
     def ping(self, client_id: str, city: Optional[str], finished: bool = False):
-        logging.info(f"Client {client_id} pinged | city: {city} | finished: {finished} | time: {time.time()}")
         self._clients[client_id] = (city, time.time(), finished)
 
     def set_expected_client_rate(self, rate: float):

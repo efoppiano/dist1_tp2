@@ -7,6 +7,7 @@ import time
 from abc import ABC
 from typing import Dict, List
 
+from common import utils
 from common.components.heartbeater.heartbeater import HeartBeater
 from common.components.message_sender import MessageSender, OutgoingMessages
 from common.components.readers import ClientIdResponsePacket
@@ -115,8 +116,8 @@ class BasicGateway(ABC):
         new_client_id = f"{self._basic_gateway_container_id}_{time.time_ns()}"
         logging.info(f"New client id: {new_client_id}")
 
-        control_queue = f"control_{new_client_id}"
-        results_queue = f"results_{new_client_id}"
+        control_queue = utils.build_control_queue_name(new_client_id)
+        results_queue = utils.build_results_queue_name(new_client_id)
         self._rabbit.declare_queue(control_queue)
         self._rabbit.declare_queue(results_queue)
 
@@ -168,7 +169,6 @@ class BasicGateway(ABC):
         if users_amount == 0:
             return
 
-        # TODO: Make sure not to overload the system
         if rates.ack_per_second - rates.publish_per_second >= 0.0:
             # Increase rate
             new_rate = math.ceil((2 * (rates.publish_per_second + 1)) / users_amount)

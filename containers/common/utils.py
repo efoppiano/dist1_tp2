@@ -6,6 +6,9 @@ from datetime import datetime, date
 from types import FrameType
 from typing import Union, Callable
 
+RESULTS_ROUTING_KEY = "results"
+PUBLISH_ROUTING_KEY = "publish"
+
 
 def initialize_log(logging_level=logging.INFO):
     """
@@ -144,3 +147,15 @@ def append_signal(sig, f: Callable[[signal.Signals, FrameType], None]):
         f(signum, frame)
 
     signal.signal(sig, helper)
+
+
+def build_results_queue_name(destination: str) -> str:
+    return f"results_{destination}"
+
+
+def build_healthcheck_container_id(container_id: str) -> str:
+    return f"{container_id}_healthcheck"
+
+
+def build_control_queue_name(client_id: str) -> str:
+    return f"control_{client_id}"

@@ -116,7 +116,6 @@ class Rabbit(MessageQueue):
         """
         Consumes messages from a queue until it is empty.
         """
-        # TODO: Check if this works
         self.declare_queue(queue)
         while True:
             q = self._channel.queue_declare(queue=queue, passive=True)
