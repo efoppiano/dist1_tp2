@@ -8,7 +8,7 @@ from abc import ABC
 from typing import Dict, List
 
 from common.components.heartbeater.heartbeater import HeartBeater
-from common.components.message_sender import MessageSender
+from common.components.message_sender import MessageSender, OutgoingMessages
 from common.components.readers import ClientIdResponsePacket
 from common.packets.client_control_packet import ClientControlPacket, RateLimitChangeRequest
 from common.packets.client_packet import ClientDataPacket, ClientPacket
@@ -64,14 +64,14 @@ class BasicGateway(ABC):
         logging.info(f"Routing packets to {self._input_queue} using routing key {eof_routing_key}")
         self._rabbit.route(self._input_queue, "publish", eof_routing_key)
 
-    def __handle_chunk(self, flow_id, chunk: List[bytes]) -> Dict[str, List[bytes]]:
+    def __handle_chunk(self, flow_id, chunk: List[bytes]) -> OutgoingMessages:
         outgoing_messages = {}
         for message in chunk:
             responses = self.handle_message(flow_id, message)
             for (queue, messages) in responses.items():
                 outgoing_messages.setdefault(queue, [])
                 outgoing_messages[queue] += messages
-        return outgoing_messages
+        return OutgoingMessages(outgoing_messages)
 
     def __on_stream_message_without_duplicates(self, decoded: ClientDataPacket) -> bool:
         flow_id = decoded.get_flow_id()
@@ -122,8 +122,9 @@ class BasicGateway(ABC):
 
         response = ClientIdResponsePacket(new_client_id, self._input_queue).encode()
 
-        self._rabbit.produce("client_id_queue", response)
         self.health_checker.ping(new_client_id, None, False)
+        self.save_state()
+        self._rabbit.produce("client_id_queue", response)
 
     def __on_stream_message_callback(self, msg: bytes) -> bool:
         decoded = ClientPacket.decode(msg)

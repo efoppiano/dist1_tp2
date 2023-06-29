@@ -1,13 +1,13 @@
 import abc
 import logging
 import os
-import pickle
+import json
 from abc import ABC
-from typing import Dict, List
+from typing import Dict, List, Union
 
 from common.components.heartbeater.heartbeater import HeartBeater
 from common.components.last_received import MultiLastReceivedManager
-from common.components.message_sender import MessageSender
+from common.components.message_sender import MessageSender, OutgoingMessages
 from common.components.state_saver import Recoverable, StateSaver
 from common.router import MultiRouter
 from common.packets.eof import Eof
@@ -33,7 +33,7 @@ class BasicAggregator(Recoverable, ABC):
         self._basic_agg_container_id = container_id
         self._last_received = MultiLastReceivedManager()
         self._message_sender = MessageSender(self._rabbit)
-        self._eofs_received = {}
+        self._eofs_received: Dict[str, int] = {}
         self.heartbeater = HeartBeater()
 
         self.router = router
@@ -50,14 +50,14 @@ class BasicAggregator(Recoverable, ABC):
 
         self._rabbit.route(input_queue, "publish", side_table_routing_key)
 
-    def __handle_chunk(self, flow_id, chunk: List[bytes]) -> Dict[str, List[bytes]]:
+    def __handle_chunk(self, flow_id: str, chunk: List[bytes]) -> OutgoingMessages:
         outgoing_messages = {}
         for message in chunk:
             responses = self.handle_message(flow_id, message)
             for (queue, messages) in responses.items():
                 outgoing_messages.setdefault(queue, [])
                 outgoing_messages[queue] += messages
-        return outgoing_messages
+        return OutgoingMessages(outgoing_messages)
 
     def __on_stream_message_without_duplicates(self, decoded: GenericPacket) -> bool:
         flow_id = decoded.get_flow_id()
@@ -88,7 +88,7 @@ class BasicAggregator(Recoverable, ABC):
         return True
 
     def handle_eof_message(self, flow_id, message: Eof) -> Dict[str, Eof]:
-        eof_key = (flow_id, message.timestamp)
+        eof_key = f"{flow_id}-{message.timestamp}"
         self._eofs_received.setdefault(eof_key, 0)
         self._eofs_received[eof_key] += 1
 
@@ -101,7 +101,7 @@ class BasicAggregator(Recoverable, ABC):
         return self.handle_eof(flow_id, message)
 
     @abc.abstractmethod
-    def handle_message(self, flow_id, message: bytes) -> Dict[str, List[bytes]]:
+    def handle_message(self, flow_id: str, message: bytes) -> Dict[str, List[bytes]]:
         pass
 
     def handle_eof(self, flow_id, message: Eof) -> Dict[str, Eof]:
@@ -113,17 +113,15 @@ class BasicAggregator(Recoverable, ABC):
         return output
 
     @abc.abstractmethod
-    def get_state(self) -> bytes:
-        state = {
+    def get_state(self) -> dict:
+        return {
             "message_sender": self._message_sender.get_state(),
             "last_received": self._last_received.get_state(),
             "eofs_received": self._eofs_received,
         }
-        return pickle.dumps(state)
 
     @abc.abstractmethod
-    def set_state(self, state_bytes: bytes):
-        state = pickle.loads(state_bytes)
+    def set_state(self, state: dict):
         self._message_sender.set_state(state["message_sender"])
         self._eofs_received = state["eofs_received"]
         self._last_received.set_state(state["last_received"])

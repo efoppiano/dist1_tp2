@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-from typing import Dict, List
 from haversine import haversine
 
 from common.basic_classes.basic_stateful_filter import BasicStatefulFilter
+from common.components.message_sender import OutgoingMessages
 from common.packets.dist_info import DistInfo
 from common.packets.distance_calc_in import DistanceCalcIn
 from common.utils import initialize_log
 
 
 class DistanceCalculator(BasicStatefulFilter):
-    def handle_message(self, _flow_id, message: bytes) -> Dict[str, List[bytes]]:
+    def handle_message(self, _flow_id, message: bytes) -> OutgoingMessages:
         packet = DistanceCalcIn.decode(message)
 
         output_queue = self.router.route(packet.end_station_name)
@@ -17,9 +17,9 @@ class DistanceCalculator(BasicStatefulFilter):
                                              packet.start_station_longitude,
                                              packet.end_station_latitude,
                                              packet.end_station_longitude)
-        return {
+        return OutgoingMessages({
             output_queue: [DistInfo(packet.end_station_name, distance).encode()]
-        }
+        })
 
     @staticmethod
     def __calculate_distance(start_station_latitude: float, start_station_longitude: float,

@@ -3,6 +3,8 @@ import os
 import signal
 import pickle
 
+from typing import Dict
+
 from common.components.heartbeater.heartbeater import HeartBeater
 from common.packets.generic_packet import GenericPacket
 from common.packets.eof import Eof
@@ -23,7 +25,7 @@ class ResponseProvider:
     def __init__(self):
         self._last_received = {}
         self._eofs_received = {}
-        self._evicting = {}
+        self._evicting: Dict[str, int] = {}
 
         self.input_queues = {
             "dist_mean": (DIST_MEAN_SRC, DIST_MEAN_AMOUNT),
@@ -47,7 +49,7 @@ class ResponseProvider:
 
         self._sig_hand_prev = signal.signal(signal.SIGTERM, signal_handler)
 
-    def __update_last_received(self, packet_type, packet: GenericPacket):
+    def __update_last_received(self, packet_type: str, packet: GenericPacket):
         sender_id = (packet_type, packet.sender_id)
 
         current_id = packet.get_id()

@@ -1,5 +1,5 @@
 import logging
-import pickle
+import typing
 from typing import Dict, Union, List
 
 from common.packets.eof import Eof
@@ -8,6 +8,11 @@ from common.middleware.rabbit_middleware import Rabbit
 from common.utils import min_hash, log_msg
 
 MAX_SEQ_NUMBER = 2 ** 9
+
+MessageData = typing.NewType("MessageData", bytes)
+MessageContent = typing.NewType("MessageContent", Union[List[MessageData], Eof])
+QueueOrRoutingKey = typing.NewType("QueueOrRoutingKey", str)
+OutgoingMessages = typing.NewType("OutgoingMessages", Dict[QueueOrRoutingKey, MessageContent])
 
 
 class MessageSender:
@@ -52,7 +57,7 @@ class MessageSender:
 
         return possible_id
 
-    def send(self, builder: GenericPacketBuilder, outgoing_messages: Dict[str, Union[List[bytes], Eof]],
+    def send(self, builder: GenericPacketBuilder, outgoing_messages: OutgoingMessages,
              skip_send=False):
         for (queue, messages_or_eof) in outgoing_messages.items():
             if isinstance(messages_or_eof, Eof) or len(messages_or_eof) > 0:
@@ -70,12 +75,10 @@ class MessageSender:
                             f"Sending {builder.get_id()}-{min_hash(messages_or_eof)} to {queue}")
                         self._rabbit.produce(queue, encoded)
 
-    def get_state(self) -> bytes:
-        state = {
+    def get_state(self) -> dict:
+        return {
             "last_seq_number": self._last_seq_number
         }
-        return pickle.dumps(state)
 
-    def set_state(self, state_bytes: bytes):
-        state = pickle.loads(state_bytes)
+    def set_state(self, state: dict):
         self._last_seq_number = state["last_seq_number"]

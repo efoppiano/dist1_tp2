@@ -115,7 +115,7 @@ class StateSaver:
     def __load_from_checkpoint(self):
         if self.__tmp_state_exists():
             os.rename(self._tmp_state_file_path, self._state_file_path)
-            self.__load_from_state()
+        self.__load_from_state()
         self.__remove_log()
         self.__open_log_file()
 
