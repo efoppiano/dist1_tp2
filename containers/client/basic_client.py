@@ -56,7 +56,7 @@ class BasicClient(ABC):
 
         PacketFactory.set_ids(self.__request_session_id())
 
-    def handle_signal(self, signum, frame):
+    def handle_signal(self, _signum, _frame):
         self.canceled = True
 
     def __set_up_signal_handler(self):
@@ -255,4 +255,3 @@ class BasicClient(ABC):
     def close(self):
         self.canceled = True
         self._rabbit.close()
-

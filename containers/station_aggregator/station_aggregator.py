@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import os
-import pickle
+import json
+import typing
 from typing import Dict, List, Union, Tuple
 
 from common.basic_classes.basic_aggregator import BasicAggregator
@@ -10,7 +11,6 @@ from common.packets.gateway_out import GatewayOut
 from common.packets.gateway_out_or_station import GatewayOutOrStation
 from common.packets.prec_filter_in import PrecFilterIn
 from common.packets.station_side_table_info import StationSideTableInfo
-from common.packets.stop_packet import StopPacket
 from common.packets.year_filter_in import YearFilterIn
 from common.router import MultiRouter
 from common.utils import initialize_log, log_missing
@@ -22,34 +22,42 @@ NEXT_AMOUNT_YEAR_FILTER = int(os.environ["NEXT_AMOUNT_YEAR_FILTER"])
 DISTANCE_CALCULATOR_QUEUE = os.environ["DISTANCE_CALCULATOR_QUEUE"]
 NEXT_AMOUNT_DISTANCE_CALCULATOR = int(os.environ["NEXT_AMOUNT_DISTANCE_CALCULATOR"])
 
+PacketLists = typing.NewType("PacketLists", Tuple[List[bytes], List[bytes], List[bytes]])
+
+StationData = typing.NewType("StationData", Dict[str, Union[str, float, None]])
+StationsData = typing.NewType("StationsData", Dict[str, StationData])
+
 
 class StationAggregator(BasicAggregator):
     def __init__(self, router: MultiRouter):
-        self._stations = {}
+        self._stations: StationsData = StationsData({})
         super().__init__(router)
 
     def handle_eof(self, flow_id, message: Eof) -> Dict[str, Eof]:
         self._stations.pop(flow_id, None)
         return super().handle_eof(flow_id, message)
 
-    def __handle_side_table_message(self, flow_id, packet: StationSideTableInfo):
+    @staticmethod
+    def __build_dict_key(station_code: int, yearid: int) -> str:
+        return f"{station_code}-{yearid}"
+
+    def __handle_side_table_message(self, flow_id: str, packet: StationSideTableInfo):
         station_code, yearid = packet.station_code, packet.yearid
 
         self._stations.setdefault(flow_id, {})
+        dict_key = self.__build_dict_key(station_code, yearid)
 
-        self._stations[flow_id][f"{station_code}-{yearid}"] = {
+        self._stations[flow_id][dict_key] = {
             "station_name": packet.station_name,
             "latitude": packet.latitude,
             "longitude": packet.longitude,
         }
 
     def __search_station(self, flow_id, station_code: int, yearid: int) -> Union[dict, None]:
-
+        dict_key = self.__build_dict_key(station_code, yearid)
         if flow_id not in self._stations:
             return None
-        if f"{station_code}-{yearid}" not in self._stations[flow_id]:
-            return None
-        return self._stations[flow_id][f"{station_code}-{yearid}"]
+        return self._stations[flow_id].get(dict_key, None)
 
     def __search_stations(self, flow_id, packet) -> Union[Tuple[dict, dict], None]:
 
@@ -65,8 +73,8 @@ class StationAggregator(BasicAggregator):
             return None
         return start_station, end_station
 
-    def __build_packet_lists(self, packet: GatewayOut, stations: Tuple[dict, dict]) -> Tuple[
-        List[bytes], List[bytes], List[bytes]]:
+    @staticmethod
+    def __build_packet_lists(packet: GatewayOut, stations: Tuple[dict, dict]) -> PacketLists:
         start_station_info = stations[0]
         end_station_info = stations[1]
 
@@ -91,7 +99,8 @@ class StationAggregator(BasicAggregator):
         else:
             distance_calc_in_packets_list = []
 
-        return [prec_filter_in_packet.encode()], [year_filter_in_packet.encode()], distance_calc_in_packets_list
+        return PacketLists(
+            ([prec_filter_in_packet.encode()], [year_filter_in_packet.encode()], distance_calc_in_packets_list))
 
     def __handle_gateway_out(self, flow_id, packet: GatewayOut) -> Dict[str, List[bytes]]:
         stations = self.__search_stations(flow_id, packet)
@@ -119,22 +128,16 @@ class StationAggregator(BasicAggregator):
         elif isinstance(packet.data, StationSideTableInfo):
             self.__handle_side_table_message(flow_id, packet.data)
             return {}
-        elif isinstance(packet.data, StopPacket):
-            return self.__handle_stop(flow_id)
+        else:
+            raise ValueError(f"Unknown packet type: {type(packet.data)}")
 
-    @staticmethod
-    def __handle_stop(flow_id) -> Dict[str, List[bytes]]:
-        return {}
-
-    def get_state(self) -> bytes:
-        state = {
+    def get_state(self) -> dict:
+        return {
             "stations": self._stations,
             "parent_state": super().get_state(),
         }
-        return pickle.dumps(state)
 
-    def set_state(self, state: bytes):
-        state = pickle.loads(state)
+    def set_state(self, state: dict):
         self._stations = state["stations"]
         super().set_state(state["parent_state"])
 

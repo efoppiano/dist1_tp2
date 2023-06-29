@@ -3,6 +3,7 @@ import os
 from typing import Dict, List
 
 from common.basic_classes.basic_stateful_filter import BasicStatefulFilter
+from common.components.message_sender import OutgoingMessages
 from common.packets.station_dist_mean import StationDistMean
 from common.utils import initialize_log
 
@@ -14,14 +15,14 @@ class DistMeanProvider(BasicStatefulFilter):
         self._mean_threshold = mean_threshold
         super().__init__()
 
-    def handle_message(self, _flow_id, message: bytes) -> Dict[str, List[bytes]]:
+    def handle_message(self, _flow_id, message: bytes) -> OutgoingMessages:
         packet = StationDistMean.decode(message)
 
         output = {}
         if packet.dist_mean >= self._mean_threshold:
             output[self.router.route()] = [message]
 
-        return output
+        return OutgoingMessages(output)
 
 
 def main():

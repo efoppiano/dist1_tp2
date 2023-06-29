@@ -1,12 +1,11 @@
 import abc
 import logging
 import os
-import pickle
 from abc import ABC
 from typing import List, Dict, Union
 
 from common.components.heartbeater.heartbeater import HeartBeater
-from common.components.message_sender import MessageSender
+from common.components.message_sender import MessageSender, OutgoingMessages
 from common.components.state_saver import Recoverable, StateSaver
 from common.packets.eof import Eof
 from common.packets.generic_packet import GenericPacket, GenericPacketBuilder
@@ -37,14 +36,14 @@ class BasicFilter(Recoverable, ABC):
         eof_routing_key = EOF_ROUTING_KEY
         self._rabbit.route(self._input_queue, "publish", eof_routing_key)
 
-    def __handle_chunk(self, flow_id, chunk: List[bytes]) -> Dict[str, List[bytes]]:
+    def __handle_chunk(self, flow_id, chunk: List[bytes]) -> OutgoingMessages:
         outgoing_messages = {}
         for message in chunk:
             responses = self.handle_message(flow_id, message)
             for (queue, messages) in responses.items():
                 outgoing_messages.setdefault(queue, [])
                 outgoing_messages[queue] += messages
-        return outgoing_messages
+        return OutgoingMessages(outgoing_messages)
 
     def on_message_callback(self, msg: Union[bytes, GenericPacket]) -> bool:
         if isinstance(msg, bytes):
@@ -76,18 +75,16 @@ class BasicFilter(Recoverable, ABC):
         pass
 
     @abc.abstractmethod
-    def handle_eof_message(self, flow_id, message: Eof) -> Dict[str, Union[List[bytes], Eof]]:
+    def handle_eof_message(self, flow_id: str, message: Eof) -> OutgoingMessages:
         pass
 
-    def set_state(self, state_bytes: bytes):
-        state = pickle.loads(state_bytes)
+    def set_state(self, state: dict) -> None:
         self._message_sender.set_state(state["message_sender"])
 
-    def get_state(self) -> bytes:
-        state = {
+    def get_state(self) -> dict:
+        return {
             "message_sender": self._message_sender.get_state()
         }
-        return pickle.dumps(state)
 
     def replay(self, msg: bytes) -> None:
         self.on_message_callback(msg)

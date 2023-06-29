@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-import pickle
-from typing import Dict, List, Union
+import json
+from typing import Dict, List
 
 from common.basic_classes.basic_stateful_filter import BasicStatefulFilter
+from common.components.message_sender import OutgoingMessages
 from common.packets.dist_info import DistInfo
 from common.packets.eof import Eof
 from common.packets.station_dist_mean import StationDistMean
@@ -14,7 +15,7 @@ class DistMeanCalculator(BasicStatefulFilter):
         self._mean_buffer = {}
         super().__init__()
 
-    def handle_eof(self, flow_id, message: Eof) -> Dict[str, Union[List[bytes], Eof]]:
+    def handle_eof(self, flow_id, message: Eof) -> OutgoingMessages:
         eof_output_queue = self.router.publish()
         output = {}
         self._mean_buffer.setdefault(flow_id, {})
@@ -29,7 +30,7 @@ class DistMeanCalculator(BasicStatefulFilter):
 
         self._mean_buffer.pop(flow_id)
         output[eof_output_queue] = message
-        return output
+        return OutgoingMessages(output)
 
     def handle_message(self, flow_id, message: bytes) -> Dict[str, List[bytes]]:
         packet = DistInfo.decode(message)
@@ -48,15 +49,13 @@ class DistMeanCalculator(BasicStatefulFilter):
 
         return {}
 
-    def get_state(self) -> bytes:
-        state = {
+    def get_state(self) -> dict:
+        return {
             "mean_buffer": self._mean_buffer,
             "parent_state": super().get_state()
         }
-        return pickle.dumps(state)
 
-    def set_state(self, state_bytes: bytes):
-        state = pickle.loads(state_bytes)
+    def set_state(self, state: dict):
         self._mean_buffer = state["mean_buffer"]
         super().set_state(state["parent_state"])
 

@@ -1,4 +1,4 @@
-import pickle
+from typing import Optional, List, Dict, Union
 
 from common.packets.generic_packet import GenericPacket
 from common.utils import min_hash, log_duplicate, trace
@@ -6,7 +6,7 @@ from common.utils import min_hash, log_duplicate, trace
 
 class MultiLastReceivedManager:
     def __init__(self):
-        self._last_received = {}
+        self._last_received: Dict[str, List[Optional[str]]] = {}
 
     def update(self, packet: GenericPacket) -> bool:
         sender_id = packet.sender_id
@@ -33,8 +33,8 @@ class MultiLastReceivedManager:
 
         return True
 
-    def get_state(self) -> bytes:
-        return pickle.dumps(self._last_received)
+    def get_state(self) -> dict:
+        return self._last_received
 
-    def set_state(self, state: bytes):
-        self._last_received = pickle.loads(state)
+    def set_state(self, state: dict):
+        self._last_received = state

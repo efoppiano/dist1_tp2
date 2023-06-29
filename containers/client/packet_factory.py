@@ -1,5 +1,4 @@
 from typing import List
-import time
 
 from common.packets.client_packet import ClientDataPacket, ClientPacket
 from common.packets.eof import Eof
