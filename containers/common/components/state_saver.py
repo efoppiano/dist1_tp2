@@ -1,4 +1,5 @@
 import csv
+import json
 import logging
 import os
 import random
@@ -13,10 +14,10 @@ COLUMN_PARTITION_SIZE = 1024
 
 
 class Recoverable(Protocol):
-    def get_state(self) -> bytes:
+    def get_state(self) -> dict:
         pass
 
-    def set_state(self, state: bytes) -> None:
+    def set_state(self, state: dict) -> None:
         pass
 
     def replay(self, msg: bytes) -> None:
@@ -108,16 +109,15 @@ class StateSaver:
             self.__replay_valid_lines()
 
     def __load_from_state(self):
-        with open(self._state_file_path, "rb") as f:
-            self._component.set_state(f.read())
+        with open(self._state_file_path, "r") as f:
+            self._component.set_state(json.loads(f.read()))
 
     def __load_from_checkpoint(self):
-        self.__remove_log()
-        self.__open_log_file()
-
         if self.__tmp_state_exists():
             os.rename(self._tmp_state_file_path, self._state_file_path)
             self.__load_from_state()
+        self.__remove_log()
+        self.__open_log_file()
 
     def __replay_valid_lines(self):
         error_lines = []
@@ -132,15 +132,18 @@ class StateSaver:
                     error_lines.append(i)
                     continue
 
-                msg_size, *msg_rows = row
-                msg = "".join(msg_rows)
-                msg = bytes.fromhex(msg)
-
-                if int(msg_size) == len(msg):
-                    self._component.replay(msg)
-                    log_truncated_writer.writerow(row)
-                else:
+                try:
+                    msg_size, *msg_rows = row
+                    msg = "".join(msg_rows)
+                    msg = bytes.fromhex(msg)
+                except ValueError:
                     error_lines.append(i)
+                else:
+                    if int(msg_size) == len(msg):
+                        self._component.replay(msg)
+                        log_truncated_writer.writerow(row)
+                    else:
+                        error_lines.append(i)
 
                 i += 1
 
@@ -157,8 +160,8 @@ class StateSaver:
         state = self._component.get_state()
 
         # write the state to a tmp file
-        with open(self._tmp_state_file_path, "wb") as f:
-            f.write(state)
+        with open(self._tmp_state_file_path, "w") as f:
+            f.write(json.dumps(state))
             f.flush()
 
         try:
