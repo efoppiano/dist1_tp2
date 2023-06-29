@@ -186,6 +186,11 @@ class ResponseProvider:
 
         return True
 
+    def __schedule_evictions(self):
+        for client_id, time in self._evicting.items():
+            log_evict(f"Evicting client {client_id} in {time} seconds")
+            self._rabbit.call_later(time, lambda client_id=client_id: self.__evict_client(client_id))
+
     def start(self):
 
         dist_mean_queue = self.input_queues["dist_mean"][0]
@@ -204,6 +209,8 @@ class ResponseProvider:
         self._rabbit.consume(SELF_QUEUE, lambda _message: True)
 
         self._heartbeater.start()
+
+        self.__schedule_evictions()
 
         self._rabbit.start()
 
