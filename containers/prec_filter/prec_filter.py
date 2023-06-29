@@ -3,6 +3,7 @@ import os
 from typing import Dict, List
 
 from common.basic_classes.basic_stateful_filter import BasicStatefulFilter
+from common.components.message_sender import OutgoingMessages
 from common.packets.prec_filter_in import PrecFilterIn
 from common.utils import initialize_log
 
@@ -14,7 +15,7 @@ class PrecFilter(BasicStatefulFilter):
         self._prec_limit = prec_limit
         super().__init__()
 
-    def handle_message(self, _flow_id, message: bytes) -> Dict[str, List[bytes]]:
+    def handle_message(self, _flow_id, message: bytes) -> OutgoingMessages:
         packet = PrecFilterIn.decode(message)
 
         output = {}
@@ -22,7 +23,7 @@ class PrecFilter(BasicStatefulFilter):
             output_queue = self.router.route(packet.start_date)
             output[output_queue] = [message]
 
-        return output
+        return OutgoingMessages(output)
 
 
 def main():

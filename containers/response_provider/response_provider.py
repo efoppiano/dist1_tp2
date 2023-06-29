@@ -3,12 +3,16 @@ import os
 import signal
 import pickle
 
+from typing import Dict
+
+from common import utils
 from common.components.heartbeater.heartbeater import HeartBeater
 from common.packets.generic_packet import GenericPacket
 from common.packets.eof import Eof
 from common.packets.client_response_packets import GenericResponsePacket
 from common.middleware.rabbit_middleware import Rabbit
-from common.utils import initialize_log, save_state, load_state, min_hash, log_duplicate, log_evict, trace
+from common.utils import initialize_log, save_state, load_state, min_hash, log_duplicate, log_evict, trace, \
+    RESULTS_ROUTING_KEY, PUBLISH_ROUTING_KEY
 
 SELF_QUEUE = f"sent_responses"
 DIST_MEAN_SRC = os.environ["DIST_MEAN_SRC"]
@@ -23,7 +27,7 @@ class ResponseProvider:
     def __init__(self):
         self._last_received = {}
         self._eofs_received = {}
-        self._evicting = {}
+        self._evicting: Dict[str, int] = {}
 
         self.input_queues = {
             "dist_mean": (DIST_MEAN_SRC, DIST_MEAN_AMOUNT),
@@ -47,7 +51,7 @@ class ResponseProvider:
 
         self._sig_hand_prev = signal.signal(signal.SIGTERM, signal_handler)
 
-    def __update_last_received(self, packet_type, packet: GenericPacket):
+    def __update_last_received(self, packet_type: str, packet: GenericPacket):
         sender_id = (packet_type, packet.sender_id)
 
         current_id = packet.get_id()
@@ -74,12 +78,11 @@ class ResponseProvider:
 
     def __send_response(self, destination: str, message: bytes):
 
-        # TODO: Do not hardcode the queue name
-        result_queue = f"results_{destination}"
-        self._rabbit.route(SELF_QUEUE, "results", destination)
-        self._rabbit.route(result_queue, "results", destination)
+        result_queue = utils.build_results_queue_name(destination)
+        self._rabbit.route(SELF_QUEUE, RESULTS_ROUTING_KEY, destination)
+        self._rabbit.route(result_queue, RESULTS_ROUTING_KEY, destination)
 
-        self._rabbit.send_to_route("results", destination, message)
+        self._rabbit.send_to_route(RESULTS_ROUTING_KEY, destination, message)
 
     def __evict_client(self, client_id: str, time: int = 0):
         if client_id in self._evicting and not time == 0:
@@ -184,6 +187,11 @@ class ResponseProvider:
 
         return True
 
+    def __schedule_evictions(self):
+        for client_id, time in self._evicting.items():
+            log_evict(f"Evicting client {client_id} in {time} seconds")
+            self._rabbit.call_later(time, lambda client_id=client_id: self.__evict_client(client_id))
+
     def start(self):
 
         dist_mean_queue = self.input_queues["dist_mean"][0]
@@ -194,14 +202,16 @@ class ResponseProvider:
         self._rabbit.consume(trip_count_queue, self.__handle_type("trip_count"))
         self._rabbit.consume(avg_queue, self.__handle_type("dur_avg"))
 
-        self._rabbit.route(dist_mean_queue, "publish", dist_mean_queue)
-        self._rabbit.route(trip_count_queue, "publish", trip_count_queue)
-        self._rabbit.route(avg_queue, "publish", avg_queue)
+        self._rabbit.route(dist_mean_queue, PUBLISH_ROUTING_KEY, dist_mean_queue)
+        self._rabbit.route(trip_count_queue, PUBLISH_ROUTING_KEY, trip_count_queue)
+        self._rabbit.route(avg_queue, PUBLISH_ROUTING_KEY, avg_queue)
 
         # Returns True every time, as this is already saved to disk if reading at runtime
         self._rabbit.consume(SELF_QUEUE, lambda _message: True)
 
         self._heartbeater.start()
+
+        self.__schedule_evictions()
 
         self._rabbit.start()
 

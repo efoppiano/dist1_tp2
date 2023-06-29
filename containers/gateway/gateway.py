@@ -2,6 +2,7 @@ import os
 from typing import Dict, List, Union
 
 from basic_gateway import BasicGateway
+from common.components.message_sender import OutgoingMessages
 from common.packets.gateway_in_or_weather import GatewayInOrWeather
 from common.packets.gateway_out_or_station import GatewayOutOrStation
 from common.packets.station_side_table_info import StationSideTableInfo
@@ -21,10 +22,9 @@ class Gateway(BasicGateway):
 
         super().__init__()
 
-    def __handle_list(self, flow_id, packet: List[Union[WeatherInfo, StationInfo, TripInfo]]) -> Dict[
-        str, List[bytes]]:
+    def __handle_list(self, flow_id, packet: List[Union[WeatherInfo, StationInfo, TripInfo]]) -> OutgoingMessages:
         if len(packet) == 0:
-            return {}
+            return OutgoingMessages({})
         element_type = type(packet[0])
         if element_type == WeatherInfo:
             packets_to_send = []
@@ -32,9 +32,9 @@ class Gateway(BasicGateway):
                 packets_to_send.append(
                     GatewayInOrWeather(
                         WeatherSideTableInfo(weather_info.date, weather_info.prectot)).encode())
-            return {
+            return OutgoingMessages({
                 self._weather_side_table_queue_name: packets_to_send
-            }
+            })
         elif element_type == StationInfo:
             packets_to_send = []
             for station_info in packet:
@@ -48,9 +48,9 @@ class Gateway(BasicGateway):
                         )
                     ).encode()
                 )
-            return {
+            return OutgoingMessages({
                 self._station_side_table_queue_name: packets_to_send
-            }
+            })
         elif element_type == TripInfo:
             queue_name = self.router.route(packet[0].start_datetime)
             packets_to_send = []
@@ -63,9 +63,9 @@ class Gateway(BasicGateway):
                 )
                 packets_to_send.append(GatewayInOrWeather(gateway_in).encode())
 
-            return {
+            return OutgoingMessages({
                 queue_name: packets_to_send
-            }
+            })
         else:
             raise ValueError(f"Unknown packet type: {element_type}")
 

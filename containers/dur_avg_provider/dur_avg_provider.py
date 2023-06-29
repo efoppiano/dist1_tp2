@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import pickle
+import json
 from typing import Dict, List, Union
 
 from common.basic_classes.basic_stateful_filter import BasicStatefulFilter
@@ -43,15 +43,13 @@ class DurAvgProvider(BasicStatefulFilter):
 
         return {}
 
-    def get_state(self) -> bytes:
-        state = {
+    def get_state(self) -> dict:
+        return {
             "avg_buffer": self._avg_buffer,
             "parent_state": super().get_state()
         }
-        return pickle.dumps(state)
 
-    def set_state(self, state: bytes):
-        state = pickle.loads(state)
+    def set_state(self, state: dict):
         self._avg_buffer = state["avg_buffer"]
         super().set_state(state["parent_state"])
 

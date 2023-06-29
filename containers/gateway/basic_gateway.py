@@ -7,8 +7,9 @@ import time
 from abc import ABC
 from typing import Dict, List
 
+from common import utils
 from common.components.heartbeater.heartbeater import HeartBeater
-from common.components.message_sender import MessageSender
+from common.components.message_sender import MessageSender, OutgoingMessages
 from common.components.readers import ClientIdResponsePacket
 from common.packets.client_control_packet import ClientControlPacket, RateLimitChangeRequest
 from common.packets.client_packet import ClientDataPacket, ClientPacket
@@ -64,14 +65,14 @@ class BasicGateway(ABC):
         logging.info(f"Routing packets to {self._input_queue} using routing key {eof_routing_key}")
         self._rabbit.route(self._input_queue, "publish", eof_routing_key)
 
-    def __handle_chunk(self, flow_id, chunk: List[bytes]) -> Dict[str, List[bytes]]:
+    def __handle_chunk(self, flow_id, chunk: List[bytes]) -> OutgoingMessages:
         outgoing_messages = {}
         for message in chunk:
             responses = self.handle_message(flow_id, message)
             for (queue, messages) in responses.items():
                 outgoing_messages.setdefault(queue, [])
                 outgoing_messages[queue] += messages
-        return outgoing_messages
+        return OutgoingMessages(outgoing_messages)
 
     def __on_stream_message_without_duplicates(self, decoded: ClientDataPacket) -> bool:
         flow_id = decoded.get_flow_id()
@@ -115,16 +116,16 @@ class BasicGateway(ABC):
         new_client_id = f"{self._basic_gateway_container_id}_{time.time_ns()}"
         logging.info(f"New client id: {new_client_id}")
 
-        control_queue = f"control_{new_client_id}"
-        results_queue = f"results_{new_client_id}"
+        control_queue = utils.build_control_queue_name(new_client_id)
+        results_queue = utils.build_results_queue_name(new_client_id)
         self._rabbit.declare_queue(control_queue)
         self._rabbit.declare_queue(results_queue)
 
         response = ClientIdResponsePacket(new_client_id, self._input_queue).encode()
 
         self.health_checker.ping(new_client_id, None, False)
-        self._rabbit.produce("client_id_queue", response)
         self.save_state()
+        self._rabbit.produce("client_id_queue", response)
 
     def __on_stream_message_callback(self, msg: bytes) -> bool:
         decoded = ClientPacket.decode(msg)
@@ -168,7 +169,6 @@ class BasicGateway(ABC):
         if users_amount == 0:
             return
 
-        # TODO: Make sure not to overload the system
         if rates.ack_per_second - rates.publish_per_second >= 0.0:
             # Increase rate
             new_rate = math.ceil((2 * (rates.publish_per_second + 1)) / users_amount)

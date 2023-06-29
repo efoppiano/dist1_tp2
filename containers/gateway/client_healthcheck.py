@@ -1,9 +1,12 @@
+import logging
 import time
 from typing import Callable, Optional
+
+from common import utils
 from common.router import Router
 from common.packets.eof import Eof
 from common.middleware.rabbit_middleware import Rabbit
-from common.components.message_sender import MessageSender
+from common.components.message_sender import MessageSender, OutgoingMessages
 from common.packets.generic_packet import GenericPacketBuilder
 from common.packets.client_control_packet import ClientControlPacket
 from common.utils import log_evict
@@ -32,7 +35,7 @@ class ClientHealthChecker:
         self._rabbit = _rabbit
         self._output_queue = router.publish()
 
-        self._container_id = container_id + "_healthcheck"
+        self._container_id = utils.build_healthcheck_container_id(container_id)
 
         self._save_state = save_state
         self._lapse = lapse
@@ -47,7 +50,7 @@ class ClientHealthChecker:
 
     def evict(self, client_id: str, last_city: str = None, drop: bool = False):
         # Notify the client it has been evicted
-        control_queue = f"control_{client_id}"
+        control_queue = utils.build_control_queue_name(client_id)
         self._rabbit.produce(control_queue, ClientControlPacket("SessionExpired").encode())
 
         # Send EOF to the next replica with eviction time
@@ -55,7 +58,7 @@ class ClientHealthChecker:
         eof = Eof(drop, self._eviction_time)
         outgoing_messages = {self._output_queue: eof}
 
-        self._message_sender.send(builder, outgoing_messages)
+        self._message_sender.send(builder, OutgoingMessages(outgoing_messages))
         if client_id in self._clients:
             del self._clients[client_id]
 
@@ -71,6 +74,8 @@ class ClientHealthChecker:
                 timeout = self._client_timeout
 
             if now - last_time > timeout:
+                logging.warning(f"Client {client_id} timed out | last_city: {last_city} | last_time: {last_time} | "
+                                f"now: {now} | timeout: {timeout}")
                 self._evicting.add(client_id)
         self._save_state()
 
@@ -103,6 +108,9 @@ class ClientHealthChecker:
 
         for client_id in self._evicting:
             if client_id in clients:
+                logging.warning(
+                    f"Client {client_id} is both in clients and evicting | self._evicting: {self._evicting} | "
+                    f"self._clients: {self._clients}")
                 clients.remove(client_id)
 
         return clients
@@ -113,11 +121,11 @@ class ClientHealthChecker:
     def get_state(self) -> dict:
         return {
             "clients": self._clients,
-            "evicting": self._evicting,
+            "evicting": list(self._evicting),
             "message_sender": self._message_sender.get_state()
         }
 
     def set_state(self, state: dict):
         self._clients = state["clients"]
-        self._evicting = state["evicting"]
+        self._evicting = set(state["evicting"])
         self._message_sender.set_state(state["message_sender"])

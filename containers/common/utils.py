@@ -6,6 +6,9 @@ from datetime import datetime, date
 from types import FrameType
 from typing import Union, Callable
 
+RESULTS_ROUTING_KEY = "results"
+PUBLISH_ROUTING_KEY = "publish"
+
 
 def initialize_log(logging_level=logging.INFO):
     """
@@ -98,40 +101,6 @@ def bold(text: str) -> str:
     return f"\033[1m{text}\033[0m"
 
 
-def build_queue_name(queue: str, id: Union[int, None] = None) -> str:
-    if id is None:
-        return queue
-    else:
-        return f"{queue}_{id}"
-
-
-def build_prefixed_queue_name(prefix: str, suffix: str, id: Union[int, None] = None) -> str:
-    if id is None:
-        return f"{prefix}_{suffix}"
-    else:
-        return f"{prefix}_{suffix}_{id}"
-
-
-def build_prefixed_hashed_queue_name(prefix: str, suffix: str, key: str, output_amount: int) -> str:
-    return f"{prefix}_{suffix}_{hash(key) % output_amount}"
-
-
-def build_hashed_queue_name(queue: str, key: str, output_amount: int) -> str:
-    return f"{queue}_{hash(key) % output_amount}"
-
-
-def build_eof_in_queue_name(prefix: str, suffix: Union[str, None] = None) -> str:
-    if suffix is None:
-        return f"{prefix}_eof_in"
-    return f"{prefix}_{suffix}_eof_in"
-
-
-def build_eof_out_queue_name(prefix: str, suffix: Union[str, None] = None) -> str:
-    if suffix is None:
-        return f"{prefix}_eof_out"
-    return f"{prefix}_{suffix}_eof_out"
-
-
 def parse_date(date_str: str) -> date:
     return datetime.strptime(date_str, "%Y-%m-%d")
 
@@ -178,3 +147,15 @@ def append_signal(sig, f: Callable[[signal.Signals, FrameType], None]):
         f(signum, frame)
 
     signal.signal(sig, helper)
+
+
+def build_results_queue_name(destination: str) -> str:
+    return f"results_{destination}"
+
+
+def build_healthcheck_container_id(container_id: str) -> str:
+    return f"{container_id}_healthcheck"
+
+
+def build_control_queue_name(client_id: str) -> str:
+    return f"control_{client_id}"
