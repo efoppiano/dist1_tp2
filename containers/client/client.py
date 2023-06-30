@@ -49,44 +49,7 @@ class Client(BasicClient):
         os.makedirs(os.path.dirname(filename), exist_ok=True)
         with open(filename, "w") as f:
             data = json_serialize(self.results)
-            f.write(data)
-
-    def compare_results(self):
-        baseline_filename = f"{self._data_folder_path}/results/{BASELINE}"
-        baseline = {}
-        with open(baseline_filename, "r") as f:
-            baseline = json.load(f)
-
-        for city in self.results:
-            # Check duration_average_prectot>=30mm results are the same
-            for key in self.results[city]["duration_average_prectot>=30mm"]:
-                if key not in baseline[city]["duration_average_prectot>=30mm"]:
-                    logging.error(f"city: {city} | key: {key} | not in baseline")
-                    continue
-                if self.results[city]["duration_average_prectot>=30mm"][key] != baseline[city]["duration_average_prectot>=30mm"][key]:
-                    logging.error(f"city: {city} | key: {key} | different results")
-                    continue
-            
-            # Check trip_count_by_year results are the same
-            for key in self.results[city]["trip_count_by_year"]:
-                if key not in baseline[city]["trip_count_by_year"]:
-                    logging.error(f"city: {city} | key: {key} | not in baseline")
-                    continue
-                if self.results[city]["trip_count_by_year"][key] != baseline[city]["trip_count_by_year"][key]:
-                    logging.error(f"city: {city} | key: {key} | different results")
-                    continue
-
-            # Check stations_mean_dist_>=6km results are the same
-            for key in self.results[city]["stations_mean_dist_>=6km"]:
-                if key not in baseline[city]["stations_mean_dist_>=6km"]:
-                    logging.error(f"city: {city} | key: {key} | not in baseline")
-                    continue
-                if self.results[city]["stations_mean_dist_>=6km"][key] != baseline[city]["stations_mean_dist_>=6km"][key]:
-                    logging.error(f"city: {city} | key: {key} | different results")
-                    continue
-
-        
-
+            f.write(data)   
 
     def handle_dur_avg_out_packet(self, city_name: str, packet: DurAvgOut):
         self.save_results(
@@ -131,7 +94,6 @@ def main():
     client.close()
     end_time = time.time()
     client.dump_results()
-    client.compare_results()
     success(f"action: client_run | duration: {end_time - start_time} sec | output_file: {client.client_id}")
 
 
