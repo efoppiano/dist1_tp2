@@ -100,7 +100,7 @@ def main():
     results = client.dump_results()
     success(f"action: client_run | duration: {end_time - start_time} sec | output_file: {client.client_id}")
     
-    with open(f"{self._data_folder_path}/results/{BASELINE}", "r") as f:
+    with open(f"{DATA_FOLDER_PATH}/results/{BASELINE}", "r") as f:
       baseline = json.load(f)
       same = compare_results(baseline, results)
       
