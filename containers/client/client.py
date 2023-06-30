@@ -5,6 +5,7 @@ import time
 from typing import List, Iterator
 
 from basic_client import BasicClient
+from compare_results import compare_results
 from common.packets.dur_avg_out import DurAvgOut
 from common.packets.station_dist_mean import StationDistMean
 from common.packets.trips_count_by_year_joined import TripsCountByYearJoined
@@ -14,7 +15,7 @@ from common.utils import initialize_log, json_serialize, log_duplicate, success,
 CLIENT_ID = os.environ["CLIENT_ID"]
 CITIES = os.environ["CITIES"].split(",")
 DATA_FOLDER_PATH = os.environ["DATA_FOLDER_PATH"]
-BASELINE="baseline.json"
+BASELINE= os.environ.get("BASELINE","baseline.json")
 
 
 class Client(BasicClient):
@@ -49,7 +50,8 @@ class Client(BasicClient):
         os.makedirs(os.path.dirname(filename), exist_ok=True)
         with open(filename, "w") as f:
             data = json_serialize(self.results)
-            f.write(data)   
+            f.write(data)
+        return self.results 
 
     def handle_dur_avg_out_packet(self, city_name: str, packet: DurAvgOut):
         self.save_results(
@@ -88,13 +90,22 @@ def main():
         "cities": CITIES,
     })
     time.sleep(5)
+    
     logging.info(f"action: client_run | result: start")
     start_time = time.time()
     client.run()
     client.close()
     end_time = time.time()
-    client.dump_results()
+    
+    results = client.dump_results()
     success(f"action: client_run | duration: {end_time - start_time} sec | output_file: {client.client_id}")
+    
+    with open(f"{self._data_folder_path}/results/{BASELINE}", "r") as f:
+      baseline = json.load(f)
+      same = compare_results(baseline, results)
+      
+    if not same:
+      raise Exception("")
 
 
 if __name__ == "__main__":
