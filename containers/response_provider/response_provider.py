@@ -181,7 +181,11 @@ class ResponseProvider:
         packet = GenericResponsePacket.decode(message)
         sender_id = (packet.type, packet.sender_id)
 
-        self._last_received[sender_id] = packet.packet_id
+        self._last_received[sender_id].setdefault(packet.client_id, [None, None])
+        if packet.is_eof():
+            self._last_received[sender_id][1] = packet.get_id()
+        else:
+            self._last_received[sender_id][0] = packet.get_id()
 
         self.__save_state()
 

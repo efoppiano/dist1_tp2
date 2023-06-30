@@ -118,7 +118,6 @@ def save_state(state: bytes, path: str = "/volumes/state"):
 
     # Atomically rename temp file to state file
     os.rename("/volumes/temp_state", path)
-    os.sync()
 
 
 def load_state(path: str = "/volumes/state") -> Union[bytes, None]:
