@@ -29,7 +29,7 @@ tp2-trips_counter_0-1 | 21:29:46 - DUPL - (...) year_filter_0 - (...) - 2
 tp2-trips_counter_0-1 | 21:29:46 - DUPL - (...) year_filter_1 - (...) - 2
 ```
 
-Given that no processes where being killed, no duplicates where being generated.
+Given that no processes were being killed, no duplicates were being generated.
 Yet, the system was detecting duplicates and dropping packets.
 
 We noted in the logs that the duplicates
