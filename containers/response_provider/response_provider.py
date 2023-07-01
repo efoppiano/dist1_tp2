@@ -85,7 +85,7 @@ class ResponseProvider:
 
         self._rabbit.send_to_route(RESULTS_ROUTING_KEY, destination, message)
 
-    def __evict_client(self, client_id: str, time: int = 0):
+    def __evict_client(self, client_id: str, time: int = 0, force: bool = False):
 
         if time < 1:
             # Immediate eviction
@@ -95,7 +95,7 @@ class ResponseProvider:
             self._rabbit.delete_queue(f"control_{client_id}")
             if client_id in self._evicting:
                 del self._evicting[client_id]
-        elif client_id not in self._evicting:
+        elif client_id not in self._evicting or force:
             # Scheduled eviction
             log_evict(f"Evicting client {client_id} in {time} seconds")
             self._rabbit.call_later(time, lambda client_id=client_id: self.__evict_client(client_id))
@@ -212,7 +212,7 @@ class ResponseProvider:
     def __schedule_evictions(self):
         log_evict(f"Scheduling {len(self._evicting)} evictions: {self._evicting}")
         for client_id, time in self._evicting.items():
-            self._rabbit.call_later(time, lambda client_id=client_id, time=time: self.__evict_client(client_id, time))
+            self._rabbit.call_later(time, lambda client_id=client_id, time=time: self.__evict_client(client_id, time, True))
 
     def start(self):
         dist_mean_queue = self.input_queues["dist_mean"][0]
