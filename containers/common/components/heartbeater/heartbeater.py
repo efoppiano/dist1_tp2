@@ -7,7 +7,7 @@ from common.utils import append_signal
 HEARTBEAT_EXCHANGE = os.environ.get("HEARTBEAT_EXCHANGE", "healthcheck")
 CONTAINER_ID = os.environ["CONTAINER_ID"]
 HEALTHCHECKER = os.environ["HEALTH_CHECKER"]
-LAPSE = int(os.environ.get("HEARTBEAT_LAPSE", 5))
+LAPSE = int(os.environ.get("HEARTBEAT_LAPSE", 2))
 RABBIT_HOST = os.environ.get("RABBIT_HOST", "rabbitmq")
 
 

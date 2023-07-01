@@ -14,7 +14,7 @@ HEARTBEAT_EXCHANGE = os.environ.get("HEARTBEAT_EXCHANGE", "healthcheck")
 CONTAINER_ID = os.environ["CONTAINER_ID"]
 CONTAINERS = os.environ["CONTAINERS"].split(",")
 RABBIT_HOST = os.environ.get("RABBIT_HOST", "rabbitmq")
-HEALTH_CHECK_INTERVAL_SEC = os.environ.get("HEALTH_CHECK_INTERVAL_SEC", 5)
+HEALTH_CHECK_INTERVAL_SEC = os.environ.get("HEALTH_CHECK_INTERVAL_SEC", 2)
 GRACE_INTERVALS = os.environ.get("GRACE_INTERVALS", 3)
 
 S_TO_NS = 10 ** 9
