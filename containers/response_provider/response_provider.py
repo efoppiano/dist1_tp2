@@ -197,7 +197,6 @@ class ResponseProvider:
             self._rabbit.call_later(time, lambda client_id=client_id: self.__evict_client(client_id))
 
     def start(self):
-
         dist_mean_queue = self.input_queues["dist_mean"][0]
         trip_count_queue = self.input_queues["trip_count"][0]
         avg_queue = self.input_queues["dur_avg"][0]

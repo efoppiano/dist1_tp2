@@ -6,6 +6,7 @@ from datetime import datetime, date
 from types import FrameType
 from typing import Union, Callable
 
+ENVIRONMENT = os.environ.get("ENVIRONMENT", "dev")
 RESULTS_ROUTING_KEY = "results"
 PUBLISH_ROUTING_KEY = "publish"
 
@@ -114,7 +115,8 @@ def save_state(state: bytes, path: str = "/volumes/state"):
     with open("/volumes/temp_state", "wb", buffering=0) as f:
         f.write(state)
         f.flush()
-        os.fsync(f.fileno())
+        if ENVIRONMENT != "dev":
+            os.fsync(f.fileno())
 
     # Atomically rename temp file to state file
     os.rename("/volumes/temp_state", path)
