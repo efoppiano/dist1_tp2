@@ -27,6 +27,7 @@ class ResponseProvider:
     def __init__(self):
         self._last_received = {}
         self._eofs_received = {}
+        self._evicting_received = {}
         self._evicting: Dict[str, int] = {}
 
         self.input_queues = {
@@ -99,6 +100,24 @@ class ResponseProvider:
 
         self._evicting[client_id] = time
 
+    def __handle_evicting(self, packet: GenericPacket, eof: Eof, packet_type: str) -> bool:
+
+        if not eof.drop or eof.eviction_time is None:
+            return False
+        
+        self._evicting_received.setdefault(packet.client_id, set())
+        self._evicting_received[packet.client_id].add(packet_type)
+
+        if len(self._evicting_received[packet.client_id]) < len(self.input_queues):
+            return False
+
+        if eof.drop:
+            self.__evict_client(packet.client_id)      
+        elif eof.eviction_time is not None:
+            self.__evict_client(packet.client_id, eof.eviction_time)
+        
+        return True
+
     def __handle_eof(self, packet: GenericPacket, eof: Eof, packet_type: str) -> bool:
         flow_id = (packet.client_id, packet.city_name, packet_type)
         eof_key = (flow_id, eof.timestamp)
@@ -115,15 +134,7 @@ class ResponseProvider:
 
         self._eofs_received.pop(eof_key)
 
-        if eof.drop:
-            self.__evict_client(packet.client_id)
-            self.__save_state()
-            return False
-        elif eof.eviction_time is not None:
-            self.__evict_client(packet.client_id, eof.eviction_time)
-            return True
-
-        return True
+        return self.__handle_evicting(packet, eof, packet_type)
 
     def __handle_message(self, message: bytes, packet_type: str) -> bool:
 
@@ -134,6 +145,7 @@ class ResponseProvider:
 
         if isinstance(packet.data, Eof):
             if not self.__handle_eof(packet, packet.data, packet_type):
+                self.__save_state()
                 return True
 
         response_packet = GenericResponsePacket(
@@ -159,6 +171,7 @@ class ResponseProvider:
         state = {
             "_last_received": self._last_received,
             "_eofs_received": self._eofs_received,
+            "_evicting_received": self._evicting_received,
             "_evicting": self._evicting,
         }
         save_state(pickle.dumps(state))
@@ -172,6 +185,7 @@ class ResponseProvider:
         if state is not None:
             self._last_received = state["_last_received"]
             self._eofs_received = state["_eofs_received"]
+            self._evicting_received = state["_evicting_received"]
             self._evicting = state["_evicting"]
 
     def __load_last_sent(self):
