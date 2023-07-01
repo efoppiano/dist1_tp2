@@ -100,7 +100,11 @@ def main():
     results = client.dump_results()
     success(f"action: client_run | duration: {end_time - start_time} sec | output_file: {client.client_id}")
     
-    with open(f"{DATA_FOLDER_PATH}/results/{BASELINE}", "r") as f:
+    baseline_file = f"{DATA_FOLDER_PATH}/results/{BASELINE}"
+    if not os.path.exists(baseline_file):
+        logging.warning("Baseline not found")
+        return
+    with open(baseline_file, "r") as f:
       baseline = json.load(f)
       same = compare_results(baseline, results)
       
