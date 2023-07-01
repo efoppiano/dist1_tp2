@@ -81,7 +81,7 @@
     "dur_avg": "dur_avg_provider"
   },
   "clients": {
-    "data": "./.data_3/",
+    "data": "./.data/",
     "clients": {
       "montreal": [
         "montreal"
