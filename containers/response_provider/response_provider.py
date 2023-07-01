@@ -104,7 +104,7 @@ class ResponseProvider:
 
         evict_key = (packet.client_id, eof.timestamp)
 
-        if not eof.drop or eof.eviction_time is None:
+        if not eof.drop and eof.eviction_time is None:
             return True
         
         self._evicting_received.setdefault(evict_key, set())
