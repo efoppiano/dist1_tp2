@@ -102,13 +102,15 @@ class ResponseProvider:
 
     def __handle_evicting(self, packet: GenericPacket, eof: Eof, packet_type: str) -> bool:
 
+        evict_key = (packet.client_id, eof.timestamp)
+
         if not eof.drop or eof.eviction_time is None:
             return False
         
-        self._evicting_received.setdefault(packet.client_id, set())
-        self._evicting_received[packet.client_id].add(packet_type)
+        self._evicting_received.setdefault(evict_key, set())
+        self._evicting_received[evict_key].add(packet_type)
 
-        if len(self._evicting_received[packet.client_id]) < len(self.input_queues):
+        if len(self._evicting_received[evict_key]) < len(self.input_queues):
             return False
 
         if eof.drop:
