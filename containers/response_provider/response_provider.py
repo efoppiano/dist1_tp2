@@ -27,6 +27,7 @@ class ResponseProvider:
     def __init__(self):
         self._last_received = {}
         self._eofs_received = {}
+        self._evicting_received = {}
         self._evicting: Dict[str, int] = {}
 
         self.input_queues = {
@@ -84,20 +85,43 @@ class ResponseProvider:
 
         self._rabbit.send_to_route(RESULTS_ROUTING_KEY, destination, message)
 
-    def __evict_client(self, client_id: str, time: int = 0):
-        if client_id in self._evicting and not time == 0:
-            return
+    def __evict_client(self, client_id: str, time: int = 0, force: bool = False):
 
         if time < 1:
+            # Immediate eviction
             _time = self._evicting.get(client_id, 0)
             log_evict(f"Evicting client {client_id} after {_time} seconds")
             self._rabbit.delete_queue(f"results_{client_id}")
             self._rabbit.delete_queue(f"control_{client_id}")
-        else:
+            if client_id in self._evicting:
+                del self._evicting[client_id]
+        elif client_id not in self._evicting or force:
+            # Scheduled eviction
             log_evict(f"Evicting client {client_id} in {time} seconds")
             self._rabbit.call_later(time, lambda client_id=client_id: self.__evict_client(client_id))
+            self._evicting[client_id] = time
 
-        self._evicting[client_id] = time
+    def __handle_evicting(self, packet: GenericPacket, eof: Eof, packet_type: str) -> bool:
+
+        evict_key = (packet.client_id, eof.timestamp)
+
+        if not eof.drop and eof.eviction_time is None:
+            return True
+        
+        self._evicting_received.setdefault(evict_key, set())
+        self._evicting_received[evict_key].add(packet_type)
+
+        if len(self._evicting_received[evict_key]) < len(self.input_queues):
+            return False
+        
+        del self._evicting_received[evict_key]
+
+        if eof.drop:
+            self.__evict_client(packet.client_id)      
+        elif eof.eviction_time is not None:
+            self.__evict_client(packet.client_id, eof.eviction_time)
+        
+        return False
 
     def __handle_eof(self, packet: GenericPacket, eof: Eof, packet_type: str) -> bool:
         flow_id = (packet.client_id, packet.city_name, packet_type)
@@ -108,22 +132,13 @@ class ResponseProvider:
         if self._eofs_received[eof_key] < self.input_queues[packet_type][1]:
             trace(
                 f"Received EOF {eof_key} - {self._eofs_received[eof_key]}/{self.input_queues[packet_type][1]}")
-            self.__save_state()
             return False
         logging.debug(
             f"Received EOF {eof_key} - {self._eofs_received[eof_key]}/{self.input_queues[packet_type][1]}")
 
         self._eofs_received.pop(eof_key)
 
-        if eof.drop:
-            self.__evict_client(packet.client_id)
-            self.__save_state()
-            return False
-        elif eof.eviction_time is not None:
-            self.__evict_client(packet.client_id, eof.eviction_time)
-            return True
-
-        return True
+        return self.__handle_evicting(packet, eof, packet_type)
 
     def __handle_message(self, message: bytes, packet_type: str) -> bool:
 
@@ -134,6 +149,7 @@ class ResponseProvider:
 
         if isinstance(packet.data, Eof):
             if not self.__handle_eof(packet, packet.data, packet_type):
+                self.__save_state()
                 return True
 
         response_packet = GenericResponsePacket(
@@ -159,6 +175,7 @@ class ResponseProvider:
         state = {
             "_last_received": self._last_received,
             "_eofs_received": self._eofs_received,
+            "_evicting_received": self._evicting_received,
             "_evicting": self._evicting,
         }
         save_state(pickle.dumps(state))
@@ -172,6 +189,7 @@ class ResponseProvider:
         if state is not None:
             self._last_received = state["_last_received"]
             self._eofs_received = state["_eofs_received"]
+            self._evicting_received = state["_evicting_received"]
             self._evicting = state["_evicting"]
 
     def __load_last_sent(self):
@@ -192,9 +210,9 @@ class ResponseProvider:
         return True
 
     def __schedule_evictions(self):
+        log_evict(f"Scheduling {len(self._evicting)} evictions: {self._evicting}")
         for client_id, time in self._evicting.items():
-            log_evict(f"Evicting client {client_id} in {time} seconds")
-            self._rabbit.call_later(time, lambda client_id=client_id: self.__evict_client(client_id))
+            self._rabbit.call_later(time, lambda client_id=client_id, time=time: self.__evict_client(client_id, time, True))
 
     def start(self):
         dist_mean_queue = self.input_queues["dist_mean"][0]
