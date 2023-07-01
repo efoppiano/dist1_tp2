@@ -113,6 +113,8 @@ class ResponseProvider:
 
         if len(self._evicting_received[evict_key]) < len(self.input_queues):
             return False
+        
+        del self._evicting_received[evict_key]
 
         if eof.drop:
             self.__evict_client(packet.client_id)      
