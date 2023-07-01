@@ -5,6 +5,7 @@ import os
 import random
 from typing import Protocol
 
+ENVIRONMENT = os.environ.get("ENVIRONMENT", "dev")
 DIRECTORY = os.environ.get("DIRECTORY", "/volumes/state")
 LOG_FILE_NAME = os.environ.get("LOG_FILE_NAME", "log")
 STATE_FILE_NAME = os.environ.get("STATE_FILE_NAME", "state")
@@ -136,7 +137,8 @@ class StateSaver:
                     msg_size, *msg_rows = row
                     msg = "".join(msg_rows)
                     msg = bytes.fromhex(msg)
-                except ValueError:
+                except ValueError as e:
+                    logging.warning(f"Failed to parse line {i} - {e}")
                     error_lines.append(i)
                 else:
                     if int(msg_size) == len(msg):
@@ -148,6 +150,8 @@ class StateSaver:
                 i += 1
 
             truncate_log_file.flush()
+            if ENVIRONMENT != "dev":
+                os.fsync(truncate_log_file.fileno())
 
         if len(error_lines) > 0:
             logging.warning(f"Found {len(error_lines)}/{i} invalid lines in the log file - {error_lines}")
@@ -163,16 +167,22 @@ class StateSaver:
         with open(self._tmp_state_file_path, "w") as f:
             f.write(json.dumps(state))
             f.flush()
+            if ENVIRONMENT != "dev":
+                os.fsync(f.fileno())
 
         try:
             # write the checkpoint to the log
             self._log_writer.writerow([CHECKPOINT])
             self._log_file.flush()
+            if ENVIRONMENT != "dev":
+                os.fsync(self._log_file.fileno())
         except (AttributeError, ValueError):  # log file was closed
             logging.warning("Log file was closed, reopening")
             self.__open_log_file()
             self._log_writer.writerow([CHECKPOINT])
             self._log_file.flush()
+            if ENVIRONMENT != "dev":
+                os.fsync(self._log_file.fileno())
 
         # rename the tmp state file to the state file
         os.rename(self._tmp_state_file_path, self._state_file_path)
@@ -189,6 +199,8 @@ class StateSaver:
         row = [msg[i:i + COLUMN_PARTITION_SIZE].hex() for i in range(0, len(msg), COLUMN_PARTITION_SIZE)]
         self._log_writer.writerow([new_msg_size, *row])
         self._log_file.flush()
+        if ENVIRONMENT != "dev":
+            os.fsync(self._log_file.fileno())
 
     def save_state(self, new_msg: bytes):
         self.__append_to_log(new_msg)

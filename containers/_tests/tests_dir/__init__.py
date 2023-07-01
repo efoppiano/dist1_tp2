@@ -1,2 +1,0 @@
-from tests_dir.test_prec_filter import TestPrecFilter
-from tests_dir.test_year_filter import TestYearFilter

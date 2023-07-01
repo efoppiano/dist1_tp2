@@ -237,20 +237,26 @@ class BasicClient(ABC):
         return True
 
     def __get_responses(self):
-
         if self.canceled:
             return
 
         results_queue = RESULTS_QUEUE_PREFIX + str(self.session_id)
         self._rabbit.consume(results_queue, self.__handle_message, create=False)
+        logging.info(f"action: client_get_responses | result: in_progress | session_id: {self.session_id}")
 
         # control_queue not needed, since we are no longer sending packets
 
         self._rabbit.start()
 
+    def __fail(self, _: bytes):
+        logging.critical("Received packet from results queue after session finished")
+        raise ConnectionAbortedError("SessionFinished")
+
     def run(self):
         self.__send_cities_data()
         self.__get_responses()
+        results_queue = RESULTS_QUEUE_PREFIX + str(self.session_id)
+        self._rabbit.consume_one(results_queue, self.__fail, timeout=CONTROL_TIMEOUT, create=False)
 
     def close(self):
         self.canceled = True

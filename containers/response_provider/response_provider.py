@@ -181,7 +181,11 @@ class ResponseProvider:
         packet = GenericResponsePacket.decode(message)
         sender_id = (packet.type, packet.sender_id)
 
-        self._last_received[sender_id] = packet.packet_id
+        self._last_received[sender_id].setdefault(packet.client_id, [None, None])
+        if packet.is_eof():
+            self._last_received[sender_id][1] = packet.get_id()
+        else:
+            self._last_received[sender_id][0] = packet.get_id()
 
         self.__save_state()
 
@@ -193,7 +197,6 @@ class ResponseProvider:
             self._rabbit.call_later(time, lambda client_id=client_id: self.__evict_client(client_id))
 
     def start(self):
-
         dist_mean_queue = self.input_queues["dist_mean"][0]
         trip_count_queue = self.input_queues["trip_count"][0]
         avg_queue = self.input_queues["dur_avg"][0]
