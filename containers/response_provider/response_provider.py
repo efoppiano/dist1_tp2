@@ -105,7 +105,7 @@ class ResponseProvider:
         evict_key = (packet.client_id, eof.timestamp)
 
         if not eof.drop or eof.eviction_time is None:
-            return False
+            return True
         
         self._evicting_received.setdefault(evict_key, set())
         self._evicting_received[evict_key].add(packet_type)
@@ -118,7 +118,7 @@ class ResponseProvider:
         elif eof.eviction_time is not None:
             self.__evict_client(packet.client_id, eof.eviction_time)
         
-        return True
+        return False
 
     def __handle_eof(self, packet: GenericPacket, eof: Eof, packet_type: str) -> bool:
         flow_id = (packet.client_id, packet.city_name, packet_type)
@@ -129,7 +129,6 @@ class ResponseProvider:
         if self._eofs_received[eof_key] < self.input_queues[packet_type][1]:
             trace(
                 f"Received EOF {eof_key} - {self._eofs_received[eof_key]}/{self.input_queues[packet_type][1]}")
-            self.__save_state()
             return False
         logging.debug(
             f"Received EOF {eof_key} - {self._eofs_received[eof_key]}/{self.input_queues[packet_type][1]}")
