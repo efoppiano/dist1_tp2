@@ -86,19 +86,20 @@ class ResponseProvider:
         self._rabbit.send_to_route(RESULTS_ROUTING_KEY, destination, message)
 
     def __evict_client(self, client_id: str, time: int = 0):
-        if client_id in self._evicting and not time == 0:
-            return
 
         if time < 1:
+            # Immediate eviction
             _time = self._evicting.get(client_id, 0)
             log_evict(f"Evicting client {client_id} after {_time} seconds")
             self._rabbit.delete_queue(f"results_{client_id}")
             self._rabbit.delete_queue(f"control_{client_id}")
-        else:
+            if client_id in self._evicting:
+                del self._evicting[client_id]
+        elif client_id not in self._evicting:
+            # Scheduled eviction
             log_evict(f"Evicting client {client_id} in {time} seconds")
             self._rabbit.call_later(time, lambda client_id=client_id: self.__evict_client(client_id))
-
-        self._evicting[client_id] = time
+            self._evicting[client_id] = time
 
     def __handle_evicting(self, packet: GenericPacket, eof: Eof, packet_type: str) -> bool:
 
@@ -207,9 +208,9 @@ class ResponseProvider:
         return True
 
     def __schedule_evictions(self):
+        log_evict(f"Scheduling {len(self._evicting)} evictions: {self._evicting}")
         for client_id, time in self._evicting.items():
-            log_evict(f"Evicting client {client_id} in {time} seconds")
-            self._rabbit.call_later(time, lambda client_id=client_id: self.__evict_client(client_id))
+            self._rabbit.call_later(time, lambda client_id=client_id, time=time: self.__evict_client(client_id, time))
 
     def start(self):
         dist_mean_queue = self.input_queues["dist_mean"][0]
