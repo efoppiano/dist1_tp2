@@ -248,15 +248,12 @@ class BasicClient(ABC):
 
         self._rabbit.start()
 
-    def __fail(self, _: bytes):
-        logging.critical("Received packet from results queue after session finished")
-        raise ConnectionAbortedError("SessionFinished")
-
     def run(self):
         self.__send_cities_data()
         self.__get_responses()
-        results_queue = RESULTS_QUEUE_PREFIX + str(self.session_id)
-        self._rabbit.consume_one(results_queue, self.__fail, timeout=CONTROL_TIMEOUT, create=False)
+        
+        if not self.__all_eofs_received():
+            logging.error("Not all EOFs received")
 
     def close(self):
         self.canceled = True
