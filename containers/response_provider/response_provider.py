@@ -107,20 +107,20 @@ class ResponseProvider:
 
         if not eof.drop and eof.eviction_time is None:
             return True
-        
+
         self._evicting_received.setdefault(evict_key, set())
         self._evicting_received[evict_key].add(packet_type)
 
         if len(self._evicting_received[evict_key]) < len(self.input_queues):
             return False
-        
+
         del self._evicting_received[evict_key]
 
         if eof.drop:
-            self.__evict_client(packet.client_id)      
+            self.__evict_client(packet.client_id)
         elif eof.eviction_time is not None:
             self.__evict_client(packet.client_id, eof.eviction_time)
-        
+
         return False
 
     def __handle_eof(self, packet: GenericPacket, eof: Eof, packet_type: str) -> bool:
@@ -212,7 +212,7 @@ class ResponseProvider:
     def __schedule_evictions(self):
         log_evict(f"Scheduling {len(self._evicting)} evictions: {self._evicting}")
         for client_id, time in self._evicting.items():
-            self._rabbit.call_later(time, lambda client_id=client_id, time=time: self.__evict_client(client_id, time, True))
+            self.__evict_client(client_id, time, True)
 
     def start(self):
         dist_mean_queue = self.input_queues["dist_mean"][0]
