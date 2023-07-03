@@ -199,7 +199,7 @@ class StateSaver:
         if len(error_lines) > 0:
             logging.warning(f"Found {len(error_lines)}/{i} invalid lines in the log file - {error_lines}")
 
-        logging.info("Replayed valid lines, truncating log file")
+        logging.info(f"Replayed {i-len(error_lines)} lines, truncating log file")
         os.rename(self._truncated_log_file_path, self._log_file_path)
         os.sync()
 

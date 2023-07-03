@@ -31,6 +31,9 @@ class GenericPacket(BasicPacket):
     def data_hash(self) -> str:
         return min_hash(self.data)
     
+    def get_id_and_hash(self) -> str:
+        return f"{self.get_id()}-{self.data_hash()}"
+    
     def encode(self) -> bytes:
         self.hash = self.data_hash()
         return super().encode()

@@ -52,18 +52,18 @@ class MessageSender:
                 if queue.startswith("publish_"):
                     queue = queue[len("publish_"):]
                     seq_number = self.__get_next_publish_seq_number(queue)
-                    encoded = builder.build(seq_number, messages_or_eof).encode()
+                    packet = builder.build(seq_number, messages_or_eof)
                     if not skip_send:
                         logging.debug(
-                            f"Sending {seq_number}-{min_hash(messages_or_eof)} to {queue}")
-                        self._rabbit.send_to_route("publish", queue, encoded)
+                            f"Sending eof {packet.get_id_and_hash()} to {queue}")
+                        self._rabbit.send_to_route("publish", queue, packet.encode())
                 else:
                     seq_number = self.__get_next_seq_number(queue)
-                    encoded = builder.build(seq_number, messages_or_eof).encode()
+                    packet = builder.build(seq_number, messages_or_eof)
                     if not skip_send:
                         logging.debug(
-                            f"Sending {seq_number}-{min_hash(messages_or_eof)} to {queue}")
-                        self._rabbit.produce(queue, encoded)
+                            f"Sending chunk {packet.get_id_and_hash()} to {queue}")
+                        self._rabbit.produce(queue, packet.encode())
 
     def get_state(self) -> dict:
         return {
