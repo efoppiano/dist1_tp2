@@ -27,7 +27,7 @@ class HealthChecker(BasicHealthChecker):
 
 
 def main():
-    initialize_log()
+    initialize_log(logging.WARNING)
     containers = CONTAINERS.split(",")
     health_checker = HealthChecker(containers)
     health_checker.start()

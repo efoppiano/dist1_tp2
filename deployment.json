@@ -21,11 +21,7 @@
     },
     "station_aggregator": {
       "amount": 3,
-      "next": [
-        "prec_filter",
-        "year_filter",
-        "distance_calculator"
-      ],
+      "next": ["prec_filter", "year_filter", "distance_calculator"],
       "env": {
         "PREC_FILTER_QUEUE": "prec_filter",
         "YEAR_FILTER_QUEUE": "year_filter",
@@ -83,15 +79,9 @@
   "clients": {
     "data": "./.data_3/",
     "clients": {
-      "montreal": [
-        "montreal"
-      ],
-      "washington": [
-        "washington"
-      ],
-      "toronto": [
-        "toronto"
-      ]
+      "c1": ["montreal", "washington", "toronto"],
+      "c2": ["montreal", "washington", "toronto"],
+      "c3": ["montreal", "washington", "toronto"]
     }
   },
   "health_chekers": 5

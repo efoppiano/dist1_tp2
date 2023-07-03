@@ -631,7 +631,7 @@ services:
       - HEALTH_CHECKER=health_checker_3
       - CONTAINER_ID=health_checker_4
 
-  client_montreal:
+  client_c1:
     build:
       context: ./containers
       dockerfile: client/Dockerfile
@@ -645,13 +645,13 @@ services:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
       - DATA_FOLDER_PATH=/opt/app/.data
-      - CLIENT_ID=montreal
-      - CITIES=montreal
+      - CLIENT_ID=c1
+      - CITIES=montreal,washington,toronto
       - ID_REQ_QUEUE=client_id_queue
       - GATEWAY=gateway
       - GATEWAY_AMOUNT=2
 
-  client_washington:
+  client_c2:
     build:
       context: ./containers
       dockerfile: client/Dockerfile
@@ -665,13 +665,13 @@ services:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
       - DATA_FOLDER_PATH=/opt/app/.data
-      - CLIENT_ID=washington
-      - CITIES=washington
+      - CLIENT_ID=c2
+      - CITIES=montreal,washington,toronto
       - ID_REQ_QUEUE=client_id_queue
       - GATEWAY=gateway
       - GATEWAY_AMOUNT=2
 
-  client_toronto:
+  client_c3:
     build:
       context: ./containers
       dockerfile: client/Dockerfile
@@ -685,8 +685,8 @@ services:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
       - DATA_FOLDER_PATH=/opt/app/.data
-      - CLIENT_ID=toronto
-      - CITIES=toronto
+      - CLIENT_ID=c3
+      - CITIES=montreal,washington,toronto
       - ID_REQ_QUEUE=client_id_queue
       - GATEWAY=gateway
       - GATEWAY_AMOUNT=2

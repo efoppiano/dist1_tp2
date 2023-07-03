@@ -1,15 +1,19 @@
+#!/usr/bin/env python3
 import signal
 from random import randint
 import random
 from time import sleep
-
-import docker as docker
 import json
+import os
 
+
+STARTED = "\033[92mStarted\033[0m"
+KILLED = "\033[91mKilled\033[0m"
+STARTED_FAIL = "\033[93mFailed to Start\033[0m"
+KILLED_FAIL = "\033[93mFailed to Kill\033[0m"
 
 class Killer:
     def __init__(self):
-        self._client = docker.from_env()
         self._containers_to_kill = {}
         self._blacklist = set()
         self.__setup_containers_to_kill()
@@ -46,11 +50,16 @@ class Killer:
 
         container = f"tp2-{container_name}-1"
         try:
-            self._client.containers.get(container).kill(signal="SIGKILL")
-            print(f"Killed {container}")
+            command = f"docker kill -s 9 {container}"
+            status = os.system(command)
+            
+            if status == 0:
+                print(f"{KILLED} {container}")
+            else:
+                print(f"{KILLED_FAIL} {container}")
 
         except Exception as e:
-            print(f"Failed to kill {container}")
+            print(f"{KILLED_FAIL} {container}")
             pass
 
     def start_container(self, name: str, replica_id: int):
@@ -64,11 +73,15 @@ class Killer:
 
         container = f"tp2-{container_name}-1"
         try:
-            self._client.containers.get(container).start()
-            print(f"Started {container}")
+            command = f"docker start {container}"
+            status = os.system(command)
+            if status == 0:
+                print(f"{STARTED} {container}")
+            else:
+                print(f"{STARTED_FAIL} {container}")
 
         except Exception as e:
-            print(f"Failed to start {container}")
+            print(f"{STARTED_FAIL} {container}")
             pass
 
     def run_kill_loop(self):
@@ -87,10 +100,13 @@ class Killer:
             amount_to_kill = randint(1, amount_of_containers_to_kill)
             containers_to_kill = random.sample(containers_with_id, amount_to_kill)
 
-            for (container_to_kill, replica_to_kill) in containers_to_kill:
-                self.kill_container(container_to_kill, replica_to_kill)
-                sleep(random.random() * 0.5)
-                self.start_container(container_to_kill, replica_to_kill)
+            for (container, replica) in containers_to_kill:
+                self.kill_container(container, replica)
+            
+            sleep(random.random() * 0.5)
+            
+            for (container, replica) in containers_to_kill:
+                self.start_container(container, replica)
 
             time_to_sleep = random.random() * 12
             print(f"Sleeping for {time_to_sleep} seconds")
