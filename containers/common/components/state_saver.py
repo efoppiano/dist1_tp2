@@ -90,11 +90,6 @@ class StateSaver:
         os.makedirs(self._directory, exist_ok=True)
 
     def __load_state(self):
-
-        if self.__state_exists():
-            self.__load_from_state()
-        return
-
         if self.__log_exists():
             self.__load_state_with_log()
         elif self.__state_exists():
@@ -128,8 +123,10 @@ class StateSaver:
                 self._log_file.close()
             fail_random()
             os.rename(self._log_file_path, self._tmp_log_file_path)
+            os.sync()
             fail_random()
             os.remove(self._tmp_log_file_path)
+            os.sync()
         except FileNotFoundError:
             pass
 
@@ -194,6 +191,7 @@ class StateSaver:
                 i += 1
             fail_random()
             truncate_log_file.flush()
+            os.fsync(truncate_log_file.fileno())
             if ENVIRONMENT != "dev":
                 os.fsync(truncate_log_file.fileno())
 
@@ -203,6 +201,7 @@ class StateSaver:
 
         logging.info("Replayed valid lines, truncating log file")
         os.rename(self._truncated_log_file_path, self._log_file_path)
+        os.sync()
 
     def __save_checkpoint(self):
         # get the updated state from the component
@@ -215,6 +214,7 @@ class StateSaver:
             f.write(json.dumps(state))
             fail_random()
             f.flush()
+            os.fsync(f.fileno())
             if ENVIRONMENT != "dev":
                 os.fsync(f.fileno())
 
@@ -224,6 +224,7 @@ class StateSaver:
             self._log_writer.writerow([CHECKPOINT])
             fail_random()
             self._log_file.flush()
+            os.fsync(self._log_file.fileno())
             if ENVIRONMENT != "dev":
                 os.fsync(self._log_file.fileno())
         except (AttributeError, ValueError):  # log file was closed
@@ -233,11 +234,13 @@ class StateSaver:
             self._log_writer.writerow([CHECKPOINT])
             fail_random()
             self._log_file.flush()
+            os.fsync(self._log_file.fileno())
             if ENVIRONMENT != "dev":
                 os.fsync(self._log_file.fileno())
         fail_random()
         # rename the tmp state file to the state file
         os.rename(self._tmp_state_file_path, self._state_file_path)
+        os.sync()
 
         # remove the log file
         self.__remove_log()
@@ -252,24 +255,11 @@ class StateSaver:
         self._log_writer.writerow([new_msg_size, *row])
         fail_random()
         self._log_file.flush()
+        os.fsync(self._log_file.fileno())
         if ENVIRONMENT != "dev":
             os.fsync(self._log_file.fileno())
 
     def save_state(self, new_msg: bytes):
-
-        state = self._component.get_state()
-        with open(self._tmp_state_file_path, "w") as f:
-            fail_random()
-            f.write(json.dumps(state))
-            fail_random()
-            f.flush()
-            if ENVIRONMENT != "dev":
-                os.fsync(f.fileno())
-        fail_random()
-        os.rename(self._tmp_state_file_path, self._state_file_path)
-        fail_random()
-        return
-
         fail_random()
         self.__append_to_log(new_msg)
         fail_random()
