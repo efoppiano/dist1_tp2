@@ -1,15 +1,14 @@
+#!/usr/bin/env python3
 import signal
 from random import randint
 import random
 from time import sleep
-
-import docker as docker
 import json
+import os
 
 
 class Killer:
     def __init__(self):
-        self._client = docker.from_env()
         self._containers_to_kill = {}
         self._blacklist = set()
         self.__setup_containers_to_kill()
@@ -46,8 +45,13 @@ class Killer:
 
         container = f"tp2-{container_name}-1"
         try:
-            self._client.containers.get(container).kill(signal="SIGKILL")
-            print(f"Killed {container}")
+            command = f"docker kill -s 9 {container}"
+            status = os.system(command)
+            
+            if status == 0:
+              print(f"Killed {container}")
+            else:
+              print(f"Failed to kill {container}")
 
         except Exception as e:
             print(f"Failed to kill {container}")

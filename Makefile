@@ -49,6 +49,9 @@ restart-client:
 	docker compose -f docker-compose-dev.yaml restart tp2-client_$(client)-1
 .PHONY: restart-client
 
+start_clients:
+	docker ps -a --format "{{.Names}}" | grep "client" | xargs docker start
+
 
 tests:
 	docker compose -f docker-compose-tests.yaml up --build
