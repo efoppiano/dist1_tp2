@@ -35,6 +35,9 @@ docker-compose-logs:
 	docker compose -f docker-compose-dev.yaml logs -f
 .PHONY: docker-compose-logs
 
+main-logs:
+	docker compose -f docker-compose-dev.yaml logs -f | grep "SUCCESS\|ERROR\|CRITICAL\|Traceback"
+
 client-logs:
 	docker compose -f docker-compose-dev.yaml logs -f | grep tp2-client
 .PHONY: client-logs

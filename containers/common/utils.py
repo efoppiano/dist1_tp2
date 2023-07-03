@@ -5,6 +5,8 @@ import signal
 from datetime import datetime, date
 from types import FrameType
 from typing import Union, Callable
+from common.packets.eof import Eof
+from string import hexdigits
 
 ENVIRONMENT = os.environ.get("ENVIRONMENT", "dev")
 RESULTS_ROUTING_KEY = "results"
@@ -92,13 +94,26 @@ def min_hash(obj, n=4, min_log_level=logging.DEBUG):
     if logging.getLogger().getEffectiveLevel() > min_log_level:
         return "###"
 
+    def int_to_hexdigits(i, max_digits=8):
+        result = ""
+        for _ in range(max_digits):
+            result = hexdigits[i % 16] + result
+            i //= 16
+            if i < 16:
+                break
+        return result
+    
+    def uniq_str():
+        return int_to_hexdigits(hash(str(datetime.now())))
+
     try:
         if isinstance(obj, list):
-            return str(hash(str(obj)))
-        return str(hash(obj))
+            return int_to_hexdigits(hash(str(obj)))
+        if isinstance(obj, Eof):
+            return "EOF-"+uniq_str()
+        return int_to_hexdigits(hash(obj))
     except Exception as e:
-        logging.warning(f"Cant hash object - {e}")
-        return "$$$"
+        return "hash_error-"+uniq_str()
 
 
 def bold(text: str) -> str:

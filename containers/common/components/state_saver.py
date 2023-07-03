@@ -91,10 +91,6 @@ class StateSaver:
 
     def __load_state(self):
 
-        if self.__state_exists():
-            self.__load_from_state()
-        return
-
         if self.__log_exists():
             self.__load_state_with_log()
         elif self.__state_exists():
@@ -256,19 +252,6 @@ class StateSaver:
             os.fsync(self._log_file.fileno())
 
     def save_state(self, new_msg: bytes):
-
-        state = self._component.get_state()
-        with open(self._tmp_state_file_path, "w") as f:
-            fail_random()
-            f.write(json.dumps(state))
-            fail_random()
-            f.flush()
-            if ENVIRONMENT != "dev":
-                os.fsync(f.fileno())
-        fail_random()
-        os.rename(self._tmp_state_file_path, self._state_file_path)
-        fail_random()
-        return
 
         fail_random()
         self.__append_to_log(new_msg)
