@@ -53,6 +53,24 @@ class Killer:
             print(f"Failed to kill {container}")
             pass
 
+    def start_container(self, name: str, replica_id: int):
+        if replica_id == -1:
+            container_name = name
+        else:
+            container_name = f"{name}_{replica_id}"
+
+        if container_name in self._blacklist:
+            return
+
+        container = f"tp2-{container_name}-1"
+        try:
+            self._client.containers.get(container).start()
+            print(f"Started {container}")
+
+        except Exception as e:
+            print(f"Failed to start {container}")
+            pass
+
     def run_kill_loop(self):
         containers_to_kill = list(self._containers_to_kill.keys())
         containers_with_id = []
@@ -71,8 +89,10 @@ class Killer:
 
             for (container_to_kill, replica_to_kill) in containers_to_kill:
                 self.kill_container(container_to_kill, replica_to_kill)
+                sleep(random.random() * 0.5)
+                self.start_container(container_to_kill, replica_to_kill)
 
-            time_to_sleep = random.random() * 60
+            time_to_sleep = random.random() * 12
             print(f"Sleeping for {time_to_sleep} seconds")
             sleep(time_to_sleep)
 

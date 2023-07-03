@@ -18,7 +18,6 @@ NEXT = os.environ["NEXT"]
 NEXT_AMOUNT = os.environ.get("NEXT_AMOUNT")
 if NEXT_AMOUNT is not None:
     NEXT_AMOUNT = int(NEXT_AMOUNT)
-MAX_SEQ_NUMBER = 2 ** 10  # 2 packet ids would be enough, but we use more for traceability
 
 
 class BasicStatefulFilter(BasicFilter, ABC):

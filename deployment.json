@@ -34,14 +34,14 @@
       }
     },
     "prec_filter": {
-      "amount": 2,
+      "amount": 4,
       "next": "dur_avg_provider",
       "env": {
         "PREC_LIMIT": 30
       }
     },
     "dur_avg_provider": {
-      "amount": 1,
+      "amount": 4,
       "next": "response_provider_dur_avg"
     },
     "year_filter": {
@@ -60,11 +60,11 @@
       }
     },
     "distance_calculator": {
-      "amount": 2,
+      "amount": 1,
       "next": "dist_mean_calculator"
     },
     "dist_mean_calculator": {
-      "amount": 2,
+      "amount": 1,
       "next": "dist_mean_provider"
     },
     "dist_mean_provider": {
@@ -81,7 +81,7 @@
     "dur_avg": "dur_avg_provider"
   },
   "clients": {
-    "data": "./.data/",
+    "data": "./.data_3/",
     "clients": {
       "montreal": [
         "montreal"

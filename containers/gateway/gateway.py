@@ -1,3 +1,4 @@
+import logging
 import os
 from typing import Dict, List, Union
 
@@ -79,7 +80,7 @@ class Gateway(BasicGateway):
 
 
 def main():
-    initialize_log(15)
+    initialize_log(logging.DEBUG)
     gateway = Gateway(WEATHER_SIDE_TABLE_QUEUE_NAME,
                       STATION_SIDE_TABLE_QUEUE_NAME)
     gateway.start()

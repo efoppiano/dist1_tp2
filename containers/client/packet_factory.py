@@ -5,11 +5,8 @@ from common.packets.eof import Eof
 from common.components.readers import WeatherInfo, StationInfo, TripInfo, ClientGatewayPacket
 from common.utils import min_hash, trace, log_msg
 
-DIST_MEAN_REQUEST = b'dist_mean'
-TRIP_COUNT_REQUEST = b'trip_count'
-DUR_AVG_REQUEST = b'dur_avg'
 
-MAX_SEQ_NUMBER = 2 ** 10
+MAX_SEQ_NUMBER = 2
 
 
 class PacketFactory:

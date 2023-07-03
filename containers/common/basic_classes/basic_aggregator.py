@@ -21,7 +21,6 @@ PREV_AMOUNT = int(os.environ["PREV_AMOUNT"])
 EOF_ROUTING_KEY = os.environ["EOF_ROUTING_KEY"]
 
 RABBIT_HOST = os.environ.get("RABBIT_HOST", "rabbitmq")
-MAX_PACKET_ID = 2 ** 10  # 2 packet ids would be enough, but we use more for traceability
 
 
 class BasicAggregator(Recoverable, ABC):

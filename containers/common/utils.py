@@ -11,7 +11,7 @@ RESULTS_ROUTING_KEY = "results"
 PUBLISH_ROUTING_KEY = "publish"
 
 
-def initialize_log(logging_level=logging.INFO):
+def initialize_log(logging_level=logging.DEBUG):
     """
     Python custom logging initialization
 
@@ -93,9 +93,12 @@ def min_hash(obj, n=4, min_log_level=logging.DEBUG):
         return "###"
 
     try:
-        return str(hash(obj))[-n:]
-    except:
-        return "###"
+        if isinstance(obj, list):
+            return str(hash(str(obj)))
+        return str(hash(obj))
+    except Exception as e:
+        logging.warning(f"Cant hash object - {e}")
+        return "$$$"
 
 
 def bold(text: str) -> str:

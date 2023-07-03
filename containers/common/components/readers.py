@@ -4,7 +4,8 @@ from typing import Iterator, Union, List
 
 from common.packets.basic_packet import BasicPacket
 
-CHUNK_SIZE = 4096
+SIDE_TABLE_CHUNK_SIZE = 4
+CHUNK_SIZE = 512
 
 
 @dataclass
@@ -140,7 +141,7 @@ class WeatherReader:
                 except ValueError as e:
                     continue
                 weather_info_list.append(weather_info)
-                if len(weather_info_list) == CHUNK_SIZE:
+                if len(weather_info_list) == SIDE_TABLE_CHUNK_SIZE:
                     yield weather_info_list
                     weather_info_list = []
             if len(weather_info_list) > 0:
@@ -165,7 +166,7 @@ class StationReader:
                 except ValueError as e:
                     continue
                 station_info_list.append(station_info)
-                if len(station_info_list) == CHUNK_SIZE:
+                if len(station_info_list) == SIDE_TABLE_CHUNK_SIZE:
                     yield station_info_list
                     station_info_list = []
             if len(station_info_list) > 0:

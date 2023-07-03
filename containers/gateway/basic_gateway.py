@@ -30,7 +30,6 @@ NEXT = os.environ["NEXT"]
 NEXT_AMOUNT = int(os.environ["NEXT_AMOUNT"])
 
 RABBIT_HOST = os.environ.get("RABBIT_HOST", "rabbitmq")
-MAX_SEQ_NUMBER = 2 ** 10  # 2 packet ids would be enough, but we use more for traceability
 
 RATE_CHECK_INTERVAL = 5
 

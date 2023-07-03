@@ -123,9 +123,9 @@ services:
       - HEALTH_CHECKER=health_checker_4
       - CONTAINER_ID=station_aggregator_0
       - PREV_AMOUNT=2
-      - NEXT_AMOUNT_PREC_FILTER=2
+      - NEXT_AMOUNT_PREC_FILTER=4
       - NEXT_AMOUNT_YEAR_FILTER=2
-      - NEXT_AMOUNT_DISTANCE_CALCULATOR=2
+      - NEXT_AMOUNT_DISTANCE_CALCULATOR=1
       - PREC_FILTER_QUEUE=prec_filter
       - YEAR_FILTER_QUEUE=year_filter
       - DISTANCE_CALCULATOR_QUEUE=distance_calculator
@@ -149,9 +149,9 @@ services:
       - HEALTH_CHECKER=health_checker_0
       - CONTAINER_ID=station_aggregator_1
       - PREV_AMOUNT=2
-      - NEXT_AMOUNT_PREC_FILTER=2
+      - NEXT_AMOUNT_PREC_FILTER=4
       - NEXT_AMOUNT_YEAR_FILTER=2
-      - NEXT_AMOUNT_DISTANCE_CALCULATOR=2
+      - NEXT_AMOUNT_DISTANCE_CALCULATOR=1
       - PREC_FILTER_QUEUE=prec_filter
       - YEAR_FILTER_QUEUE=year_filter
       - DISTANCE_CALCULATOR_QUEUE=distance_calculator
@@ -175,9 +175,9 @@ services:
       - HEALTH_CHECKER=health_checker_1
       - CONTAINER_ID=station_aggregator_2
       - PREV_AMOUNT=2
-      - NEXT_AMOUNT_PREC_FILTER=2
+      - NEXT_AMOUNT_PREC_FILTER=4
       - NEXT_AMOUNT_YEAR_FILTER=2
-      - NEXT_AMOUNT_DISTANCE_CALCULATOR=2
+      - NEXT_AMOUNT_DISTANCE_CALCULATOR=1
       - PREC_FILTER_QUEUE=prec_filter
       - YEAR_FILTER_QUEUE=year_filter
       - DISTANCE_CALCULATOR_QUEUE=distance_calculator
@@ -202,7 +202,7 @@ services:
       - CONTAINER_ID=prec_filter_0
       - PREV_AMOUNT=3
       - NEXT=dur_avg_provider
-      - NEXT_AMOUNT=1
+      - NEXT_AMOUNT=4
       - PREC_LIMIT=30
 
   prec_filter_1:
@@ -224,7 +224,51 @@ services:
       - CONTAINER_ID=prec_filter_1
       - PREV_AMOUNT=3
       - NEXT=dur_avg_provider
-      - NEXT_AMOUNT=1
+      - NEXT_AMOUNT=4
+      - PREC_LIMIT=30
+
+  prec_filter_2:
+    build:
+      context: ./containers
+      dockerfile: prec_filter/Dockerfile
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    entrypoint: python3 /opt/app/prec_filter.py
+    volumes:
+      - .volumes/prec_filter_2:/volumes
+    environment:
+      - PYTHONHASHSEED=0
+      - PYTHONUNBUFFERED=1
+      - INPUT_QUEUE=prec_filter_2
+      - EOF_ROUTING_KEY=prec_filter
+      - HEALTH_CHECKER=health_checker_4
+      - CONTAINER_ID=prec_filter_2
+      - PREV_AMOUNT=3
+      - NEXT=dur_avg_provider
+      - NEXT_AMOUNT=4
+      - PREC_LIMIT=30
+
+  prec_filter_3:
+    build:
+      context: ./containers
+      dockerfile: prec_filter/Dockerfile
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    entrypoint: python3 /opt/app/prec_filter.py
+    volumes:
+      - .volumes/prec_filter_3:/volumes
+    environment:
+      - PYTHONHASHSEED=0
+      - PYTHONUNBUFFERED=1
+      - INPUT_QUEUE=prec_filter_3
+      - EOF_ROUTING_KEY=prec_filter
+      - HEALTH_CHECKER=health_checker_0
+      - CONTAINER_ID=prec_filter_3
+      - PREV_AMOUNT=3
+      - NEXT=dur_avg_provider
+      - NEXT_AMOUNT=4
       - PREC_LIMIT=30
 
   dur_avg_provider_0:
@@ -242,9 +286,69 @@ services:
       - PYTHONUNBUFFERED=1
       - INPUT_QUEUE=dur_avg_provider_0
       - EOF_ROUTING_KEY=dur_avg_provider
-      - HEALTH_CHECKER=health_checker_4
+      - HEALTH_CHECKER=health_checker_1
       - CONTAINER_ID=dur_avg_provider_0
-      - PREV_AMOUNT=2
+      - PREV_AMOUNT=4
+      - NEXT=response_provider_dur_avg
+
+  dur_avg_provider_1:
+    build:
+      context: ./containers
+      dockerfile: dur_avg_provider/Dockerfile
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    entrypoint: python3 /opt/app/dur_avg_provider.py
+    volumes:
+      - .volumes/dur_avg_provider_1:/volumes
+    environment:
+      - PYTHONHASHSEED=0
+      - PYTHONUNBUFFERED=1
+      - INPUT_QUEUE=dur_avg_provider_1
+      - EOF_ROUTING_KEY=dur_avg_provider
+      - HEALTH_CHECKER=health_checker_2
+      - CONTAINER_ID=dur_avg_provider_1
+      - PREV_AMOUNT=4
+      - NEXT=response_provider_dur_avg
+
+  dur_avg_provider_2:
+    build:
+      context: ./containers
+      dockerfile: dur_avg_provider/Dockerfile
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    entrypoint: python3 /opt/app/dur_avg_provider.py
+    volumes:
+      - .volumes/dur_avg_provider_2:/volumes
+    environment:
+      - PYTHONHASHSEED=0
+      - PYTHONUNBUFFERED=1
+      - INPUT_QUEUE=dur_avg_provider_2
+      - EOF_ROUTING_KEY=dur_avg_provider
+      - HEALTH_CHECKER=health_checker_3
+      - CONTAINER_ID=dur_avg_provider_2
+      - PREV_AMOUNT=4
+      - NEXT=response_provider_dur_avg
+
+  dur_avg_provider_3:
+    build:
+      context: ./containers
+      dockerfile: dur_avg_provider/Dockerfile
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    entrypoint: python3 /opt/app/dur_avg_provider.py
+    volumes:
+      - .volumes/dur_avg_provider_3:/volumes
+    environment:
+      - PYTHONHASHSEED=0
+      - PYTHONUNBUFFERED=1
+      - INPUT_QUEUE=dur_avg_provider_3
+      - EOF_ROUTING_KEY=dur_avg_provider
+      - HEALTH_CHECKER=health_checker_4
+      - CONTAINER_ID=dur_avg_provider_3
+      - PREV_AMOUNT=4
       - NEXT=response_provider_dur_avg
 
   year_filter_0:
@@ -371,28 +475,7 @@ services:
       - CONTAINER_ID=distance_calculator_0
       - PREV_AMOUNT=3
       - NEXT=dist_mean_calculator
-      - NEXT_AMOUNT=2
-
-  distance_calculator_1:
-    build:
-      context: ./containers
-      dockerfile: distance_calculator/Dockerfile
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    entrypoint: python3 /opt/app/distance_calculator.py
-    volumes:
-      - .volumes/distance_calculator_1:/volumes
-    environment:
-      - PYTHONHASHSEED=0
-      - PYTHONUNBUFFERED=1
-      - INPUT_QUEUE=distance_calculator_1
-      - EOF_ROUTING_KEY=distance_calculator
-      - HEALTH_CHECKER=health_checker_1
-      - CONTAINER_ID=distance_calculator_1
-      - PREV_AMOUNT=3
-      - NEXT=dist_mean_calculator
-      - NEXT_AMOUNT=2
+      - NEXT_AMOUNT=1
 
   dist_mean_calculator_0:
     build:
@@ -409,30 +492,9 @@ services:
       - PYTHONUNBUFFERED=1
       - INPUT_QUEUE=dist_mean_calculator_0
       - EOF_ROUTING_KEY=dist_mean_calculator
-      - HEALTH_CHECKER=health_checker_2
+      - HEALTH_CHECKER=health_checker_1
       - CONTAINER_ID=dist_mean_calculator_0
-      - PREV_AMOUNT=2
-      - NEXT=dist_mean_provider
-      - NEXT_AMOUNT=1
-
-  dist_mean_calculator_1:
-    build:
-      context: ./containers
-      dockerfile: dist_mean_calculator/Dockerfile
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    entrypoint: python3 /opt/app/dist_mean_calculator.py
-    volumes:
-      - .volumes/dist_mean_calculator_1:/volumes
-    environment:
-      - PYTHONHASHSEED=0
-      - PYTHONUNBUFFERED=1
-      - INPUT_QUEUE=dist_mean_calculator_1
-      - EOF_ROUTING_KEY=dist_mean_calculator
-      - HEALTH_CHECKER=health_checker_3
-      - CONTAINER_ID=dist_mean_calculator_1
-      - PREV_AMOUNT=2
+      - PREV_AMOUNT=1
       - NEXT=dist_mean_provider
       - NEXT_AMOUNT=1
 
@@ -451,9 +513,9 @@ services:
       - PYTHONUNBUFFERED=1
       - INPUT_QUEUE=dist_mean_provider_0
       - EOF_ROUTING_KEY=dist_mean_provider
-      - HEALTH_CHECKER=health_checker_4
+      - HEALTH_CHECKER=health_checker_2
       - CONTAINER_ID=dist_mean_provider_0
-      - PREV_AMOUNT=2
+      - PREV_AMOUNT=1
       - NEXT=response_provider_dist_mean
       - MEAN_THRESHOLD=6.0
 
@@ -470,14 +532,14 @@ services:
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
-      - HEALTH_CHECKER=health_checker_0
+      - HEALTH_CHECKER=health_checker_3
       - CONTAINER_ID=response_provider
       - DIST_MEAN_SRC=response_provider_dist_mean
       - DIST_MEAN_AMOUNT=1
       - TRIP_COUNT_SRC=response_provider_trip_count
       - TRIP_COUNT_AMOUNT=1
       - DUR_AVG_SRC=response_provider_dur_avg
-      - DUR_AVG_AMOUNT=1
+      - DUR_AVG_AMOUNT=4
 
   health_checker_0:
     build:
@@ -493,7 +555,7 @@ services:
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
-      - CONTAINERS=gateway_0,station_aggregator_1,year_filter_0,distance_calculator_0,response_provider,health_checker_1
+      - CONTAINERS=gateway_0,station_aggregator_1,prec_filter_3,year_filter_0,distance_calculator_0,health_checker_1
       - HEALTH_CHECKER=health_checker_4
       - CONTAINER_ID=health_checker_0
 
@@ -511,7 +573,7 @@ services:
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
-      - CONTAINERS=gateway_1,station_aggregator_2,year_filter_1,distance_calculator_1,health_checker_2
+      - CONTAINERS=gateway_1,station_aggregator_2,dur_avg_provider_0,year_filter_1,dist_mean_calculator_0,health_checker_2
       - HEALTH_CHECKER=health_checker_0
       - CONTAINER_ID=health_checker_1
 
@@ -529,7 +591,7 @@ services:
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
-      - CONTAINERS=weather_aggregator_0,prec_filter_0,trips_counter_0,dist_mean_calculator_0,health_checker_3
+      - CONTAINERS=weather_aggregator_0,prec_filter_0,dur_avg_provider_1,trips_counter_0,dist_mean_provider_0,health_checker_3
       - HEALTH_CHECKER=health_checker_1
       - CONTAINER_ID=health_checker_2
 
@@ -547,7 +609,7 @@ services:
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
-      - CONTAINERS=weather_aggregator_1,prec_filter_1,trips_counter_1,dist_mean_calculator_1,health_checker_4
+      - CONTAINERS=weather_aggregator_1,prec_filter_1,dur_avg_provider_2,trips_counter_1,response_provider,health_checker_4
       - HEALTH_CHECKER=health_checker_2
       - CONTAINER_ID=health_checker_3
 
@@ -565,7 +627,7 @@ services:
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
-      - CONTAINERS=station_aggregator_0,dur_avg_provider_0,trip_count_provider_0,dist_mean_provider_0,health_checker_0
+      - CONTAINERS=station_aggregator_0,prec_filter_2,dur_avg_provider_3,trip_count_provider_0,health_checker_0
       - HEALTH_CHECKER=health_checker_3
       - CONTAINER_ID=health_checker_4
 
@@ -578,7 +640,7 @@ services:
         condition: service_healthy
     entrypoint: python3 /opt/app/client.py
     volumes:
-      - ./.data/:/opt/app/.data/
+      - ./.data_3/:/opt/app/.data/
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
@@ -598,7 +660,7 @@ services:
         condition: service_healthy
     entrypoint: python3 /opt/app/client.py
     volumes:
-      - ./.data/:/opt/app/.data/
+      - ./.data_3/:/opt/app/.data/
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
@@ -618,7 +680,7 @@ services:
         condition: service_healthy
     entrypoint: python3 /opt/app/client.py
     volumes:
-      - ./.data/:/opt/app/.data/
+      - ./.data_3/:/opt/app/.data/
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1

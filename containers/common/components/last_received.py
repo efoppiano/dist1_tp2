@@ -1,3 +1,4 @@
+import logging
 from typing import Optional, List, Dict, Union
 
 from common.packets.generic_packet import GenericPacket
@@ -28,7 +29,7 @@ class MultiLastReceivedManager:
                 return False
             self._last_received[sender_id][0] = current_id
 
-        trace(
+        logging.debug(
             f"Received {sender_id}-{current_id}-{min_hash(packet.data)}")
 
         return True
