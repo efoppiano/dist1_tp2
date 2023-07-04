@@ -39,6 +39,7 @@ class BasicGateway(ABC):
         self.__setup_middleware()
 
         self._basic_gateway_container_id = container_id
+        self._maybe_dup = True
         self._last_chunk_received = None
         self._last_eof_received = None
 
@@ -98,17 +99,25 @@ class BasicGateway(ABC):
             if packet_id == self._last_eof_received:
                 log_duplicate(
                     f"Received duplicate EOF {packet_id}-{min_hash(packet.data)} - ignoring")
+                if not self._maybe_dup:
+                    logging.critical(
+                        f"Received bad duplicate EOF {packet_id}-{min_hash(packet.data)} - ignoring")
+                self._maybe_dup = False
                 return False
             self._last_eof_received = packet_id
         elif packet.is_chunk():
             if packet_id == self._last_chunk_received:
                 log_duplicate(
                     f"Received duplicate chunk {packet_id}-{min_hash(packet.data)} - ignoring")
+                if not self._maybe_dup:
+                    logging.critical(
+                        f"Received bad duplicate chunk {packet_id}-{min_hash(packet.data)} - ignoring")
+                self._maybe_dup = False
                 return False
             self._last_chunk_received = packet_id
 
         trace(f"Received {packet_id}-{min_hash(packet.data)}")
-
+        self._maybe_dup = False
         return True
 
     def __generate_and_send_client_id(self):

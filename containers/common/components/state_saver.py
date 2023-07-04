@@ -3,49 +3,20 @@ import json
 import logging
 import os
 import random
-from typing import Protocol, TextIO
+from typing import Protocol
 
 ENVIRONMENT = os.environ.get("ENVIRONMENT", "dev")
 DIRECTORY = os.environ.get("DIRECTORY", "/volumes/state")
 LOG_FILE_NAME = os.environ.get("LOG_FILE_NAME", "log")
 STATE_FILE_NAME = os.environ.get("STATE_FILE_NAME", "state")
-CHANCE_OF_CHECKPOINT = float(os.environ.get("CHANCE_OF_CHECKPOINT", "0.2"))
+CHANCE_OF_CHECKPOINT = float(os.environ.get("CHANCE_OF_CHECKPOINT", "0.5"))
 CHECKPOINT = "checkpoint"
 COLUMN_PARTITION_SIZE = 4
 
 
-def fail_random():
-    if random.random() < 0.0000001:
+def fail_random(chance: float = 0.001):
+    if False:
         exit(137)
-
-
-class BuggyWriter:
-    def __init__(self, file: TextIO):
-        self._writer = csv.writer(file)
-
-    def writerow(self, row: list):
-        if random.random() < 0.00001:
-            logging.debug("BuggyWriter: Dropping part of the row")
-            items_to_write = random.randint(0, len(row))
-            if items_to_write == 0:
-                exit(137)
-            try:
-                bytes_of_last_item_to_write = random.randint(0, len(row[items_to_write - 1]))
-
-                row[items_to_write - 1] = row[items_to_write - 1][:bytes_of_last_item_to_write]
-
-                row = row[:items_to_write]
-
-                self._writer.writerow(row)
-            except Exception as e:
-                logging.debug(f"Cannot truncate last item - {row[items_to_write - 1]} - {e}")
-            finally:
-                exit(137)
-        else:
-            self._writer.writerow(row)
-
-    def __getattr__(self, name):
-        return getattr(self._writer, name)
 
 
 class Recoverable(Protocol):
@@ -78,7 +49,7 @@ class StateSaver:
         else:
             self._log_file = open(self._log_file_path, "w")
 
-        self._log_writer = BuggyWriter(self._log_file)
+        self._log_writer = csv.writer(self._log_file)
 
     def __init_paths(self):
         self._log_file_path = os.path.join(DIRECTORY, LOG_FILE_NAME)
@@ -90,6 +61,10 @@ class StateSaver:
         os.makedirs(self._directory, exist_ok=True)
 
     def __load_state(self):
+        if self.__state_exists():
+            self.__load_from_state()
+        return
+
         if self.__log_exists():
             self.__load_state_with_log()
         elif self.__state_exists():
@@ -123,10 +98,8 @@ class StateSaver:
                 self._log_file.close()
             fail_random()
             os.rename(self._log_file_path, self._tmp_log_file_path)
-            os.sync()
             fail_random()
             os.remove(self._tmp_log_file_path)
-            os.sync()
         except FileNotFoundError:
             pass
 
@@ -167,7 +140,7 @@ class StateSaver:
                                                               "w") as truncate_log_file:
             log_reader = csv.reader(log_file)
             fail_random()
-            log_truncated_writer = BuggyWriter(truncate_log_file)
+            log_truncated_writer = csv.writer(truncate_log_file)
             fail_random()
             for row in log_reader:
                 if len(row) < 2:
@@ -191,7 +164,6 @@ class StateSaver:
                 i += 1
             fail_random()
             truncate_log_file.flush()
-            os.fsync(truncate_log_file.fileno())
             if ENVIRONMENT != "dev":
                 os.fsync(truncate_log_file.fileno())
 
@@ -201,7 +173,6 @@ class StateSaver:
 
         logging.info("Replayed valid lines, truncating log file")
         os.rename(self._truncated_log_file_path, self._log_file_path)
-        os.sync()
 
     def __save_checkpoint(self):
         # get the updated state from the component
@@ -214,7 +185,6 @@ class StateSaver:
             f.write(json.dumps(state))
             fail_random()
             f.flush()
-            os.fsync(f.fileno())
             if ENVIRONMENT != "dev":
                 os.fsync(f.fileno())
 
@@ -222,9 +192,8 @@ class StateSaver:
             # write the checkpoint to the log
             fail_random()
             self._log_writer.writerow([CHECKPOINT])
-            fail_random()
+            fail_random(0.1)
             self._log_file.flush()
-            os.fsync(self._log_file.fileno())
             if ENVIRONMENT != "dev":
                 os.fsync(self._log_file.fileno())
         except (AttributeError, ValueError):  # log file was closed
@@ -234,13 +203,11 @@ class StateSaver:
             self._log_writer.writerow([CHECKPOINT])
             fail_random()
             self._log_file.flush()
-            os.fsync(self._log_file.fileno())
             if ENVIRONMENT != "dev":
                 os.fsync(self._log_file.fileno())
         fail_random()
         # rename the tmp state file to the state file
         os.rename(self._tmp_state_file_path, self._state_file_path)
-        os.sync()
 
         # remove the log file
         self.__remove_log()
@@ -255,11 +222,17 @@ class StateSaver:
         self._log_writer.writerow([new_msg_size, *row])
         fail_random()
         self._log_file.flush()
-        os.fsync(self._log_file.fileno())
         if ENVIRONMENT != "dev":
             os.fsync(self._log_file.fileno())
 
     def save_state(self, new_msg: bytes):
+        state = self._component.get_state()
+        with open(self._tmp_state_file_path, "w") as f:
+            f.write(json.dumps(state))
+            f.flush()
+        os.rename(self._tmp_state_file_path, self._state_file_path)
+        return
+
         fail_random()
         self.__append_to_log(new_msg)
         fail_random()

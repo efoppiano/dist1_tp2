@@ -1,6 +1,5 @@
 import logging
 import os
-import json
 from abc import ABC
 from typing import Dict, List, Union
 
@@ -27,6 +26,7 @@ class BasicStatefulFilter(BasicFilter, ABC):
 
         self.router = Router(NEXT, NEXT_AMOUNT)
         super().__init__(container_id)
+        self._last_received.maybe_dup = True
 
     def get_state(self) -> dict:
         return {

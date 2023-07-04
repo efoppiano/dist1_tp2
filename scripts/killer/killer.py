@@ -6,11 +6,11 @@ from time import sleep
 import json
 import os
 
-
 STARTED = "\033[92mStarted\033[0m"
 KILLED = "\033[91mKilled\033[0m"
 STARTED_FAIL = "\033[93mFailed to Start\033[0m"
 KILLED_FAIL = "\033[93mFailed to Kill\033[0m"
+
 
 class Killer:
     def __init__(self):
@@ -52,7 +52,7 @@ class Killer:
         try:
             command = f"docker kill -s 9 {container}"
             status = os.system(command)
-            
+
             if status == 0:
                 print(f"{KILLED} {container}")
             else:
@@ -102,10 +102,7 @@ class Killer:
 
             for (container, replica) in containers_to_kill:
                 self.kill_container(container, replica)
-            
-            sleep(random.random() * 0.5)
-            
-            for (container, replica) in containers_to_kill:
+                sleep(random.random() * 0.05)
                 self.start_container(container, replica)
 
             time_to_sleep = random.random() * 12

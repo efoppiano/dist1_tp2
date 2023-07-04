@@ -12,6 +12,7 @@ class GenericPacket(BasicPacket):
     client_id: str
     city_name: str
     seq_number: int
+    maybe_dup: bool
 
     data: Union[List[bytes], Eof]
     hash: str = None
@@ -27,14 +28,13 @@ class GenericPacket(BasicPacket):
 
     def get_flow_id(self) -> str:
         return f"{self.client_id}-{self.city_name}"
-    
+
     def data_hash(self) -> str:
         return min_hash(self.data)
-    
+
     def encode(self) -> bytes:
         self.hash = self.data_hash()
         return super().encode()
-
 
 
 class GenericPacketBuilder:
@@ -43,12 +43,13 @@ class GenericPacketBuilder:
         self._client_id = client_id
         self._city_name = city_name
 
-    def build(self, seq_number: int, data: Union[List[bytes], Eof]) -> GenericPacket:
+    def build(self, seq_number: int, maybe_dup: bool, data: Union[List[bytes], Eof]) -> GenericPacket:
         return GenericPacket(
             sender_id=self._sender_id,
             client_id=self._client_id,
             city_name=self._city_name,
             seq_number=seq_number,
+            maybe_dup=maybe_dup,
             data=data
         )
 

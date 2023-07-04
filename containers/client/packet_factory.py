@@ -6,7 +6,7 @@ from common.components.readers import WeatherInfo, StationInfo, TripInfo, Client
 from common.utils import min_hash, trace, log_msg
 
 
-MAX_SEQ_NUMBER = 2
+MAX_SEQ_NUMBER = 512
 
 
 class PacketFactory:

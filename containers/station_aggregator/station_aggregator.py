@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import os
-import json
 import typing
 from typing import Dict, List, Union, Tuple
 
@@ -108,9 +107,9 @@ class StationAggregator(BasicAggregator):
             log_missing(f"Could not find stations for packet: {packet}")
             return {}
 
-        prec_filter_queue = self.router.route("prec_filter", str(packet.start_station_code))
-        year_filter_queue = self.router.route("year_filter", str(packet.start_station_code))
-        distance_calc_queue = self.router.route("distance_calculator", str(packet.start_station_code))
+        prec_filter_queue = self.router.route("prec_filter", str(packet.start_date))
+        year_filter_queue = self.router.route("year_filter", str(packet.start_date))
+        distance_calc_queue = self.router.route("distance_calculator", str(packet.start_date))
 
         output_packets_lists = self.__build_packet_lists(packet, stations)
 

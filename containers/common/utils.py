@@ -95,6 +95,7 @@ def min_hash(obj, n=4, min_log_level=logging.DEBUG):
         return "###"
 
     def int_to_hexdigits(i, max_digits=8):
+        i = abs(i)
         result = ""
         for _ in range(max_digits):
             result = hexdigits[i % 16] + result
@@ -102,7 +103,7 @@ def min_hash(obj, n=4, min_log_level=logging.DEBUG):
             if i < 16:
                 break
         return result
-    
+
     def uniq_str():
         return int_to_hexdigits(hash(str(datetime.now())))
 
@@ -110,10 +111,10 @@ def min_hash(obj, n=4, min_log_level=logging.DEBUG):
         if isinstance(obj, list):
             return int_to_hexdigits(hash(str(obj)))
         if isinstance(obj, Eof):
-            return "EOF-"+uniq_str()
+            return "EOF-" + uniq_str()
         return int_to_hexdigits(hash(obj))
     except Exception as e:
-        return "hash_error-"+uniq_str()
+        return "hash_error-" + uniq_str()
 
 
 def bold(text: str) -> str:
@@ -133,13 +134,11 @@ def save_state(state: bytes, path: str = "/volumes/state"):
     with open("/volumes/temp_state", "wb", buffering=0) as f:
         f.write(state)
         f.flush()
-        os.fsync(f.fileno())
         if ENVIRONMENT != "dev":
             os.fsync(f.fileno())
 
     # Atomically rename temp file to state file
     os.rename("/volumes/temp_state", path)
-    os.sync()
 
 
 def load_state(path: str = "/volumes/state") -> Union[bytes, None]:

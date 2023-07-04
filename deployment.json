@@ -13,7 +13,7 @@
       }
     },
     "weather_aggregator": {
-      "amount": 2,
+      "amount": 3,
       "next": "station_aggregator",
       "env": {
         "SIDE_TABLE_ROUTING_KEY": "weather_aggregator"
@@ -21,7 +21,11 @@
     },
     "station_aggregator": {
       "amount": 3,
-      "next": ["prec_filter", "year_filter", "distance_calculator"],
+      "next": [
+        "prec_filter",
+        "year_filter",
+        "distance_calculator"
+      ],
       "env": {
         "PREC_FILTER_QUEUE": "prec_filter",
         "YEAR_FILTER_QUEUE": "year_filter",
@@ -30,18 +34,18 @@
       }
     },
     "prec_filter": {
-      "amount": 4,
+      "amount": 2,
       "next": "dur_avg_provider",
       "env": {
-        "PREC_LIMIT": 30
+        "PREC_LIMIT": 0
       }
     },
     "dur_avg_provider": {
-      "amount": 4,
+      "amount": 2,
       "next": "response_provider_dur_avg"
     },
     "year_filter": {
-      "amount": 2,
+      "amount": 4,
       "next": "trips_counter"
     },
     "trips_counter": {
@@ -49,25 +53,25 @@
       "next": "trip_count_provider"
     },
     "trip_count_provider": {
-      "amount": 1,
+      "amount": 2,
       "next": "response_provider_trip_count",
       "env": {
-        "MULT_THRESHOLD": 2
+        "MULT_THRESHOLD": 0
       }
     },
     "distance_calculator": {
-      "amount": 1,
+      "amount": 2,
       "next": "dist_mean_calculator"
     },
     "dist_mean_calculator": {
-      "amount": 1,
+      "amount": 2,
       "next": "dist_mean_provider"
     },
     "dist_mean_provider": {
-      "amount": 1,
+      "amount": 2,
       "next": "response_provider_dist_mean",
       "env": {
-        "MEAN_THRESHOLD": "6.0"
+        "MEAN_THRESHOLD": "0.0"
       }
     }
   },
@@ -77,12 +81,18 @@
     "dur_avg": "dur_avg_provider"
   },
   "clients": {
-    "data": "./.data_3/",
+    "data": "./.data_5/",
     "clients": {
-      "c1": ["montreal", "washington", "toronto"],
-      "c2": ["montreal", "washington", "toronto"],
-      "c3": ["montreal", "washington", "toronto"]
+      "montreal": [
+        "montreal"
+      ],
+      "washington": [
+        "washington"
+      ],
+      "toronto": [
+        "toronto"
+      ]
     }
   },
-  "health_chekers": 5
+  "health_chekers": 3
 }

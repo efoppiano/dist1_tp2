@@ -1,9 +1,8 @@
 import abc
 import logging
 import os
-import json
 from abc import ABC
-from typing import Dict, List, Union
+from typing import Dict, List
 
 from common.components.heartbeater.heartbeater import HeartBeater
 from common.components.last_received import MultiLastReceivedManager
@@ -37,6 +36,7 @@ class BasicAggregator(Recoverable, ABC):
 
         self.router = router
         self.state_saver = StateSaver(self)
+        self._last_received.maybe_dup = True
         self._starting_up = False
 
     def __setup_middleware(self, side_table_routing_key: str):

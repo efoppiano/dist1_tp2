@@ -52,7 +52,6 @@ class BasicFilter(Recoverable, ABC):
         else:
             decoded = msg
             encoded = msg.encode()
-
         flow_id = decoded.get_flow_id()
 
         if isinstance(decoded.data, Eof):

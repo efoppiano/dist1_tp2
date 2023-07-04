@@ -8,7 +8,7 @@ from common.packets.generic_packet import GenericPacketBuilder
 from common.middleware.rabbit_middleware import Rabbit
 from common.utils import min_hash, log_msg
 
-MAX_SEQ_NUMBER = 2
+MAX_SEQ_NUMBER = 512
 
 MessageData = typing.NewType("MessageData", bytes)
 MessageContent = typing.NewType("MessageContent", Union[List[MessageData], Eof])
@@ -20,6 +20,7 @@ class MessageSender:
     def __init__(self, middleware: Rabbit):
         self._last_seq_number: Dict[str, int] = {}
         self._rabbit = middleware
+        self._maybe_dup = True
 
         self._times_maxed_seq = 0
 
@@ -52,18 +53,20 @@ class MessageSender:
                 if queue.startswith("publish_"):
                     queue = queue[len("publish_"):]
                     seq_number = self.__get_next_publish_seq_number(queue)
-                    encoded = builder.build(seq_number, messages_or_eof).encode()
+                    encoded = builder.build(seq_number, self._maybe_dup, messages_or_eof).encode()
                     if not skip_send:
                         logging.debug(
                             f"Sending {seq_number}-{min_hash(messages_or_eof)} to {queue}")
                         self._rabbit.send_to_route("publish", queue, encoded)
                 else:
                     seq_number = self.__get_next_seq_number(queue)
-                    encoded = builder.build(seq_number, messages_or_eof).encode()
+                    encoded = builder.build(seq_number, self._maybe_dup, messages_or_eof).encode()
                     if not skip_send:
                         logging.debug(
                             f"Sending {seq_number}-{min_hash(messages_or_eof)} to {queue}")
                         self._rabbit.produce(queue, encoded)
+        if not skip_send:
+            self._maybe_dup = False
 
     def get_state(self) -> dict:
         return {
