@@ -50,7 +50,7 @@ class Monitor:
             time.time_ns()
         ).encode()
 
-        self._rabbit.send_to_route(HEARTBEAT_EXCHANGE, self._health_checker_queue, packet, confirm=True)
+        self._rabbit.send_to_route(HEARTBEAT_EXCHANGE, self._health_checker_queue, packet, confirm=False)
         return True
 
     def __is_alive(self) -> bool:
