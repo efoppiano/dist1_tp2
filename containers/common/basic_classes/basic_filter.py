@@ -66,6 +66,8 @@ class BasicFilter(Recoverable, ABC):
 
         if not self._starting_up:
             self.state_saver.save_state(encoded)
+        else:
+            logging.info(f"Replayed: {decoded.get_id_and_hash()}")
 
         return True
 
