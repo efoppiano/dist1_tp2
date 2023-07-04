@@ -83,7 +83,7 @@ class ResponseProvider:
         self._rabbit.route(SELF_QUEUE, RESULTS_ROUTING_KEY, destination)
         self._rabbit.route(result_queue, RESULTS_ROUTING_KEY, destination)
 
-        self._rabbit.send_to_route(RESULTS_ROUTING_KEY, destination, message)
+        self._rabbit.send_to_route(RESULTS_ROUTING_KEY, destination, message, confirm=False)
 
     def __evict_client(self, client_id: str, time: int = 0, force: bool = False):
 
