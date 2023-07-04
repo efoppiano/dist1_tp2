@@ -23,15 +23,11 @@ class MessageSender:
         self._times_maxed_seq = 0
 
     def __get_next_seq_number(self, queue: str) -> int:
-        queue_prefix = queue[:-2]
-        if queue not in self._last_seq_number and queue_prefix in self._last_seq_number:
-            self._last_seq_number[queue] = self._last_seq_number[queue_prefix]
-        else:
-            self._last_seq_number.setdefault(queue, 0)
+        self._last_seq_number.setdefault(queue, 0)
         self._last_seq_number[queue] += 1
 
         if self._last_seq_number[queue] > MAX_SEQ_NUMBER:
-            self._last_seq_number[queue] = 0
+            self._last_seq_number[queue] = 1
             self._times_maxed_seq += 1
             log_msg("Generated %d packets [%d]", MAX_SEQ_NUMBER, self._times_maxed_seq)
 
