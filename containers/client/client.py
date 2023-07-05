@@ -106,7 +106,7 @@ def main():
         return
     with open(baseline_file, "r") as f:
       baseline = json.load(f)
-      same = compare_results(baseline, results)
+      same = compare_results(baseline, results, CITIES)
       
     if not same:
       raise Exception("")

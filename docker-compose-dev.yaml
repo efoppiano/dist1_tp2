@@ -578,7 +578,7 @@ services:
         condition: service_healthy
     entrypoint: python3 /opt/app/client.py
     volumes:
-      - ./.data_3/:/opt/app/.data/
+      - ./.data/:/opt/app/.data/
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
@@ -598,7 +598,7 @@ services:
         condition: service_healthy
     entrypoint: python3 /opt/app/client.py
     volumes:
-      - ./.data_3/:/opt/app/.data/
+      - ./.data/:/opt/app/.data/
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1
@@ -618,7 +618,7 @@ services:
         condition: service_healthy
     entrypoint: python3 /opt/app/client.py
     volumes:
-      - ./.data_3/:/opt/app/.data/
+      - ./.data/:/opt/app/.data/
     environment:
       - PYTHONHASHSEED=0
       - PYTHONUNBUFFERED=1

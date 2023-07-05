@@ -1,12 +1,13 @@
 import logging
 
-def compare_results(baseline: dict, results: dict) -> bool:
+def compare_results(baseline: dict, results: dict, cities: list) -> bool:
   
   error = False
   
   for city, queries in baseline.items(): 
     if city not in results:
-      logging.warning(f"{city} not in results")
+      if city in cities:
+        logging.critical(f"{city} not in results")
       continue
     
     for query, data in queries.items():

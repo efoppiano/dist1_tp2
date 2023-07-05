@@ -16,6 +16,7 @@ class Rabbit(MessageQueue):
         self.connection = pika.BlockingConnection(self._connection_params)
         self._channel = self.connection.channel()
         self._channel.basic_qos(prefetch_count=1)
+        self._channel.confirm_delivery()
         self._declared_exchanges = []
         self._declared_queues = []
         self._consume_one_last_queue = None
@@ -38,9 +39,9 @@ class Rabbit(MessageQueue):
 
         append_signal(signal.SIGTERM, signal_handler)
 
-    def publish(self, event: str, message: bytes):
+    def publish(self, event: str, message: bytes, confirm: bool = True):
         self.__declare_exchange(event, "fanout")
-        self._channel.basic_publish(exchange=event, routing_key='', body=message)
+        self._channel.basic_publish(exchange=event, routing_key='', mandatory=confirm, body=message)
 
     @staticmethod
     def __callback_wrapper(callback: Callable[[bytes], bool]):
@@ -50,8 +51,10 @@ class Rabbit(MessageQueue):
                     ch.basic_ack(delivery_tag=method.delivery_tag)
                 else:
                     ch.basic_nack(delivery_tag=method.delivery_tag)
-            except ChannelWrongStateError:
-                pass
+            except ChannelWrongStateError as e:
+                logging.info(f"action: rabbit_callback | status: channel_wrong_state_error | error: {e}")
+                ch.basic_nack(delivery_tag=method.delivery_tag)
+                raise
 
         return wrapper
 
@@ -76,12 +79,13 @@ class Rabbit(MessageQueue):
             self._channel.basic_consume(queue=queue, on_message_callback=self.__callback_wrapper(callback),
                                         auto_ack=False)
 
-    def send_to_route(self, exchange: str, routing_key: str, message: bytes):
+    def send_to_route(self, exchange: str, routing_key: str, message: bytes, confirm: bool = True):
         self.__declare_exchange(exchange, "direct")
         self._channel.basic_publish(
             exchange=exchange,
             routing_key=routing_key,
             body=message,
+            mandatory=confirm,
             properties=pika.BasicProperties(
                 delivery_mode=2
             ))
@@ -125,12 +129,13 @@ class Rabbit(MessageQueue):
 
         self._channel.cancel()
 
-    def produce(self, queue: str, message: bytes):
+    def produce(self, queue: str, message: bytes, confirm: bool = True):
         self.declare_queue(queue)
         self._channel.basic_publish(
             exchange='',
             routing_key=queue,
             body=message,
+            mandatory=confirm,
             properties=pika.BasicProperties(
                 delivery_mode=2
             ))
